@@ -18,7 +18,7 @@ export default async function AdminDashboardPage() {
     supabase.from('NganHangCauHoi').select('*', { count: 'exact', head: true }),
     supabase.from('NguoiDung').select('ho_ten, ma_sinh_vien, lop, muc_tieu_hoc, streak_hien_tai, created_at')
       .eq('vai_tro', 'sinh_vien').order('created_at', { ascending: false }).limit(8),
-    supabase.from('PhienLuyenThi').select('loai_chung_chi, ky_nang, diem_so, tong_so_cau, created_at, NguoiDung(ho_ten)')
+   supabase.from('PhienLuyenThi').select('loai_chung_chi, ky_nang, diem_so, so_cau_dung, tong_so_cau, created_at, NguoiDung(ho_ten)')
       .order('created_at', { ascending: false }).limit(5),
   ])
 
@@ -79,14 +79,14 @@ export default async function AdminDashboardPage() {
           </div>
           <div className="space-y-3">
             {(recentExams || []).map((exam, i) => {
-              const pct = Math.round(((exam.so_cau_dung ?? exam.diem_so) / exam.tong_so_cau) * 100)
+              const pct = Math.round((((exam.so_cau_dung as number) ?? (exam.diem_so as number)) / (exam.tong_so_cau as number)) * 100)
               return (
                 <div key={i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-[#F8F7F2] transition-colors">
                   <div className="w-8 h-8 rounded-lg bg-[#FFF8EC] flex items-center justify-center text-xs font-bold text-[#F5A623]">
                     {exam.loai_chung_chi as string}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-[#0D0D0D]">{(exam.NguoiDung as Record<string,string>)?.ho_ten || 'SV'}</div>
+                    <div className="text-sm font-medium text-[#0D0D0D]">{((exam.NguoiDung as Record<string,unknown>[])?.[0]?.ho_ten as string) || 'SV'}</div>
                     <div className="text-xs text-[#A0A090]">{exam.ky_nang} · {new Date(exam.created_at).toLocaleDateString('vi-VN')}</div>
                   </div>
                   <div className={`text-sm font-bold ${pct >= 60 ? 'text-[#00A878]' : 'text-[#FF6B6B]'}`}>{pct}%</div>
