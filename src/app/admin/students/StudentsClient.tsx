@@ -127,7 +127,7 @@ export default function StudentsClient({ students }: { students: Record<string, 
                 ['Đăng ký lúc', new Date(selected.created_at as string).toLocaleDateString('vi-VN')],
               ].map(([k, v], i) => (
                 <div key={i} className="flex justify-between py-2 border-b border-[#F8F7F2]">
-                  <span className="text-[#6B6B60]">{k}</span>
+                  <span className="text-[#6B6B60]">{k as string}</span>
                   <span className="font-medium text-[#0D0D0D]">{v as string}</span>
                 </div>
               ))}
