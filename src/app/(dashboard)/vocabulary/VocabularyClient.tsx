@@ -25,18 +25,19 @@ export default function VocabularyClient({ sets, dueWords, userId }: Props) {
   const [loadingSet, setLoadingSet] = useState<string | null>(null)
   const supabase = createClient()
 
-  async function loadSetWords(set: Record<string, unknown>) {
-    setLoadingSet(set.id as string)
-    const { data: words } = await supabase
-      .from('TuVung')
-      .select('*, TuVungCache(*), TienDoHocTuVung!left(*, nguoi_dung_id=eq.' + userId + ')')
-      .eq('bo_du_vung_id', set.id)
-      .order('thu_tu_hien_thi')
-    setSelectedSet(set)
-    setSetWords(words || [])
-    setMode('flashcard')
-    setLoadingSet(null)
-  }
+async function loadSetWords(set: Record<string, unknown>) {
+  setLoadingSet(set.id as string)
+  const { data: wordsRaw } = await supabase
+    .from('TuVung')
+    .select('*, TuVungCache(*), TienDoHocTuVung!left(*, nguoi_dung_id=eq.' + userId + ')')
+    .eq('bo_du_vung_id', set.id)
+    .order('thu_tu_hien_thi')
+  const words = (wordsRaw || []) as unknown as Record<string, unknown>[]
+  setSelectedSet(set)
+  setSetWords(words)
+  setMode('flashcard')
+  setLoadingSet(null)
+}
 
   async function startReview() {
     if (dueWords.length === 0) {
@@ -104,7 +105,7 @@ export default function VocabularyClient({ sets, dueWords, userId }: Props) {
             <p className="text-xs text-[#6B6B60] mb-3">{set.mo_ta as string}</p>
             <div className="flex items-center gap-2">
               <span className="text-xs text-[#A0A090]">🃏 {set.tong_so_tu as number} từ</span>
-              {set.chu_de && <span className="text-xs px-2 py-0.5 bg-[#F8F7F2] rounded-full text-[#6B6B60]">{set.chu_de as string}</span>}
+              {(set.chu_de as string) && <span className="text-xs px-2 py-0.5 bg-[#F8F7F2] rounded-full text-[#6B6B60]">{set.chu_de as string}</span>}
             </div>
           </button>
         ))}
