@@ -12,6 +12,15 @@ interface Question {
   loai_cau_hoi: string
 }
 
+interface ExamResult {
+  diemSo: number
+  tongSoCau: number
+  phanTramDung: number
+  diemQuyDoi?: number | null
+  phanTichAi?: string | null
+  [key: string]: unknown
+}
+
 interface Props {
   loaiChungChi: string
   kyNang: string
@@ -24,9 +33,9 @@ export default function ExamSession({ loaiChungChi, kyNang, onFinish }: Props) {
   const [currentIdx, setCurrentIdx] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
-  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [result, setResult] = useState<ExamResult | null>(null)
   const [timeElapsed, setTimeElapsed] = useState(0)
-  const timerRef = useRef<NodeJS.Timeout>()
+  const timerRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
     fetch(`/api/exam?loai=${loaiChungChi}&kyNang=${kyNang}&limit=10`)
@@ -39,11 +48,13 @@ export default function ExamSession({ loaiChungChi, kyNang, onFinish }: Props) {
     if (!submitted && !loading) {
       timerRef.current = setInterval(() => setTimeElapsed(t => t + 1), 1000)
     }
-    return () => clearInterval(timerRef.current)
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
   }, [submitted, loading])
 
   async function handleSubmit() {
-    clearInterval(timerRef.current)
+    if (timerRef.current) clearInterval(timerRef.current)
     const answerList = Object.entries(answers).map(([questionId, answer]) => ({ questionId, answer }))
     const res = await fetch('/api/exam', {
       method: 'POST',
@@ -57,7 +68,7 @@ export default function ExamSession({ loaiChungChi, kyNang, onFinish }: Props) {
       }),
     })
     const data = await res.json()
-    setResult(data)
+    setResult(data as ExamResult)
     setSubmitted(true)
   }
 
@@ -86,24 +97,24 @@ export default function ExamSession({ loaiChungChi, kyNang, onFinish }: Props) {
   }
 
   if (submitted && result) {
-    const pct = result.phanTramDung as number
+    const pct = result.phanTramDung || 0
     return (
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <div className="text-6xl mb-4">{pct >= 80 ? '🏆' : pct >= 60 ? '🎯' : '📖'}</div>
           <h2 className="font-display text-4xl font-bold text-[#0D0D0D] mb-2">{pct}%</h2>
-          <p className="text-[#6B6B60]">{result.diemSo as number}/{result.tongSoCau as number} câu đúng · {formatTime(timeElapsed)}</p>
-          {result.diemQuyDoi && (
+          <p className="text-[#6B6B60]">{result.diemSo || 0}/{result.tongSoCau || 0} câu đúng · {formatTime(timeElapsed)}</p>
+          {result.diemQuyDoi !== undefined && result.diemQuyDoi !== null && result.diemQuyDoi > 0 && (
             <div className="mt-2 px-4 py-1.5 bg-[#E8FFF8] inline-block rounded-full text-[#00A878] font-semibold">
-              Ước tính TOEIC: {result.diemQuyDoi as number} điểm
+              Ước tính TOEIC: {result.diemQuyDoi} điểm
             </div>
           )}
         </div>
 
-        {result.phanTichAi && (
+        {result.phanTichAi && result.phanTichAi.trim() !== '' && (
           <div className="mb-6 p-5 bg-[#F8F7F2] rounded-2xl border border-[#E8E8E0]">
             <div className="font-semibold text-[#0D0D0D] mb-2 flex items-center gap-2">🤖 AI phân tích</div>
-            <div className="text-sm text-[#484840] leading-relaxed whitespace-pre-line">{result.phanTichAi as string}</div>
+            <div className="text-sm text-[#484840] leading-relaxed whitespace-pre-line">{result.phanTichAi}</div>
           </div>
         )}
 
