@@ -179,8 +179,15 @@ const faqs = [
 // ─── IMAGE HELPER ─────────────────────────────────────────────────────────────
 // Trả về true nếu đường dẫn ảnh "thực" (không phải placeholder)
 // Hiện tại mọi ảnh đều hiển thị — chỉ cần thay src trong IMAGES là xong
-function Img({ imgKey, alt, width, height, style, className }) {
-  const src = IMAGES[imgKey]
+function Img({ imgKey, alt, width, height, style, className }: { 
+  imgKey: string
+  alt?: string
+  width?: number
+  height?: number
+  style?: React.CSSProperties
+  className?: string
+}) {
+  const src = IMAGES[imgKey as keyof typeof IMAGES]
   return (
     <Image
       src={src}
@@ -194,7 +201,7 @@ function Img({ imgKey, alt, width, height, style, className }) {
 }
 
 // ─── FAQ ITEM (accordion) ─────────────────────────────────────────────────────
-function FaqItem({ q, a }) {
+function FaqItem({ q, a }: { q: string, a: string }) {
   const [open, setOpen] = useState(false)
   return (
     <div className={`faqItem${open ? ' faqOpen' : ''}`} onClick={() => setOpen(!open)}>
@@ -210,10 +217,9 @@ function FaqItem({ q, a }) {
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 export default function LandingPage() {
   return (
-    <>
-      <style dangerouslySetInnerHTML={{__html: `
+    <div>
+      <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
-
         :root {
           --navy:        #1B2A4A;
           --navy-dark:   #0F1E35;
@@ -704,7 +710,7 @@ export default function LandingPage() {
           .featBubble { display:none; }
           .platformTable thead th:nth-child(3),.platformTable td:nth-child(3) { display:none; }
         }
-      `}} />
+      `}</style>
 
       {/* ── TOPBAR ── */}
       <div className="topbar">
@@ -1251,6 +1257,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </>
+    </div>
   )
 }
