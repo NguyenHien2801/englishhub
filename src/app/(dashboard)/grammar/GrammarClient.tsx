@@ -75,14 +75,14 @@ export default function GrammarClient({ lessons, completedIds, userId }: Props) 
                     style={{ backgroundColor: LEVEL_COLORS[lesson.cap_do as string] || '#F8F7F2' }}>
                     {lesson.cap_do as string}
                   </span>
-                  {lesson.danh_muc && (
+                  {(lesson.danh_muc as string) && (
                     <span className="text-xs text-[#A0A090]">{lesson.danh_muc as string}</span>
                   )}
                 </div>
                 <h3 className="font-semibold text-[#0D0D0D] group-hover:text-[#00A878] transition-colors mb-1">
                   {lesson.tieu_de as string}
                 </h3>
-                {lesson.mo_ta && <p className="text-xs text-[#6B6B60]">{lesson.mo_ta as string}</p>}
+                {(lesson.mo_ta as string)&& <p className="text-xs text-[#6B6B60]">{lesson.mo_ta as string}</p>}
                 <div className="mt-3 text-xs text-[#A0A090]">
                   📝 {(lesson.bai_tap_json as { questions: unknown[] })?.questions?.length || 0} bài tập
                 </div>
