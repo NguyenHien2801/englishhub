@@ -50,7 +50,7 @@ export default function GrammarLesson({ lesson, userId, isCompleted, onBack }: P
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2 py-0.5 bg-[#FFF8EC] text-xs font-semibold rounded-lg">{lesson.cap_do as string}</span>
-            {lesson.danh_muc && <span className="text-xs text-[#A0A090]">{lesson.danh_muc as string}</span>}
+           {lesson.danh_muc !== undefined && lesson.danh_muc !== null && (<span className="text-xs text-[#A0A090]">{String(lesson.danh_muc)}</span>)}
             {isCompleted && <span className="text-xs text-[#00A878]">✓ Đã hoàn thành</span>}
           </div>
           <h1 className="font-display text-2xl font-bold text-[#0D0D0D]">{lesson.tieu_de as string}</h1>
@@ -87,16 +87,16 @@ export default function GrammarLesson({ lesson, userId, isCompleted, onBack }: P
                   <div className="text-[#6B6B60] text-sm">{ex.vi}</div>
                 </div>
               ))}
-              {sec.signal_words?.length > 0 && (
-                <div className="mt-4">
-                  <div className="text-xs font-semibold text-[#A0A090] mb-2">TỪ HIỆU LỆNH</div>
-                  <div className="flex flex-wrap gap-2">
-                    {sec.signal_words.map((w: string, k: number) => (
-                      <span key={k} className="px-3 py-1 bg-[#E8FFF8] text-[#00A878] text-xs font-medium rounded-full">{w}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
+{sec.signal_words && Array.isArray(sec.signal_words) && sec.signal_words.length > 0 && (
+  <div className="mt-4">
+    <div className="text-xs font-semibold text-[#A0A090] mb-2">TỪ HIỆU LỆNH</div>
+    <div className="flex flex-wrap gap-2">
+      {sec.signal_words.map((w: string, k: number) => (
+        <span key={k} className="px-3 py-1 bg-[#E8FFF8] text-[#00A878] text-xs font-medium rounded-full">{w}</span>
+      ))}
+    </div>
+  </div>
+)}
             </div>
           ))}
           {practice && (
