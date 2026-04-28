@@ -2,6 +2,60 @@
 import { useState, useRef, useEffect } from 'react'
 import toast from 'react-hot-toast'
 
+// ─── Self-contained Web Speech API types (không cần @types/dom-speech-recognition) ───
+interface ISpeechRecognition extends EventTarget {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  maxAlternatives: number
+  start(): void
+  stop(): void
+  abort(): void
+  onresult: ((event: ISpeechRecognitionEvent) => void) | null
+  onerror: ((event: ISpeechRecognitionErrorEvent) => void) | null
+  onend: (() => void) | null
+}
+
+interface ISpeechRecognitionEvent {
+  resultIndex: number
+  results: ISpeechRecognitionResultList
+}
+
+interface ISpeechRecognitionResultList {
+  length: number
+  item(index: number): ISpeechRecognitionResult
+  [index: number]: ISpeechRecognitionResult
+}
+
+interface ISpeechRecognitionResult {
+  isFinal: boolean
+  length: number
+  item(index: number): ISpeechRecognitionAlternative
+  [index: number]: ISpeechRecognitionAlternative
+}
+
+interface ISpeechRecognitionAlternative {
+  transcript: string
+  confidence: number
+}
+
+interface ISpeechRecognitionErrorEvent extends Event {
+  error: string
+  message: string
+}
+
+interface ISpeechRecognitionConstructor {
+  new (): ISpeechRecognition
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: ISpeechRecognitionConstructor
+    webkitSpeechRecognition: ISpeechRecognitionConstructor
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 const TOPICS = [
   {
     id: 1, title: 'Giới thiệu bản thân', level: 'A2', cert: 'VSTEP',
@@ -51,12 +105,13 @@ export default function SpeakingPage() {
   const [timer, setTimer] = useState(0)
   const [showSample, setShowSample] = useState(false)
   const [supported, setSupported] = useState(true)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
-  const timerRef = useRef<NodeJS.Timeout>()
+  const recognitionRef = useRef<ISpeechRecognition | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   const fullTranscriptRef = useRef('')
 
   useEffect(() => {
-    const SR = window.SpeechRecognition || (window as typeof window & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition
+    const SR: ISpeechRecognitionConstructor | undefined =
+      window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) setSupported(false)
     return () => {
       clearInterval(timerRef.current)
@@ -65,7 +120,8 @@ export default function SpeakingPage() {
   }, [])
 
   function startRecording() {
-    const SR = window.SpeechRecognition || (window as typeof window & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition
+    const SR: ISpeechRecognitionConstructor | undefined =
+      window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) { toast.error('Trình duyệt không hỗ trợ. Dùng Chrome nhé!'); return }
 
     fullTranscriptRef.current = ''
@@ -82,13 +138,11 @@ export default function SpeakingPage() {
     recognition.interimResults = true
     recognition.maxAlternatives = 1
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: ISpeechRecognitionEvent) => {
       let interimTranscript = ''
-      let finalTranscript = ''
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const t = event.results[i][0].transcript
         if (event.results[i].isFinal) {
-          finalTranscript += t + ' '
           fullTranscriptRef.current += t + ' '
         } else {
           interimTranscript += t
@@ -97,7 +151,7 @@ export default function SpeakingPage() {
       setTranscript(fullTranscriptRef.current + interimTranscript)
     }
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    recognition.onerror = (event: ISpeechRecognitionErrorEvent) => {
       console.error('Speech error:', event.error)
       if (event.error === 'no-speech') return
       toast.error('Lỗi microphone: ' + event.error)
@@ -105,7 +159,7 @@ export default function SpeakingPage() {
     }
 
     recognition.onend = () => {
-      if (state === 'recording') recognition.start()
+      if (recognitionRef.current) recognition.start()
     }
 
     recognitionRef.current = recognition
@@ -166,7 +220,6 @@ Chấm điểm theo thang 0-10 cho từng tiêu chí và trả về JSON (KHÔNG
       setFeedback(parsed)
       setState('recorded')
       toast.success('AI đã phân tích xong!')
-      // Save result to DB
       fetch('/api/speaking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -186,15 +239,25 @@ Chấm điểm theo thang 0-10 cho từng tiêu chí và trả về JSON (KHÔNG
     }
   }
 
-  const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
+  const formatTime = (s: number) =>
+    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
   const scoreColor = (s: number) => s >= 8 ? '#00A878' : s >= 6 ? '#F5A623' : '#FF6B6B'
 
   if (selected) {
     return (
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
-          <button onClick={() => { recognitionRef.current?.stop(); clearInterval(timerRef.current); setSelected(null) }}
-            className="text-[#6B6B60] hover:text-[#0D0D0D] transition-colors">← Quay lại</button>
+          <button
+            onClick={() => {
+              recognitionRef.current?.stop()
+              recognitionRef.current = null
+              clearInterval(timerRef.current)
+              setSelected(null)
+            }}
+            className="text-[#6B6B60] hover:text-[#0D0D0D] transition-colors"
+          >
+            ← Quay lại
+          </button>
           <div>
             <div className="flex gap-2 mb-1">
               <span className="text-xs px-2 py-0.5 bg-[#E8FFF8] text-[#00A878] rounded-full font-medium">{selected.cert}</span>
@@ -204,13 +267,11 @@ Chấm điểm theo thang 0-10 cho từng tiêu chí và trả về JSON (KHÔNG
           </div>
         </div>
 
-        {/* Prompt */}
         <div className="bg-[#0D0D0D] text-white rounded-2xl p-5 mb-5">
           <div className="text-xs text-[#707068] font-semibold mb-2 uppercase tracking-wide">Đề bài</div>
           <div className="text-sm leading-relaxed">{selected.prompt}</div>
         </div>
 
-        {/* Recording area */}
         <div className="bg-white rounded-2xl border-2 border-[#E8E8E0] p-6 mb-5">
           <div className="flex items-center justify-between mb-4">
             <div className="font-semibold text-[#0D0D0D]">🎙️ Ghi âm bài nói</div>
@@ -230,14 +291,19 @@ Chấm điểm theo thang 0-10 cho từng tiêu chí và trả về JSON (KHÔNG
 
           <div className="flex gap-3 mb-4">
             {state === 'idle' || state === 'recorded' ? (
-              <button onClick={startRecording} disabled={!supported}
-                className="flex-1 py-3.5 bg-[#00A878] text-white font-semibold rounded-xl hover:bg-[#007A58] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+              <button
+                onClick={startRecording}
+                disabled={!supported}
+                className="flex-1 py-3.5 bg-[#00A878] text-white font-semibold rounded-xl hover:bg-[#007A58] transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+              >
                 <span className="text-lg">🎙️</span>
                 {state === 'recorded' ? 'Ghi lại' : 'Bắt đầu nói'}
               </button>
             ) : state === 'recording' ? (
-              <button onClick={stopRecording}
-                className="flex-1 py-3.5 bg-[#FF6B6B] text-white font-semibold rounded-xl hover:bg-[#E05050] transition-colors flex items-center justify-center gap-2 animate-pulse-jade">
+              <button
+                onClick={stopRecording}
+                className="flex-1 py-3.5 bg-[#FF6B6B] text-white font-semibold rounded-xl hover:bg-[#E05050] transition-colors flex items-center justify-center gap-2 animate-pulse-jade"
+              >
                 <span>⏹</span> Dừng ghi âm
               </button>
             ) : (
@@ -247,7 +313,6 @@ Chấm điểm theo thang 0-10 cho từng tiêu chí và trả về JSON (KHÔNG
             )}
           </div>
 
-          {/* Live transcript */}
           {(transcript || state === 'recording') && (
             <div className="p-4 bg-[#F8F7F2] rounded-xl min-h-24 text-sm text-[#484840] leading-relaxed">
               <div className="text-xs font-semibold text-[#A0A090] mb-2">
@@ -257,7 +322,6 @@ Chấm điểm theo thang 0-10 cho từng tiêu chí và trả về JSON (KHÔNG
             </div>
           )}
 
-          {/* Keywords detected */}
           {state !== 'idle' && selected.keywords.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {selected.keywords.map(kw => {
@@ -274,17 +338,19 @@ Chấm điểm theo thang 0-10 cho từng tiêu chí và trả về JSON (KHÔNG
           )}
         </div>
 
-        {/* Actions */}
         {state === 'recorded' && transcript && !feedback && (
-          <button onClick={analyzeWithAI}
-            className="w-full py-3.5 bg-[#0D0D0D] text-white font-semibold rounded-xl hover:bg-[#2C2C28] transition-colors mb-4 flex items-center justify-center gap-2">
+          <button
+            onClick={analyzeWithAI}
+            className="w-full py-3.5 bg-[#0D0D0D] text-white font-semibold rounded-xl hover:bg-[#2C2C28] transition-colors mb-4 flex items-center justify-center gap-2"
+          >
             🤖 Phân tích bằng AI Gemini
           </button>
         )}
 
-        {/* Sample answer */}
-        <button onClick={() => setShowSample(!showSample)}
-          className="w-full py-3 border-2 border-[#E8E8E0] text-[#6B6B60] font-medium rounded-xl hover:border-[#0D0D0D] hover:text-[#0D0D0D] transition-colors text-sm mb-4">
+        <button
+          onClick={() => setShowSample(!showSample)}
+          className="w-full py-3 border-2 border-[#E8E8E0] text-[#6B6B60] font-medium rounded-xl hover:border-[#0D0D0D] hover:text-[#0D0D0D] transition-colors text-sm mb-4"
+        >
           {showSample ? 'Ẩn' : 'Xem'} bài mẫu tham khảo
         </button>
         {showSample && (
@@ -294,7 +360,6 @@ Chấm điểm theo thang 0-10 cho từng tiêu chí và trả về JSON (KHÔNG
           </div>
         )}
 
-        {/* AI Feedback */}
         {feedback && (
           <div className="bg-white rounded-2xl border-2 border-[#00A878]/30 p-6">
             <div className="text-center mb-6">
@@ -315,7 +380,10 @@ Chấm điểm theo thang 0-10 cho từng tiêu chí và trả về JSON (KHÔNG
                   <div className="text-xs text-[#6B6B60] mb-1">{c.label}</div>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-1.5 bg-[#E8E8E0] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${c.score * 10}%`, backgroundColor: scoreColor(c.score) }} />
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${c.score * 10}%`, backgroundColor: scoreColor(c.score) }}
+                      />
                     </div>
                     <span className="text-sm font-bold" style={{ color: scoreColor(c.score) }}>{c.score}</span>
                   </div>
@@ -345,13 +413,18 @@ Chấm điểm theo thang 0-10 cho từng tiêu chí và trả về JSON (KHÔNG
             {feedback.detectedKeywords.length > 0 && (
               <div className="mt-4 pt-4 border-t border-[#E8E8E0]">
                 <div className="text-xs text-[#6B6B60]">
-                  Từ khóa sử dụng: {feedback.detectedKeywords.map(k => <span key={k} className="ml-1 px-2 py-0.5 bg-[#E8FFF8] text-[#00A878] rounded-full text-xs">{k}</span>)}
+                  Từ khóa sử dụng:{' '}
+                  {feedback.detectedKeywords.map(k => (
+                    <span key={k} className="ml-1 px-2 py-0.5 bg-[#E8FFF8] text-[#00A878] rounded-full text-xs">{k}</span>
+                  ))}
                 </div>
               </div>
             )}
 
-            <button onClick={() => { setState('idle'); setTranscript(''); setFeedback(null); fullTranscriptRef.current = ''; setTimer(0) }}
-              className="mt-4 w-full py-3 border-2 border-[#E8E8E0] text-[#0D0D0D] font-medium rounded-xl hover:border-[#0D0D0D] transition-colors text-sm">
+            <button
+              onClick={() => { setState('idle'); setTranscript(''); setFeedback(null); fullTranscriptRef.current = ''; setTimer(0) }}
+              className="mt-4 w-full py-3 border-2 border-[#E8E8E0] text-[#0D0D0D] font-medium rounded-xl hover:border-[#0D0D0D] transition-colors text-sm"
+            >
               🎙️ Nói lại
             </button>
           </div>
@@ -372,15 +445,19 @@ Chấm điểm theo thang 0-10 cho từng tiêu chí và trả về JSON (KHÔNG
         <div>
           <div className="font-semibold text-white text-sm mb-1">Cách hoạt động</div>
           <div className="text-[#A0A090] text-xs leading-relaxed">
-            Dùng Web Speech API (Chrome) để nhận dạng giọng nói → Gemini AI chấm điểm 4 tiêu chí: Trôi chảy, Từ vựng, Ngữ pháp, Nội dung. Yêu cầu: <span className="text-[#00A878]">Google Chrome + microphone</span>.
+            Dùng Web Speech API (Chrome) để nhận dạng giọng nói → Gemini AI chấm điểm 4 tiêu chí: Trôi chảy, Từ vựng, Ngữ pháp, Nội dung. Yêu cầu:{' '}
+            <span className="text-[#00A878]">Google Chrome + microphone</span>.
           </div>
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         {TOPICS.map(topic => (
-          <button key={topic.id} onClick={() => { setSelected(topic); setState('idle'); setTranscript(''); setFeedback(null) }}
-            className="p-5 bg-white rounded-2xl border-2 border-[#E8E8E0] text-left hover:border-[#00A878]/50 hover:shadow-md transition-all group">
+          <button
+            key={topic.id}
+            onClick={() => { setSelected(topic); setState('idle'); setTranscript(''); setFeedback(null) }}
+            className="p-5 bg-white rounded-2xl border-2 border-[#E8E8E0] text-left hover:border-[#00A878]/50 hover:shadow-md transition-all group"
+          >
             <div className="flex items-start gap-3 mb-3">
               <div className="w-10 h-10 rounded-xl bg-[#E8FFF8] flex items-center justify-center text-xl flex-shrink-0">🗣️</div>
               <div>
