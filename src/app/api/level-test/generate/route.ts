@@ -3,59 +3,67 @@ import { createClient } from '@/lib/supabase/server'
 import { callGemini } from '@/lib/gemini/client'
 
 const GENERATE_PROMPT = (usedTopics: string[]) => `
-Bạn là chuyên gia ra đề thi tiếng Anh chuẩn VSTEP/TOEIC/APTIS cho sinh viên Việt Nam.
+You are an expert English language test designer specialising in VSTEP, TOEIC, and APTIS formats.
 
-Tạo 1 bộ đề Level Test đầy đủ 4 kỹ năng. Trả về JSON hợp lệ (KHÔNG markdown, KHÔNG backtick).
+Generate a complete Level Test with 5 sections. Return VALID JSON ONLY — no markdown, no backticks, no explanation.
 
-${usedTopics.length > 0 ? `TUYỆT ĐỐI KHÔNG dùng lại các chủ đề sau: ${usedTopics.slice(-10).join(', ')}` : ''}
+CRITICAL LANGUAGE RULE: Every single field — questions, options, prompts, passages, scripts, sample answers, explanations — MUST be written entirely in ENGLISH. No Vietnamese anywhere.
 
-Format JSON:
+${usedTopics.length > 0 ? `DO NOT reuse any of these previously used topics: ${usedTopics.slice(-10).join(', ')}` : ''}
+
+Return this exact JSON structure:
+
 {
-  "topic": "tên chủ đề tổng thể (VD: Environment, Technology, Education...)",
+  "topic": "Overall topic name (e.g. Environment, Technology, Urban Life, Health, Travel...)",
   "listening": {
-    "script": "Đoạn hội thoại/monologue tiếng Anh 80-120 từ, tự nhiên, phù hợp TOEIC/VSTEP.",
+    "script": "A natural dialogue or monologue in English, 80-120 words, TOEIC/VSTEP style. Two speakers or a short announcement.",
     "questions": [
-      { "id": "L1", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "A", "difficulty": "easy" },
-      { "id": "L2", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "B", "difficulty": "medium" },
-      { "id": "L3", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "C", "difficulty": "medium" }
+      { "id": "L1", "question": "Question in English about the audio?", "options": ["A. option","B. option","C. option","D. option"], "correct": "A", "difficulty": "easy" },
+      { "id": "L2", "question": "Question in English about the audio?", "options": ["A. option","B. option","C. option","D. option"], "correct": "B", "difficulty": "medium" },
+      { "id": "L3", "question": "Question in English about the audio?", "options": ["A. option","B. option","C. option","D. option"], "correct": "C", "difficulty": "medium" },
+      { "id": "L4", "question": "Question in English about the audio?", "options": ["A. option","B. option","C. option","D. option"], "correct": "D", "difficulty": "medium" },
+      { "id": "L5", "question": "Question in English about the audio?", "options": ["A. option","B. option","C. option","D. option"], "correct": "A", "difficulty": "hard" }
     ]
   },
   "speaking": {
-    "prompt": "Câu hỏi nói ngắn gọn bằng tiếng Anh. VD: Describe your daily routine.",
+    "prompt": "A clear speaking task in English. E.g. Describe a place you enjoy visiting and explain why you like it.",
     "level_target": "B1",
-    "time_seconds": 60,
-    "sample_answer": "Đoạn trả lời mẫu 60-80 từ chuẩn B1"
+    "time_seconds": 90,
+    "sample_answer": "A 80-100 word sample response in English at B1 level."
   },
   "reading": {
-    "passage": "Đoạn văn tiếng Anh 150-200 từ, chủ đề học thuật nhẹ hoặc đời sống.",
+    "passage": "An English passage of 180-220 words on an academic-lite or everyday topic related to the main topic.",
     "questions": [
-      { "id": "R1", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "A", "difficulty": "easy" },
-      { "id": "R2", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "B", "difficulty": "medium" },
-      { "id": "R3", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "C", "difficulty": "medium" },
-      { "id": "R4", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "A", "difficulty": "hard" }
+      { "id": "R1", "question": "Question in English about the passage?", "options": ["A. option","B. option","C. option","D. option"], "correct": "A", "difficulty": "easy" },
+      { "id": "R2", "question": "Question in English about the passage?", "options": ["A. option","B. option","C. option","D. option"], "correct": "B", "difficulty": "easy" },
+      { "id": "R3", "question": "Question in English about the passage?", "options": ["A. option","B. option","C. option","D. option"], "correct": "C", "difficulty": "medium" },
+      { "id": "R4", "question": "Question in English about the passage?", "options": ["A. option","B. option","C. option","D. option"], "correct": "A", "difficulty": "medium" },
+      { "id": "R5", "question": "Question in English about the passage?", "options": ["A. option","B. option","C. option","D. option"], "correct": "D", "difficulty": "hard" }
     ]
   },
   "writing": {
-    "prompt": "Đề bài viết rõ ràng, yêu cầu 80-120 từ, phù hợp VSTEP B1.",
+    "prompt": "A clear writing task in English requiring 80-120 words. E.g. Write an email, short essay, or opinion paragraph related to the topic.",
     "min_words": 80,
     "max_words": 120,
-    "criteria": ["Task Achievement", "Coherence & Cohesion", "Vocabulary", "Grammar"]
+    "criteria": ["Task Achievement", "Coherence & Cohesion", "Lexical Resource", "Grammatical Range & Accuracy"]
   },
   "grammar_vocab": {
     "questions": [
-      { "id": "G1",  "difficulty": "easy",   "skill": "grammar",    "level": "A2", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "A", "explanation": "giải thích tiếng Việt" },
-      { "id": "G2",  "difficulty": "easy",   "skill": "vocabulary", "level": "A2", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "B", "explanation": "..." },
-      { "id": "G3",  "difficulty": "easy",   "skill": "grammar",    "level": "A2", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "C", "explanation": "..." },
-      { "id": "G4",  "difficulty": "medium", "skill": "grammar",    "level": "B1", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "A", "explanation": "..." },
-      { "id": "G5",  "difficulty": "medium", "skill": "vocabulary", "level": "B1", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "B", "explanation": "..." },
-      { "id": "G6",  "difficulty": "medium", "skill": "grammar",    "level": "B2", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "C", "explanation": "..." },
-      { "id": "G7",  "difficulty": "medium", "skill": "vocabulary", "level": "B2", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "A", "explanation": "..." },
-      { "id": "G8",  "difficulty": "hard",   "skill": "grammar",    "level": "C1", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "B", "explanation": "..." },
-      { "id": "G9",  "difficulty": "hard",   "skill": "vocabulary", "level": "C1", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "C", "explanation": "..." },
-      { "id": "G10", "difficulty": "hard",   "skill": "grammar",    "level": "C1", "question": "...", "options": ["A. ...","B. ...","C. ...","D. ..."], "correct": "A", "explanation": "..." }
+      { "id": "G1",  "difficulty": "easy",   "skill": "grammar",    "level": "A1", "question": "Complete the sentence in English: ___", "options": ["A. option","B. option","C. option","D. option"], "correct": "A", "explanation": "Brief English explanation of why this answer is correct." },
+      { "id": "G2",  "difficulty": "easy",   "skill": "vocabulary", "level": "A1", "question": "Complete the sentence in English: ___", "options": ["A. option","B. option","C. option","D. option"], "correct": "B", "explanation": "Brief English explanation." },
+      { "id": "G3",  "difficulty": "easy",   "skill": "grammar",    "level": "A2", "question": "Complete the sentence in English: ___", "options": ["A. option","B. option","C. option","D. option"], "correct": "C", "explanation": "Brief English explanation." },
+      { "id": "G4",  "difficulty": "easy",   "skill": "vocabulary", "level": "A2", "question": "Complete the sentence in English: ___", "options": ["A. option","B. option","C. option","D. option"], "correct": "A", "explanation": "Brief English explanation." },
+      { "id": "G5",  "difficulty": "medium", "skill": "grammar",    "level": "B1", "question": "Complete the sentence in English: ___", "options": ["A. option","B. option","C. option","D. option"], "correct": "B", "explanation": "Brief English explanation." },
+      { "id": "G6",  "difficulty": "medium", "skill": "vocabulary", "level": "B1", "question": "Complete the sentence in English: ___", "options": ["A. option","B. option","C. option","D. option"], "correct": "C", "explanation": "Brief English explanation." },
+      { "id": "G7",  "difficulty": "medium", "skill": "grammar",    "level": "B2", "question": "Complete the sentence in English: ___", "options": ["A. option","B. option","C. option","D. option"], "correct": "A", "explanation": "Brief English explanation." },
+      { "id": "G8",  "difficulty": "medium", "skill": "vocabulary", "level": "B2", "question": "Complete the sentence in English: ___", "options": ["A. option","B. option","C. option","D. option"], "correct": "B", "explanation": "Brief English explanation." },
+      { "id": "G9",  "difficulty": "hard",   "skill": "grammar",    "level": "C1", "question": "Complete the sentence in English: ___", "options": ["A. option","B. option","C. option","D. option"], "correct": "C", "explanation": "Brief English explanation." },
+      { "id": "G10", "difficulty": "hard",   "skill": "vocabulary", "level": "C1", "question": "Complete the sentence in English: ___", "options": ["A. option","B. option","C. option","D. option"], "correct": "A", "explanation": "Brief English explanation." }
     ]
   }
 }
+
+REMINDER: ALL content must be in ENGLISH. Questions, answer options, prompts, passages, scripts — everything. Do not write any Vietnamese.
 `
 
 export async function POST(request: Request) {
@@ -80,12 +88,17 @@ export async function POST(request: Request) {
     const parsed = JSON.parse(cleaned)
 
     if (!parsed.listening || !parsed.speaking || !parsed.reading || !parsed.writing || !parsed.grammar_vocab) {
-      throw new Error('Thiếu kỹ năng trong response')
+      throw new Error('Incomplete exam structure in AI response')
     }
+
+    // Validate question counts
+    if (parsed.listening.questions.length < 3) throw new Error('Listening: insufficient questions')
+    if (parsed.reading.questions.length < 4)   throw new Error('Reading: insufficient questions')
+    if (parsed.grammar_vocab.questions.length < 10) throw new Error('Grammar: insufficient questions')
 
     return NextResponse.json({ exam: parsed })
   } catch (error) {
     console.error('Generate error:', error)
-    return NextResponse.json({ error: 'Không thể tạo đề thi. Vui lòng thử lại.' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to generate test. Please try again.' }, { status: 500 })
   }
 }
