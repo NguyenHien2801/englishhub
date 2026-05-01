@@ -1,46 +1,115 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-// POST: Save listening session result
+// GET: Lấy danh sách bài nghe từ DB hoặc lịch sử làm bài
+export async function GET(request: Request) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { searchParams } = new URL(request.url)
+  const loai   = searchParams.get('loai')
+  const cap_do = searchParams.get('cap_do')
+  const mode   = searchParams.get('mode')
+
+  // Lấy lịch sử làm bài
+  if (mode === 'history') {
+    const { data } = await supabase
+      .from('PhienLuyenThi')
+      .select('*')
+      .eq('nguoi_dung_id', user.id)
+      .eq('ky_nang', 'NGHE')
+      .order('created_at', { ascending: false })
+      .limit(20)
+    return NextResponse.json({ sessions: data || [] })
+  }
+
+  // Lấy danh sách bài nghe + câu hỏi
+  let query = supabase
+    .from('BaiNghe')
+    .select(`
+      *,
+      BaiNgheCauHoi (
+        id, so_thu_tu, noi_dung,
+        cac_lua_chon, dap_an_dung, giai_thich
+      )
+    `)
+    .eq('da_kiem_duyet', true)
+    .order('created_at', { ascending: false })
+
+  if (loai)   query = query.eq('loai_chung_chi', loai)
+  if (cap_do) query = query.eq('cap_do', cap_do)
+
+  const { data, error } = await query
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+  // Sort câu hỏi theo thứ tự
+  const baiNghe = (data || []).map(bai => ({
+    ...bai,
+    BaiNgheCauHoi: (bai.BaiNgheCauHoi || []).sort(
+      (a: any, b: any) => a.so_thu_tu - b.so_thu_tu
+    )
+  }))
+
+  // Lấy lịch sử để biết bài nào đã làm
+  const { data: lichSu } = await supabase
+    .from('PhienLuyenThi')
+    .select('cau_tra_loi_json, diem_so, tong_so_cau, created_at')
+    .eq('nguoi_dung_id', user.id)
+    .eq('ky_nang', 'NGHE')
+
+  // Map baiId → kết quả gần nhất
+  const daLamMap: Record<string, { diem: number; tong: number; ngay: string }> = {}
+  for (const s of lichSu || []) {
+    const baiId = (s.cau_tra_loi_json as any)?.baiId
+    if (baiId && !daLamMap[baiId]) {
+      daLamMap[baiId] = {
+        diem: s.diem_so,
+        tong: s.tong_so_cau,
+        ngay: s.created_at,
+      }
+    }
+  }
+
+  return NextResponse.json({ baiNghe, daLamMap })
+}
+
+// POST: Lưu kết quả làm bài
 export async function POST(request: Request) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { topicId, topicTitle, cert, level, correct, total, thoiGianLamBai } = body
+  const { baiId, tieu_de, loai_chung_chi, cap_do, correct, total, thoiGianLamBai, cauTraLoi } = body
 
-  const phanTramDung = Math.round((correct / total) * 100)
+  if (!baiId || correct === undefined || !total) {
+    return NextResponse.json({ error: 'Thiếu dữ liệu' }, { status: 400 })
+  }
+
+  const phanTram = Math.round((correct / total) * 100)
 
   const { data, error } = await supabase.from('PhienLuyenThi').insert({
-    nguoi_dung_id: user.id,
-    loai_chung_chi: cert,
-    ky_nang: 'NGHE',
-    diem_so: correct,
-    tong_so_cau: total,
-    so_cau_dung: correct,
+    nguoi_dung_id:     user.id,
+    loai_chung_chi:    loai_chung_chi || 'GENERAL',
+    ky_nang:           'NGHE',
+    diem_so:           correct,
+    tong_so_cau:       total,
+    so_cau_dung:       correct,
     thoi_gian_lam_bai: thoiGianLamBai || 0,
-    cau_tra_loi_json: { topicId, topicTitle, level },
+    cau_tra_loi_json: {
+      baiId,
+      tieu_de,
+      cap_do,
+      phanTram,
+      cauTraLoi,
+    },
   }).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-  return NextResponse.json({ session: data, phanTramDung })
-}
+  // Cập nhật lượt làm bài
+  await supabase.rpc('increment_luot_lam', { bai_id: baiId }).maybeSingle()
 
-// GET: Get listening history
-export async function GET() {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data } = await supabase
-    .from('PhienLuyenThi')
-    .select('*')
-    .eq('nguoi_dung_id', user.id)
-    .eq('ky_nang', 'NGHE')
-    .order('created_at', { ascending: false })
-    .limit(20)
-
-  return NextResponse.json({ sessions: data || [] })
+  return NextResponse.json({ session: data, phanTram })
 }
