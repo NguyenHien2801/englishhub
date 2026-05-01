@@ -10,9 +10,6 @@ const GEMINI_KEYS = [
   process.env.GEMINI_API_KEY_5,
   process.env.GEMINI_API_KEY_6,
   process.env.GEMINI_API_KEY_7,
-  process.env.GEMINI_API_KEY_8,
-  process.env.GEMINI_API_KEY_9,
-  process.env.GEMINI_API_KEY_10,
 ].filter(Boolean) as string[]
 
 // ── Groq Keys ─────────────────────────────────────────────────────────────────
@@ -22,6 +19,7 @@ const GROQ_KEYS = [
   process.env.GROQ_API_KEY_3,
   process.env.GROQ_API_KEY_4,
   process.env.GROQ_API_KEY_5,
+  process.env.GROQ_API_KEY_6,
 ].filter(Boolean) as string[]
 
 let geminiKeyIndex = 0
