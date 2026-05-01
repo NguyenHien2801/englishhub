@@ -1,15 +1,41 @@
-// Gemini AI Client với xoay vòng key
+// AI Client - Gemini + Groq với tự động fallback
+// Thứ tự ưu tiên: Gemini (tất cả key) → Groq (tất cả key) → throw error
+
+// ── Gemini Keys ───────────────────────────────────────────────────────────────
 const GEMINI_KEYS = [
   process.env.GEMINI_API_KEY_1,
   process.env.GEMINI_API_KEY_2,
   process.env.GEMINI_API_KEY_3,
+  process.env.GEMINI_API_KEY_4,
+  process.env.GEMINI_API_KEY_5,
+  process.env.GEMINI_API_KEY_6,
+  process.env.GEMINI_API_KEY_7,
+  process.env.GEMINI_API_KEY_8,
+  process.env.GEMINI_API_KEY_9,
+  process.env.GEMINI_API_KEY_10,
 ].filter(Boolean) as string[]
 
-let currentKeyIndex = 0
+// ── Groq Keys ─────────────────────────────────────────────────────────────────
+const GROQ_KEYS = [
+  process.env.GROQ_API_KEY_1,
+  process.env.GROQ_API_KEY_2,
+  process.env.GROQ_API_KEY_3,
+  process.env.GROQ_API_KEY_4,
+  process.env.GROQ_API_KEY_5,
+].filter(Boolean) as string[]
 
-function getNextKey(): string {
-  const key = GEMINI_KEYS[currentKeyIndex]
-  currentKeyIndex = (currentKeyIndex + 1) % GEMINI_KEYS.length
+let geminiKeyIndex = 0
+let groqKeyIndex = 0
+
+function getNextGeminiKey(): string {
+  const key = GEMINI_KEYS[geminiKeyIndex]
+  geminiKeyIndex = (geminiKeyIndex + 1) % GEMINI_KEYS.length
+  return key
+}
+
+function getNextGroqKey(): string {
+  const key = GROQ_KEYS[groqKeyIndex]
+  groqKeyIndex = (groqKeyIndex + 1) % GROQ_KEYS.length
   return key
 }
 
@@ -18,15 +44,14 @@ export interface GeminiMessage {
   parts: { text: string }[]
 }
 
-export async function callGemini(
+// ── Gọi Gemini ────────────────────────────────────────────────────────────────
+async function callGeminiDirect(
   prompt: string,
   systemInstruction?: string,
-  history?: GeminiMessage[],
-  retries = 3
+  history?: GeminiMessage[]
 ): Promise<string> {
-  for (let attempt = 0; attempt < retries; attempt++) {
-    const apiKey = getNextKey()
-    
+  for (let attempt = 0; attempt < GEMINI_KEYS.length; attempt++) {
+    const apiKey = getNextGeminiKey()
     try {
       const body: Record<string, unknown> = {
         contents: [
@@ -40,42 +65,101 @@ export async function callGemini(
           maxOutputTokens: 2048,
         },
       }
-
       if (systemInstruction) {
-        body.systemInstruction = {
-          parts: [{ text: systemInstruction }]
-        }
+        body.systemInstruction = { parts: [{ text: systemInstruction }] }
       }
-
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        }
+        // Sửa trong client.ts:
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
       )
-
       if (response.status === 429) {
-        // Rate limit - thử key tiếp theo
-        console.log(`Key ${currentKeyIndex} rate limited, rotating...`)
+        console.log(`Gemini key ${attempt + 1} rate limited, rotating...`)
         continue
       }
-
-      if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`)
-      }
-
+      if (!response.ok) throw new Error(`Gemini API error: ${response.status}`)
       const data = await response.json()
       return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Không có phản hồi.'
     } catch (error) {
-      if (attempt === retries - 1) throw error
+      if (attempt === GEMINI_KEYS.length - 1) throw error
     }
   }
-  throw new Error('All Gemini API keys exhausted')
+  throw new Error('All Gemini keys exhausted')
 }
 
-// System prompts
+// ── Gọi Groq ──────────────────────────────────────────────────────────────────
+async function callGroqDirect(
+  prompt: string,
+  systemInstruction?: string,
+  history?: GeminiMessage[]
+): Promise<string> {
+  for (let attempt = 0; attempt < GROQ_KEYS.length; attempt++) {
+    const apiKey = getNextGroqKey()
+    try {
+      const messages = [
+        ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+        ...(history || []).map(m => ({
+          role: m.role === 'model' ? 'assistant' : 'user',
+          content: m.parts[0].text
+        })),
+        { role: 'user', content: prompt }
+      ]
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages,
+          max_tokens: 2048,
+          temperature: 0.7,
+          response_format: { type: 'json_object' }, 
+        })
+      })
+      if (response.status === 429) {
+        console.log(`Groq key ${attempt + 1} rate limited, rotating...`)
+        continue
+      }
+      if (!response.ok) throw new Error(`Groq API error: ${response.status}`)
+      const data = await response.json()
+      return data.choices?.[0]?.message?.content || 'Không có phản hồi.'
+    } catch (error) {
+      if (attempt === GROQ_KEYS.length - 1) throw error
+    }
+  }
+  throw new Error('All Groq keys exhausted')
+}
+
+// ── Main callGemini - tự động fallback Gemini → Groq ─────────────────────────
+export async function callGemini(
+  prompt: string,
+  systemInstruction?: string,
+  history?: GeminiMessage[]
+): Promise<string> {
+  // Thử Gemini trước
+  if (GEMINI_KEYS.length > 0) {
+    try {
+      return await callGeminiDirect(prompt, systemInstruction, history)
+    } catch (error) {
+      console.warn('All Gemini keys failed, switching to Groq...', error)
+    }
+  }
+
+  // Fallback sang Groq
+  if (GROQ_KEYS.length > 0) {
+    try {
+      return await callGroqDirect(prompt, systemInstruction, history)
+    } catch (error) {
+      console.warn('All Groq keys failed too...', error)
+    }
+  }
+
+  throw new Error('All AI providers exhausted')
+}
+
+// ── System Prompts ────────────────────────────────────────────────────────────
 export const SYSTEM_PROMPTS = {
   vocabulary: `Bạn là trợ lý học tiếng Anh thông minh của EnglishHub. 
 Khi giải thích từ vựng, hãy cung cấp:
