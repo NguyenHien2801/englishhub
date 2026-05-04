@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 
@@ -107,7 +108,6 @@ export default function LoginPage() {
           text-decoration: none;
           box-shadow: 0 2px 12px rgba(0,0,0,0.18);
         }
-        .logo-wrap img { height: 52px; width: auto; display: block; object-fit: contain; }
 
         /* Hero headline — SEO: h2 vì h1 nằm ở form */
         .hero-headline {
@@ -294,7 +294,6 @@ export default function LoginPage() {
           display: inline-flex; align-items: center;
           background: #fff; border-radius: 10px; padding: 6px 12px; text-decoration: none;
         }
-        .mobile-logo-wrap img { height: 34px; width: auto; object-fit: contain; display: block; }
         .mobile-header-tagline { font-size: 11px; color: rgba(255,255,255,0.4); font-weight: 300; }
 
         /* ─── TABLET BANNER (481–768px) ─── */
@@ -311,7 +310,6 @@ export default function LoginPage() {
           background: #fff; border-radius: 10px; padding: 6px 12px;
           text-decoration: none; display: inline-flex; align-items: center;
         }
-        .tablet-logo-wrap img { height: 36px; width: auto; object-fit: contain; display: block; }
         .tablet-banner-text { color: rgba(255,255,255,0.65); font-size: 13px; line-height: 1.5; }
         .tablet-banner-text strong { color: #fff; font-weight: 600; display: block; font-size: 14px; }
         .tablet-stats { display: flex; gap: 20px; }
@@ -422,7 +420,7 @@ export default function LoginPage() {
       {/* ── MOBILE HEADER ≤480px ── */}
       <header className="mobile-header">
         <Link href="/" className="mobile-logo-wrap">
-          <img src="/assets/logo/englishhub-logo.png" alt="EnglishHub" />
+          <Image src="/assets/Logo.png" alt="EnglishHub" width={120} height={34} style={{ objectFit: 'contain' }} />
         </Link>
         <span className="mobile-header-tagline">ĐH Thái Bình · Miễn phí</span>
       </header>
@@ -431,7 +429,7 @@ export default function LoginPage() {
       <div className="tablet-banner" role="banner">
         <div className="tablet-banner-left">
           <Link href="/" className="tablet-logo-wrap">
-            <img src="/assets/logo/englishhub-logo.png" alt="EnglishHub" />
+            <Image src="/assets/Logo.png" alt="EnglishHub" width={130} height={36} style={{ objectFit: 'contain' }} />
           </Link>
           <div className="tablet-banner-text">
             <strong>EnglishHub · ĐH Thái Bình</strong>
@@ -462,11 +460,12 @@ export default function LoginPage() {
 
           <div className="hero-content">
             <Link href="/" className="logo-wrap">
-              {/* Thay src thành đường dẫn logo thật, vd: /assets/logo/englishhub-logo.png */}
-              <img
-                src="/assets/logo/englishhub-logo.png"
+              <Image
+                src="/assets/Logo.png"
                 alt="EnglishHub — Trường Đại học Thái Bình"
-                width="160" height="52"
+                width={160} height={52}
+                style={{ objectFit: 'contain' }}
+                priority
               />
             </Link>
           </div>
