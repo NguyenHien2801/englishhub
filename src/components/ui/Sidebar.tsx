@@ -7,14 +7,9 @@ interface SidebarProps {
   isAdmin: boolean
 }
 
-/**
- * Routing component:
- * - isAdmin=false  → StudentSidebar (vertical, slide-in drawer)
- * - isAdmin=true   → AdminNavbar   (horizontal top bar)
- */
 export default function Sidebar({ open, isAdmin }: SidebarProps) {
   if (isAdmin) {
-    return <Studentsidebar open={open} />  // admin dùng sidebar dọc
+    return <Studentsidebar open={open} />  // admin → sidebar dọc
   }
-  return <Adminnavbar />  // sinh viên dùng navbar ngang
+  return <Adminnavbar />  // sinh viên → navbar ngang
 }

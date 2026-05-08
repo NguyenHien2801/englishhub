@@ -46,7 +46,8 @@ export default function DashboardLayoutClient({
     <div className="flex min-h-screen bg-[#F0F2F8]">
       <Sidebar open={sidebarOpen} isAdmin={isAdmin} />
 
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'}`}>
+      // Dòng mới — navbar ngang nên cần padding-top thay vì margin-left
+      <div className="flex-1 flex flex-col pt-14">
 
         {/* ── Header ngang ── */}
         <header className="sticky top-0 z-30 h-14 flex items-center px-4 gap-3 border-b border-white/60"
