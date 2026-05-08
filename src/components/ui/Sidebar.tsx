@@ -1,6 +1,6 @@
 'use client'
-import StudentSidebar from './ui/Studentsidebar'
-import AdminNavbar from './ui/Adminnavbar'
+import Studentsidebar from './Studentsidebar' 
+import Adminnavbar from './Adminnavbar'       
 
 interface SidebarProps {
   open: boolean
@@ -14,7 +14,7 @@ interface SidebarProps {
  */
 export default function Sidebar({ open, isAdmin }: SidebarProps) {
   if (isAdmin) {
-    return <AdminNavbar />
+    return <Adminnavbar />
   }
-  return <StudentSidebar open={open} />
+  return <Studentsidebar open={open} />
 }
