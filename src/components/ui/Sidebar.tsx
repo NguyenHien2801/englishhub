@@ -14,7 +14,7 @@ interface SidebarProps {
  */
 export default function Sidebar({ open, isAdmin }: SidebarProps) {
   if (isAdmin) {
-    return <Adminnavbar />
+    return <Studentsidebar open={open} />  // admin dùng sidebar dọc
   }
-  return <Studentsidebar open={open} />
+  return <Adminnavbar />  // sinh viên dùng navbar ngang
 }
