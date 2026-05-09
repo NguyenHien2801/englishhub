@@ -457,7 +457,10 @@ function Nav() {
       {/* TẦNG 3: Nav navy — Menu điều hướng */}
       <nav className="navBar">
         <div className="navBarInner">
-          <ul className="navBarLinks">
+          <button className="navBurger" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu">
+            {mobileOpen ? <IconClose /> : <IconMenu />}
+            </button>
+            <ul className="navBarLinks">
             <li><a href="/" className="navBarItem navBarActive">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
@@ -709,6 +712,13 @@ export default function LandingPage() {
 .navBarActive { color: #fff !important; }
 .navBarActive::after { transform: scaleX(1) !important; }
 .navBarRight { display: flex; align-items: center; gap: 10px; }
+.navBurger {
+  display: none; background: none; border: none;
+  color: #fff; cursor: pointer; padding: 6px;
+  border-radius: 8px; transition: background .2s;
+  margin-left: auto;
+}
+.navBurger:hover { background: rgba(255,255,255,.08); }
 .navSearch {
   display: flex; align-items: center;
   background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
@@ -768,13 +778,84 @@ export default function LandingPage() {
 .btnRegister:hover { background: var(--gold-lt); }
 
 @media(max-width:768px){
+  /* Topbar */
   .topbarLeft .topbarItem:nth-child(n+3) { display: none; }
-  .headerBrand { font-size: 24px; }
+  .topbarItem { font-size: 11px; }
+
+  /* Header trắng */
+  .headerWhite { padding: 12px 0; }
+  .headerLogoImg { height: 48px; }
+  .headerBrand { font-size: 20px; letter-spacing: 0; }
   .headerBrandSub { display: none; }
-  .headerLogoImg { height: 52px; }
   .headerActions .headerBtnSecondary { display: none; }
+  .headerBtnPrimary { padding: 8px 14px; font-size: 12px; }
+
+  /* Nav bar */
   .navBarLinks { display: none; }
   .navBarRight { display: none; }
+  .navBurger { display: flex; }
+
+  /* Stats */
+  .statsInner { grid-template-columns: repeat(2,1fr); }
+  .statItem:nth-child(2) { border-right: none; }
+  .statNum { font-size: 24px; }
+
+  /* Sections */
+  .examsGrid,.testiGrid,.featCards { grid-template-columns: 1fr; }
+  .compareGrid { grid-template-columns: 1fr; }
+  .uniHL { grid-template-columns: 1fr; }
+  .uniBadgeCard { position: static; margin-top: 20px; width: fit-content; }
+  .uniBlob { display: none; }
+
+  /* Gallery */
+  .galleryGrid { grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
+  .galleryItem:first-child { grid-column: span 2; grid-row: span 1; }
+  .galleryItem img { height: 160px; }
+  .galleryItem:first-child img { height: 200px; }
+
+  /* Platform table */
+  .platformTable thead th:nth-child(4),.platformTable td:nth-child(4) { display: none; }
+  .platformTable thead th:nth-child(3),.platformTable td:nth-child(3) { display: none; }
+  .platformTable td, .platformTable th { padding: 10px 14px; font-size: 13px; }
+
+  /* Timeline */
+  .timelineSpine { display: none; }
+  .timelineRow { grid-template-columns: 1fr; gap: 8px; }
+  .tlEmpty { display: none; }
+  .tlCardLeft,.tlCardRight { text-align: left; margin: 0; }
+  .tlNode { flex-direction: row; justify-content: flex-start; margin-bottom: 8px; }
+  .tlNodeCircle { width: 48px; height: 48px; }
+  .tlNodeNum { font-size: 16px; }
+
+  /* FAQ */
+  .faqGrid { grid-template-columns: 1fr; gap: 32px; }
+
+  /* Footer */
+  .footerGrid { grid-template-columns: 1fr; }
+  .footerBottom { flex-direction: column; align-items: flex-start; }
+
+  /* Hero */
+  .heroInner { padding: 48px 20px; }
+  .heroH1 { font-size: 36px; }
+  .heroDesc { font-size: 15px; }
+  .heroCardsGrid { grid-template-columns: repeat(2,1fr); }
+  .heroCard:nth-child(2),.heroCard:nth-child(4) { margin-top: 0; }
+}
+
+@media(max-width:480px){
+  .heroCardsGrid { grid-template-columns: 1fr; }
+  .galleryGrid { grid-template-columns: 1fr; }
+  .galleryItem:first-child { grid-column: span 1; }
+  .ctaBtns { flex-direction: column; align-items: center; }
+  .heroCta { flex-direction: column; }
+  .headerBrand { font-size: 18px; }
+  .headerLogoImg { height: 40px; }
+  .headerLogo { gap: 10px; }
+  .statsInner { grid-template-columns: 1fr 1fr; }
+  .uniGrid { grid-template-columns: 1fr; gap: 32px; }
+  .aiInner { grid-template-columns: 1fr; gap: 32px; }
+  .featIntroRow { grid-template-columns: 1fr; gap: 24px; }
+  .featBubble { display: none; }
 }
         /* ── HERO ── */
         .hero {
