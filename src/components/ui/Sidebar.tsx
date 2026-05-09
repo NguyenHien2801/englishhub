@@ -1,15 +1,16 @@
 'use client'
-import Studentsidebar from './Studentsidebar' 
-import Adminnavbar from './Adminnavbar'       
+import StudentNavbar from './StudentNavbar'
+import AdminSidebar from './AdminSidebar'
 
 interface SidebarProps {
   open: boolean
   isAdmin: boolean
+  profile?: Record<string, unknown> | null
 }
 
-export default function Sidebar({ open, isAdmin }: SidebarProps) {
+export default function Sidebar({ open, isAdmin, profile }: SidebarProps) {
   if (isAdmin) {
-    return <Studentsidebar open={open} />  // admin → sidebar dọc
+    return <AdminSidebar />
   }
-  return <Adminnavbar />  // sinh viên → navbar ngang
+  return <StudentNavbar open={open} profile={profile} />
 }
