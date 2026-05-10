@@ -4,80 +4,163 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
+import type { LucideIcon } from 'lucide-react'
+import {
+  LayoutDashboard, Layers, BookOpen, ClipboardList,
+  Headphones, PenLine, Mic, Newspaper,
+  Target, History,
+  ChevronDown, Menu, X,
+  User, Lock, Settings, LogOut,
+  Flame, Trophy,
+} from 'lucide-react'
 
-const NAV_ITEMS = [
-  { href: '/dashboard',  label: 'Tổng quan',  icon: '📊' },
-  { href: '/vocabulary', label: 'Từ vựng SRS', icon: '🃏' },
-  { href: '/grammar',    label: 'Ngữ pháp',    icon: '📖' },
-  { href: '/exam',       label: 'Luyện thi',   icon: '📝' },
+// ── Types ──────────────────────────────────────────────
+interface NavChild  { href: string; label: string; icon: LucideIcon }
+interface NavItem   { href: string; label: string; icon: LucideIcon }
+interface NavGroup  { label: string; icon: LucideIcon; children: NavChild[] }
+
+// ── Data ───────────────────────────────────────────────
+const NAV_ITEMS: NavItem[] = [
+  { href: '/dashboard',  label: 'Tổng quan',   icon: LayoutDashboard },
+  { href: '/vocabulary', label: 'Từ vựng SRS',  icon: Layers },
+  { href: '/grammar',    label: 'Ngữ pháp',     icon: BookOpen },
+  { href: '/exam',       label: 'Luyện thi',    icon: ClipboardList },
 ]
 
-const NAV_GROUPS = [
+const NAV_GROUPS: NavGroup[] = [
   {
     label: '4 Kỹ năng',
-    icon: '🎧',
+    icon: Headphones,
     children: [
-      { href: '/listening', label: 'Luyện nghe', icon: '🔊' },
-      { href: '/writing',   label: 'Luyện viết', icon: '✍️' },
-      { href: '/speaking',  label: 'Luyện nói',  icon: '🗣️' },
-      { href: '/reading',   label: 'Luyện đọc',  icon: '📰' },
+      { href: '/listening', label: 'Luyện nghe', icon: Headphones },
+      { href: '/writing',   label: 'Luyện viết', icon: PenLine },
+      { href: '/speaking',  label: 'Luyện nói',  icon: Mic },
+      { href: '/reading',   label: 'Luyện đọc',  icon: Newspaper },
     ],
   },
   {
     label: 'Kiểm tra',
-    icon: '🎯',
+    icon: Target,
     children: [
-      { href: '/level-test',         label: 'Kiểm tra đầu vào',  icon: '🎯' },
-      { href: '/level-test/history', label: 'Lịch sử kiểm tra',  icon: '📋' },
+      { href: '/level-test',         label: 'Kiểm tra đầu vào', icon: Target },
+      { href: '/level-test/history', label: 'Lịch sử kiểm tra', icon: History },
     ],
   },
 ]
 
-interface DropdownItem { href: string; label: string; icon: string }
+// ── CSS ────────────────────────────────────────────────
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');
 
-function DropdownMenu({ items, visible }: { items: DropdownItem[]; visible: boolean }) {
+.eh-navbar{position:fixed;top:0;left:0;right:0;z-index:9000;height:64px;display:flex;align-items:center;padding:0 16px 0 16px;background:#0F1C35;border-bottom:1px solid rgba(201,168,76,0.18);box-shadow:0 2px 20px rgba(15,28,53,0.4);font-family:'DM Sans',sans-serif;overflow:visible;}
+
+.eh-nav-link{position:relative;display:inline-flex;align-items:center;gap:7px;padding:0 13px;height:64px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:color 0.18s;color:#fff;letter-spacing:0.1px;}
+.eh-nav-link::after{content:'';position:absolute;bottom:0;left:11px;right:11px;height:2.5px;background:linear-gradient(90deg,#C9A84C,#E8C97A);transform:scaleX(0);transition:transform 0.22s cubic-bezier(0.16,1,0.3,1);border-radius:2px 2px 0 0;}
+.eh-nav-link:hover{color:#C9A84C;}
+.eh-nav-link:hover::after{transform:scaleX(1);}
+.eh-nav-link.active{color:#C9A84C!important;}
+.eh-nav-link.active::after{transform:scaleX(1);}
+
+.eh-nav-btn{position:relative;display:inline-flex;align-items:center;gap:7px;padding:0 13px;height:64px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;white-space:nowrap;flex-shrink:0;background:none;border:none;cursor:pointer;outline:none;transition:color 0.18s;color:#fff;letter-spacing:0.1px;}
+.eh-nav-btn::after{content:'';position:absolute;bottom:0;left:11px;right:11px;height:2.5px;background:linear-gradient(90deg,#C9A84C,#E8C97A);transform:scaleX(0);transition:transform 0.22s cubic-bezier(0.16,1,0.3,1);border-radius:2px 2px 0 0;}
+.eh-nav-btn:hover{color:#C9A84C;}
+.eh-nav-btn:hover::after{transform:scaleX(1);}
+.eh-nav-btn.active{color:#C9A84C!important;}
+.eh-nav-btn.active::after{transform:scaleX(1);}
+
+.eh-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:50px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;white-space:nowrap;flex-shrink:0;letter-spacing:0.2px;}
+
+.eh-user-menu-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;font-size:13px;font-family:'DM Sans',sans-serif;color:#0F1C35;text-decoration:none;transition:all 0.15s;font-weight:500;}
+.eh-user-menu-item:hover{background:rgba(201,168,76,0.1);color:#8B6914;}
+
+.eh-chevron{transition:transform 0.2s;flex-shrink:0;}
+.eh-chevron.open{transform:rotate(180deg);}
+
+.eh-hamburger{display:none;align-items:center;justify-content:center;width:40px;height:40px;background:none;border:1px solid rgba(255,255,255,0.15);cursor:pointer;padding:0;border-radius:9px;transition:all 0.18s;flex-shrink:0;color:#fff;}
+.eh-hamburger:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.25);}
+
+.eh-desktop-nav{display:flex;align-items:center;flex:1;overflow:visible;}
+
+.eh-mobile-menu{position:fixed;top:64px;left:0;right:0;background:#0F1C35;border-bottom:1px solid rgba(201,168,76,0.18);box-shadow:0 8px 32px rgba(15,28,53,0.5);z-index:8999;max-height:0;overflow:hidden;transition:max-height 0.35s cubic-bezier(0.16,1,0.3,1),opacity 0.25s;opacity:0;}
+.eh-mobile-menu.open{max-height:90vh;overflow-y:auto;opacity:1;}
+
+.eh-mobile-link{display:flex;align-items:center;gap:12px;padding:13px 20px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;color:rgba(255,255,255,0.85);text-decoration:none;border-bottom:1px solid rgba(255,255,255,0.05);transition:background 0.15s,color 0.15s;}
+.eh-mobile-link:hover,.eh-mobile-link.active{background:rgba(201,168,76,0.08);color:#C9A84C;}
+
+.eh-mobile-group-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:13px 20px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;color:rgba(255,255,255,0.85);background:none;border:none;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);transition:background 0.15s,color 0.15s;}
+.eh-mobile-group-btn:hover,.eh-mobile-group-btn.active{background:rgba(201,168,76,0.08);color:#C9A84C;}
+
+.eh-mobile-children{background:rgba(0,0,0,0.18);}
+.eh-mobile-child-link{display:flex;align-items:center;gap:12px;padding:11px 20px 11px 44px;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;color:rgba(255,255,255,0.7);text-decoration:none;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s,color 0.15s;}
+.eh-mobile-child-link:hover,.eh-mobile-child-link.active{background:rgba(201,168,76,0.08);color:#C9A84C;}
+
+.eh-mobile-footer{padding:16px 20px;border-top:1px solid rgba(201,168,76,0.15);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+
+@media(max-width:1024px){
+  .eh-nav-link,.eh-nav-btn{font-size:13px;padding:0 9px;}
+  .eh-pill{font-size:11px;padding:3px 9px;}
+}
+
+@media(max-width:767px){
+  .eh-navbar{height:60px;}
+  .eh-desktop-nav{display:none;}
+  .eh-hamburger{display:flex;}
+  .eh-right-desktop{display:none!important;}
+  .eh-mobile-menu{top:60px;}
+  .eh-mobile-topright{display:flex!important;}
+}
+
+@media(min-width:768px){
+  .eh-mobile-topright{display:none!important;}
+}
+`
+
+// ── DesktopDropdown ────────────────────────────────────
+function DesktopDropdown({ items, visible }: { items: NavChild[]; visible: boolean }) {
   return (
     <div style={{
-      position: 'absolute',
-      top: 'calc(100% + 6px)',
-      left: '50%',
-      transform: visible ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(-6px)',
-      minWidth: 200, borderRadius: 14, overflow: 'hidden',
-      background: '#fff', border: '1px solid rgba(34,139,34,0.12)',
-      boxShadow: '0 12px 36px rgba(0,100,0,0.12)',
-      opacity: visible ? 1 : 0,
-      pointerEvents: visible ? 'auto' : 'none',
-      transition: 'all 0.18s cubic-bezier(0.4,0,0.2,1)', zIndex: 100,
+      position: 'absolute', top: 'calc(100% + 8px)', left: '50%',
+      transform: visible ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(-8px)',
+      minWidth: 210, borderRadius: 16, overflow: 'hidden',
+      background: '#fff', border: '1px solid rgba(201,168,76,0.2)',
+      boxShadow: '0 18px 56px rgba(15,28,53,0.18)',
+      opacity: visible ? 1 : 0, pointerEvents: visible ? 'auto' : 'none',
+      transition: 'all 0.2s cubic-bezier(0.16,1,0.3,1)', zIndex: 9999,
     }}>
-      <div style={{ height: 3, background: 'linear-gradient(90deg, #22a845, #5ecb6f)' }} />
-      {items.map((item, i) => (
-        <Link key={item.href} href={item.href} style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '9px 16px', fontSize: 13, fontWeight: 600,
-          color: '#2d5a2d', textDecoration: 'none',
-          borderBottom: i < items.length - 1 ? '1px solid rgba(0,100,0,0.06)' : 'none',
-          transition: 'background 0.12s',
-        }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,168,69,0.07)'; e.currentTarget.style.color = '#1a7a30' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#2d5a2d' }}
-        >
-          <span style={{ fontSize: 15 }}>{item.icon}</span>
-          {item.label}
-        </Link>
-      ))}
+      <div style={{ height: 3, background: 'linear-gradient(90deg,#C9A84C,#E8C97A,#C9A84C)' }} />
+      {items.map((item, i) => {
+        const Icon = item.icon
+        return (
+          <Link key={item.href} href={item.href} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 18px', fontSize: 13, fontWeight: 600,
+            fontFamily: "'DM Sans',sans-serif", color: '#0F1C35', textDecoration: 'none',
+            borderBottom: i < items.length - 1 ? '1px solid rgba(201,168,76,0.1)' : 'none',
+            transition: 'all 0.15s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.08)'; e.currentTarget.style.color = '#8B6914'; e.currentTarget.style.paddingLeft = '22px' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#0F1C35'; e.currentTarget.style.paddingLeft = '18px' }}
+          >
+            <Icon size={15} strokeWidth={2} />
+            {item.label}
+          </Link>
+        )
+      })}
     </div>
   )
 }
 
+// ── Props ──────────────────────────────────────────────
 interface StudentNavbarProps {
   open?: boolean
   profile?: Record<string, unknown> | null
 }
 
+// ── Component ──────────────────────────────────────────
 export default function StudentNavbar({ profile }: StudentNavbarProps) {
-  const pathname  = usePathname()
-  const router    = useRouter()
-  const supabase  = createClient()
+  const pathname = usePathname()
+  const router   = useRouter()
+  const supabase = createClient()
 
   const hoTen   = (profile?.ho_ten as string)         || 'Sinh viên'
   const mssv    = (profile?.ma_sinh_vien as string)    || ''
@@ -85,25 +168,45 @@ export default function StudentNavbar({ profile }: StudentNavbarProps) {
   const streak  = (profile?.streak_hien_tai as number) || 0
   const isAdmin = profile?.vai_tro === 'admin'
 
-  const [openNav,      setOpenNav]      = useState<string | null>(null)
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const navRef     = useRef<HTMLElement>(null)
-  const userRef    = useRef<HTMLDivElement>(null)
+  const [openNav,        setOpenNav]        = useState<string | null>(null)
+  const [userMenuOpen,   setUserMenuOpen]   = useState(false)
+  const [mobileOpen,     setMobileOpen]     = useState(false)
+  const [mobileGroup,    setMobileGroup]    = useState<string | null>(null)
+  const [mobileUserOpen, setMobileUserOpen] = useState(false)
 
-  function isActive(href?: string, children?: DropdownItem[]) {
-    if (href) return pathname === href || (href !== '/dashboard' && pathname.startsWith(href + '/'))
+  const navRef  = useRef<HTMLElement>(null)
+  const userRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const id = 'eh-navbar-styles'
+    if (document.getElementById(id)) return
+    const el = document.createElement('style')
+    el.id = id; el.textContent = CSS
+    document.head.appendChild(el)
+    return () => { document.getElementById(id)?.remove() }
+  }, [])
+
+  useEffect(() => { setMobileOpen(false); setOpenNav(null) }, [pathname])
+
+  function isActive(href?: string, children?: NavChild[]) {
+    if (href)     return pathname === href || (href !== '/dashboard' && pathname.startsWith(href + '/'))
     if (children) return children.some(c => pathname === c.href || pathname.startsWith(c.href + '/'))
     return false
   }
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (navRef.current && !navRef.current.contains(e.target as Node)) setOpenNav(null)
+      if (navRef.current  && !navRef.current.contains(e.target as Node))  setOpenNav(null)
       if (userRef.current && !userRef.current.contains(e.target as Node)) setUserMenuOpen(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -112,202 +215,253 @@ export default function StudentNavbar({ profile }: StudentNavbarProps) {
     router.refresh()
   }
 
+  const userMenuLinks = [
+    { href: '/profile',                 Icon: User, label: 'Hồ sơ cá nhân' },
+    { href: '/profile/change-password', Icon: Lock, label: 'Đổi mật khẩu'  },
+  ] as const
+
   return (
-    <header ref={navRef} style={{
-      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-      height: 58, display: 'flex', alignItems: 'center',
-      padding: '0 12px 0 16px',
-      background: 'linear-gradient(90deg, #1a7a30 0%, #228b3b 40%, #27a347 100%)',
-      borderBottom: '1px solid rgba(0,0,0,0.12)',
-      boxShadow: '0 2px 16px rgba(0,100,0,0.2)',
-    }}>
+    <>
+      <header ref={navRef} className="eh-navbar">
 
-      {/* Logo */}
-      <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 16, flexShrink: 0, textDecoration: 'none' }}>
-        <div style={{
-          width: 34, height: 34, borderRadius: 9, background: '#fff', flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: 900, fontSize: 11, color: '#1a7a30',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-        }}>EH</div>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 900, color: '#fff', letterSpacing: '0.02em', lineHeight: 1.1 }}>
-            ENGLISH<span style={{ color: '#ffe066' }}>HUB</span>
+        {/* ── Logo ── */}
+        <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', marginRight: 12, flexShrink: 0, textDecoration: 'none' }}>
+          <div style={{
+            background: '#fff', borderRadius: 9, padding: '4px 12px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            boxShadow: '0 3px 14px rgba(15,28,53,0.35), 0 0 0 1px rgba(201,168,76,0.25)', height: 50,
+          }}>
+            <img src="/assets/Logo.png" alt="EnglishHub"
+              style={{ height: 42, width: 'auto', objectFit: 'contain', display: 'block' }}
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
           </div>
-          <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.6)', marginTop: 1 }}>
-            TBU · HỌC TIẾNG ANH CÙNG AI
-          </div>
-        </div>
-      </Link>
+        </Link>
 
-      <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.2)', marginRight: 12, flexShrink: 0 }} />
+        <div style={{ width: 1, height: 26, background: 'rgba(201,168,76,0.2)', marginRight: 6, flexShrink: 0 }} />
 
-      {/* Nav links */}
-      <nav style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, overflowX: 'auto' }}>
-        {NAV_ITEMS.map(item => {
-          const active = isActive(item.href)
-          return (
-            <Link key={item.href} href={item.href} style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '5px 11px', borderRadius: 8,
-              fontSize: 12, fontWeight: active ? 800 : 600,
-              color: active ? '#1a7a30' : 'rgba(255,255,255,0.9)',
-              background: active ? '#fff' : 'transparent',
-              boxShadow: active ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
-              textDecoration: 'none', flexShrink: 0, whiteSpace: 'nowrap',
-              transition: 'all 0.15s',
-            }}
-              onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'rgba(255,255,255,0.15)' }}}
-              onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent' }}}
-            >
-              <span style={{ fontSize: 13 }}>{item.icon}</span>
-              {item.label}
+        {/* ── Desktop nav ── */}
+        <nav className="eh-desktop-nav">
+          {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+            <Link key={href} href={href} className={`eh-nav-link${isActive(href) ? ' active' : ''}`}>
+              <Icon size={15} strokeWidth={2} />{label}
             </Link>
-          )
-        })}
+          ))}
 
-        {NAV_GROUPS.map(group => {
-          const active = isActive(undefined, group.children)
-          const isOpen = openNav === group.label
-          return (
-            <div key={group.label} style={{ position: 'relative', flexShrink: 0 }}>
-              <button onClick={() => setOpenNav(isOpen ? null : group.label)} style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '5px 11px', borderRadius: 8,
-                fontSize: 12, fontWeight: active || isOpen ? 800 : 600,
-                color: 'rgba(255,255,255,0.9)',
-                background: active || isOpen ? 'rgba(255,255,255,0.18)' : 'transparent',
-                cursor: 'pointer', border: 'none', whiteSpace: 'nowrap',
-                transition: 'all 0.15s', outline: 'none',
-              }}
-                onMouseEnter={e => { if (!active && !isOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.15)' }}
-                onMouseLeave={e => { if (!active && !isOpen) e.currentTarget.style.background = 'transparent' }}
-              >
-                <span style={{ fontSize: 13 }}>{group.icon}</span>
-                {group.label}
-                <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-                  style={{ marginLeft: 1, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.18s' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              <DropdownMenu items={group.children} visible={isOpen} />
-            </div>
-          )
-        })}
-      </nav>
-
-      {/* Right: streak + mục tiêu + user */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 8 }}>
-
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 4,
-          padding: '4px 10px', borderRadius: 20,
-          background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.15)',
-        }}>
-          <span style={{ fontSize: 12 }}>🔥</span>
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#ffe066' }}>{streak} ngày</span>
-        </div>
-
-        <div style={{
-          padding: '4px 10px', borderRadius: 20,
-          background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.15)',
-          fontSize: 11.5, fontWeight: 700, color: '#fff',
-        }}>
-          {mucTieu}
-        </div>
-
-        <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.2)' }} />
-
-        {/* User dropdown */}
-        <div style={{ position: 'relative' }} ref={userRef}>
-          <button onClick={() => setUserMenuOpen(o => !o)} style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            padding: '4px 8px', borderRadius: 10,
-            background: 'transparent', border: 'none', cursor: 'pointer',
-            transition: 'background 0.15s',
-          }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.15)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            <div style={{
-              width: 30, height: 30, borderRadius: 8,
-              background: 'rgba(255,255,255,0.2)', border: '2px solid rgba(255,255,255,0.35)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0,
-            }}>
-              {hoTen.charAt(0)}
-            </div>
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', lineHeight: 1.2, whiteSpace: 'nowrap' }}>{hoTen}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', fontFamily: 'monospace', lineHeight: 1.2 }}>{mssv}</div>
-            </div>
-            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-              style={{ color: 'rgba(255,255,255,0.55)', transform: userMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.18s' }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {userMenuOpen && (
-            <div style={{
-              position: 'absolute', right: 0, top: 'calc(100% + 8px)',
-              width: 210, background: '#fff', borderRadius: 16,
-              border: '1px solid #e8e8e0',
-              boxShadow: '0 16px 40px rgba(0,0,0,0.12)',
-              overflow: 'hidden', zIndex: 200,
-            }}>
-              <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, #1a7a30, #27a347)' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{hoTen}</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace' }}>{mssv}</div>
-              </div>
-              <div style={{ padding: 6 }}>
-                {[
-                  { href: '/profile', icon: '👤', label: 'Hồ sơ cá nhân' },
-                  { href: '/profile/change-password', icon: '🔒', label: 'Đổi mật khẩu' },
-                ].map(item => (
-                  <Link key={item.href} href={item.href} onClick={() => setUserMenuOpen(false)} style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '8px 12px', borderRadius: 10,
-                    fontSize: 13, color: '#0d0d0d', textDecoration: 'none',
-                    transition: 'background 0.12s',
-                  }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#f0f2f8')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <span>{item.icon}</span>{item.label}
-                  </Link>
-                ))}
-                {isAdmin && (
-                  <Link href="/admin/dashboard" onClick={() => setUserMenuOpen(false)} style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '8px 12px', borderRadius: 10,
-                    fontSize: 13, color: '#0d0d0d', textDecoration: 'none',
-                    transition: 'background 0.12s',
-                  }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#f0f2f8')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <span>⚙️</span>Admin Panel
-                  </Link>
-                )}
-              </div>
-              <div style={{ padding: 6, borderTop: '1px solid #e8e8e0' }}>
-                <button onClick={handleLogout} style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 12px', borderRadius: 10,
-                  fontSize: 13, color: '#ef4444',
-                  background: 'transparent', border: 'none', cursor: 'pointer',
-                  transition: 'background 0.12s',
-                }}
-                  onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <span>🚪</span>Đăng xuất
+          {NAV_GROUPS.map(({ label, icon: Icon, children }) => {
+            const active = isActive(undefined, children)
+            const isOpen = openNav === label
+            return (
+              <div key={label} style={{ position: 'relative', flexShrink: 0 }}>
+                <button className={`eh-nav-btn${active || isOpen ? ' active' : ''}`}
+                  onClick={() => setOpenNav(isOpen ? null : label)}>
+                  <Icon size={15} strokeWidth={2} />
+                  {label}
+                  <ChevronDown size={13} strokeWidth={2.5}
+                    className={`eh-chevron${isOpen ? ' open' : ''}`}
+                    style={{ marginLeft: 1 }} />
                 </button>
+                <DesktopDropdown items={children} visible={isOpen} />
               </div>
-            </div>
-          )}
+            )
+          })}
+        </nav>
+
+        {/* ── Desktop right ── */}
+        <div className="eh-right-desktop"
+          style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 8 }}>
+
+          <div className="eh-pill" style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.25)', color: '#C9A84C' }}>
+            <Flame size={13} strokeWidth={2} /><span>{streak} ngày</span>
+          </div>
+          <div className="eh-pill" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}>
+            <Trophy size={12} strokeWidth={2} /><span>{mucTieu}</span>
+          </div>
+
+          <div style={{ width: 1, height: 22, background: 'rgba(201,168,76,0.2)', flexShrink: 0 }} />
+
+          {/* Desktop user button */}
+          <div style={{ position: 'relative' }} ref={userRef}>
+            <button onClick={() => setUserMenuOpen(o => !o)} style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 10,
+              background: userMenuOpen ? 'rgba(201,168,76,0.1)' : 'transparent',
+              border: userMenuOpen ? '1px solid rgba(201,168,76,0.3)' : '1px solid transparent',
+              cursor: 'pointer', transition: 'all 0.18s',
+            }}
+              onMouseEnter={e => { if (!userMenuOpen) { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)' } }}
+              onMouseLeave={e => { if (!userMenuOpen) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' } }}
+            >
+              <div style={{
+                width: 34, height: 34, borderRadius: 9, background: '#fff',
+                border: '2px solid rgba(201,168,76,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: "'Playfair Display',serif", fontSize: 14, fontWeight: 800,
+                color: '#0F1C35', flexShrink: 0,
+              }}>{hoTen.charAt(0)}</div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>
+                {hoTen}
+              </span>
+              <ChevronDown size={13} strokeWidth={2.5}
+                className={`eh-chevron${userMenuOpen ? ' open' : ''}`}
+                style={{ color: 'rgba(201,168,76,0.7)' }} />
+            </button>
+
+            {/* Desktop user dropdown */}
+            {userMenuOpen && (
+              <div style={{
+                position: 'absolute', right: 0, top: 'calc(100% + 10px)',
+                width: 220, background: '#fff', borderRadius: 18,
+                border: '1px solid rgba(201,168,76,0.2)',
+                boxShadow: '0 18px 56px rgba(15,28,53,0.2)',
+                overflow: 'hidden', zIndex: 9999,
+              }}>
+                <div style={{ padding: '14px 18px', background: 'linear-gradient(135deg,#0F1C35 0%,#1E2F50 100%)', borderBottom: '1px solid rgba(201,168,76,0.15)' }}>
+                  <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13.5, fontWeight: 700, color: '#fff', marginBottom: 2 }}>{hoTen}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(201,168,76,0.6)', fontFamily: 'monospace' }}>{mssv || mucTieu}</div>
+                </div>
+                <div style={{ padding: '8px 8px 4px' }}>
+                  {userMenuLinks.map(({ href, Icon, label }) => (
+                    <Link key={href} href={href} className="eh-user-menu-item" onClick={() => setUserMenuOpen(false)}>
+                      <Icon size={15} strokeWidth={2} />{label}
+                    </Link>
+                  ))}
+                  {isAdmin && (
+                    <Link href="/admin/dashboard" className="eh-user-menu-item"
+                      onClick={() => setUserMenuOpen(false)}
+                      style={{ color: '#8B6914', fontWeight: 600 }}>
+                      <Settings size={15} strokeWidth={2} />Admin Panel
+                    </Link>
+                  )}
+                </div>
+                <div style={{ borderTop: '1px solid rgba(201,168,76,0.15)', padding: '4px 8px 8px' }}>
+                  <button onClick={handleLogout} className="eh-user-menu-item"
+                    style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', color: '#C0392B', fontWeight: 600, textAlign: 'left' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#FEF2F2')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <LogOut size={15} strokeWidth={2} />Đăng xuất
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* ── Mobile top-right: streak + hamburger ── */}
+        <div className="eh-mobile-topright"
+          style={{ alignItems: 'center', gap: 8, marginLeft: 'auto', flexShrink: 0 }}>
+          <div className="eh-pill" style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.25)', color: '#C9A84C' }}>
+            <Flame size={12} strokeWidth={2} /><span>{streak}</span>
+          </div>
+          <button className="eh-hamburger" onClick={() => setMobileOpen(o => !o)} aria-label="Menu">
+            {mobileOpen ? <X size={20} strokeWidth={2} /> : <Menu size={20} strokeWidth={2} />}
+          </button>
+        </div>
+
+      </header>
+
+      {/* ── Mobile dropdown menu ── */}
+      <div className={`eh-mobile-menu${mobileOpen ? ' open' : ''}`}>
+
+        {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+          <Link key={href} href={href}
+            className={`eh-mobile-link${isActive(href) ? ' active' : ''}`}
+            onClick={() => setMobileOpen(false)}>
+            <Icon size={17} strokeWidth={2} />{label}
+          </Link>
+        ))}
+
+        {NAV_GROUPS.map(({ label, icon: GroupIcon, children }) => {
+          const active = isActive(undefined, children)
+          const isOpen = mobileGroup === label
+          return (
+            <div key={label}>
+              <button className={`eh-mobile-group-btn${active ? ' active' : ''}`}
+                onClick={() => setMobileGroup(isOpen ? null : label)}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <GroupIcon size={17} strokeWidth={2} />{label}
+                </span>
+                <ChevronDown size={15} strokeWidth={2.5} className={`eh-chevron${isOpen ? ' open' : ''}`} />
+              </button>
+              {isOpen && (
+                <div className="eh-mobile-children">
+                  {children.map(({ href, label: childLabel, icon: ChildIcon }) => (
+                    <Link key={href} href={href}
+                      className={`eh-mobile-child-link${isActive(href) ? ' active' : ''}`}
+                      onClick={() => setMobileOpen(false)}>
+                      <ChildIcon size={15} strokeWidth={2} />{childLabel}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+        {/* Mobile footer: user info */}
+        <div className="eh-mobile-footer">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 10, background: '#fff',
+              border: '2px solid rgba(201,168,76,0.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: "'Playfair Display',serif", fontSize: 16, fontWeight: 800,
+              color: '#0F1C35', flexShrink: 0,
+            }}>{hoTen.charAt(0)}</div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: "'DM Sans',sans-serif" }}>{hoTen}</div>
+              <div style={{ fontSize: 11, color: 'rgba(201,168,76,0.7)', fontFamily: 'monospace' }}>{mssv || mucTieu}</div>
+            </div>
+          </div>
+          <button onClick={() => setMobileUserOpen(o => !o)} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 8, padding: '6px 12px', color: '#fff', fontSize: 12, fontWeight: 600,
+            fontFamily: "'DM Sans',sans-serif", cursor: 'pointer',
+          }}>
+            <User size={13} strokeWidth={2} />
+            Tài khoản
+            <ChevronDown size={12} strokeWidth={2.5} className={`eh-chevron${mobileUserOpen ? ' open' : ''}`} />
+          </button>
+        </div>
+
+        {/* Mobile user sub-menu */}
+        {mobileUserOpen && (
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.15)' }}>
+            {userMenuLinks.map(({ href, Icon, label }) => (
+              <Link key={href} href={href} className="eh-mobile-child-link" onClick={() => setMobileOpen(false)}>
+                <Icon size={15} strokeWidth={2} />{label}
+              </Link>
+            ))}
+            {isAdmin && (
+              <Link href="/admin/dashboard" className="eh-mobile-child-link"
+                onClick={() => setMobileOpen(false)} style={{ color: '#C9A84C' }}>
+                <Settings size={15} strokeWidth={2} />Admin Panel
+              </Link>
+            )}
+            <button onClick={handleLogout} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '11px 20px 11px 44px', width: '100%',
+              fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif",
+              color: '#E74C3C', background: 'none', border: 'none', cursor: 'pointer',
+              borderTop: '1px solid rgba(255,255,255,0.04)',
+            }}>
+              <LogOut size={15} strokeWidth={2} />Đăng xuất
+            </button>
+          </div>
+        )}
+
+        <div style={{ height: 16 }} />
       </div>
-    </header>
+
+      {/* ── Overlay ── */}
+      {mobileOpen && (
+        <div onClick={() => setMobileOpen(false)} style={{
+          position: 'fixed', inset: 0, top: 60,
+          background: 'rgba(0,0,0,0.45)', zIndex: 8998,
+          backdropFilter: 'blur(3px)',
+        }} />
+      )}
+    </>
   )
 }
