@@ -5,8 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import DashboardClient from './DashboardClient'
 import { redirect } from 'next/navigation'
 
-// ─── helpers ────────────────────────────────────────────────────────────────
-
+// ─── helpers ─────────────────────────────────────────────────────────────────
 function getDateRange(rangeKey: string): string {
   const now = new Date()
   const start = new Date(now)
@@ -18,8 +17,7 @@ function getDateRange(rangeKey: string): string {
   return start.toISOString()
 }
 
-// ─── page ────────────────────────────────────────────────────────────────────
-
+// ─── page ─────────────────────────────────────────────────────────────────────
 export default async function DashboardPage() {
   const supabase = createClient()
 
@@ -36,15 +34,15 @@ export default async function DashboardPage() {
     { data: allGrammarLessons },
     { data: chatHistory },
   ] = await Promise.all([
-    // ── Profile đầy đủ
+    // Profile đầy đủ
     supabase
       .from('NguoiDung')
       .select('*')
       .eq('id', user.id)
       .single(),
 
-    // ── Toàn bộ tiến độ từ vựng
-    // Chú ý: Supabase trả TuVung là array do foreign key — sẽ normalize bên dưới
+    // Toàn bộ tiến độ từ vựng
+    // Supabase trả TuVung là array do FK — sẽ normalize bên dưới
     supabase
       .from('TienDoHocTuVung')
       .select(`
@@ -63,7 +61,7 @@ export default async function DashboardPage() {
       `)
       .eq('nguoi_dung_id', user.id),
 
-    // ── Lịch sử thi (toàn bộ, client lọc theo range)
+    // Lịch sử thi (toàn bộ, client lọc theo range)
     supabase
       .from('PhienLuyenThi')
       .select('*')
@@ -71,7 +69,7 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false })
       .limit(200),
 
-    // ── Tiến độ ngữ pháp
+    // Tiến độ ngữ pháp
     supabase
       .from('TienDoNguPhap')
       .select(`
@@ -83,12 +81,12 @@ export default async function DashboardPage() {
       `)
       .eq('nguoi_dung_id', user.id),
 
-    // ── Tất cả bài học ngữ pháp (để tính % hoàn thành)
+    // Tất cả bài học ngữ pháp (để tính % hoàn thành)
     supabase
       .from('BaiHocNguPhap')
       .select('id, cap_do, danh_muc'),
 
-    // ── Lịch sử chatbot
+    // Lịch sử chatbot — tất cả để thống kê tổng, giới hạn 1 năm
     supabase
       .from('LichSuChatbot')
       .select('created_at')
@@ -99,8 +97,8 @@ export default async function DashboardPage() {
   ])
 
   // 3. Normalize vocab
-  // Supabase trả TuVung là [] (array) do quan hệ FK nhiều-một từ TienDoHocTuVung → TuVung
-  // → lấy phần tử đầu tiên, convert date → string để truyền qua props
+  // Supabase trả TuVung là [] (array) do FK nhiều-một → lấy phần tử [0]
+  // Convert date fields (Supabase date → string) để serialize qua props
   const vocab = (rawVocabProgress ?? []).map(v => {
     const tuVungRaw = v.TuVung
     const tuVung = Array.isArray(tuVungRaw)
@@ -109,21 +107,17 @@ export default async function DashboardPage() {
 
     return {
       ...v,
-      // date fields từ Supabase có thể là Date object hoặc string — chuẩn hoá về string
       ngay_on_tiep_theo: v.ngay_on_tiep_theo
         ? String(v.ngay_on_tiep_theo)
         : null,
       lan_cuoi_on: v.lan_cuoi_on
         ? String(v.lan_cuoi_on)
         : null,
-      TuVung: tuVung as {
-        tu_tieng_anh?: string
-        cap_do?: string
-      } | null,
+      TuVung: tuVung as { tu_tieng_anh?: string; cap_do?: string } | null,
     }
   })
 
-  // 4. Tính các stat cơ bản (server-side để tránh hydration lag)
+  // 4. Tính stat server-side
   const todayStr = new Date().toISOString().split('T')[0]
 
   const dueTodayCount = vocab.filter(
@@ -134,7 +128,7 @@ export default async function DashboardPage() {
   const totalReview   = vocab.filter(v => v.trang_thai === 'on_tap').length
   const totalNew      = vocab.filter(v => v.trang_thai === 'moi').length
 
-  // Streak dates — dùng lan_cuoi_on để vẽ heatmap
+  // Streak dates từ lan_cuoi_on — dùng cho heatmap 52 tuần
   const streakDatesArr: string[] = Array.from(
     new Set(
       vocab
