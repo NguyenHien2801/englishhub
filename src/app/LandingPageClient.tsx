@@ -429,7 +429,7 @@ function Nav() {
               <span className="headerBrand">
                 ENGLISH<span>HUB</span>
               </span>
-              <span className="headerBrandSub">& Nền Tảng Học Tiếng Anh AI</span>
+              <span className="headerBrandSub">TRƯỜNG ĐẠI HỌC THÁI BÌNH</span>
             </div>
           </Link>
 <div className="headerActions">
