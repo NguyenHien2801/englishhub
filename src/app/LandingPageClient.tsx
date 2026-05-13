@@ -69,10 +69,10 @@ const heroCards = [
 ]
 
 const stats = [
-  { num: '10,000+', label: 'Từ vựng thông minh', icon: '📚' },
-  { num: '3',       label: 'Chứng chỉ hỗ trợ', icon: '🏆' },
-  { num: '100%',    label: 'Hoàn toàn miễn phí', icon: '🆓' },
-  { num: '24/7',    label: 'AI hỗ trợ liên tục', icon: '🤖' },
+  { num: '10,000+', label: 'Từ vựng thông minh', Icon: BookOpen },
+  { num: '3',       label: 'Chứng chỉ hỗ trợ',  Icon: Trophy    },
+  { num: '100%',    label: 'Hoàn toàn miễn phí', Icon: BadgeCheck},
+  { num: '24/7',    label: 'AI hỗ trợ liên tục', Icon: Bot       },
 ]
 
 const uniHighlights = ['Xác thực qua MSSV', 'Miễn phí 100%', 'Chuẩn đầu ra VSTEP B1', 'AI hỗ trợ tiếng Việt']
@@ -286,7 +286,7 @@ function Reveal({ children, cls = 'reveal', delay = 0, style = {} }: {
 }
 
 // ─── Animated stat ─────────────────────────────────────────────────────────────
-function AnimatedStat({ num, label, icon }: { num: string; label: string; icon: string }) {
+function AnimatedStat({ num, label, Icon }: { num: string; label: string; Icon: React.ElementType }) {
   const ref = useRef<HTMLDivElement>(null)
   const [started, setStarted] = useState(false)
   useEffect(() => {
@@ -299,7 +299,7 @@ function AnimatedStat({ num, label, icon }: { num: string; label: string; icon: 
   const count   = useCounter(numeric, 1600, started)
   return (
     <div ref={ref} className="statItem">
-      <div className="statIcon">{icon}</div>
+      <div className="statIcon"><Icon size={32} strokeWidth={1.5} stroke="var(--navy)" fill="#fff" /></div>
       <div className="statNum">{started ? `${count}${suffix}` : num}</div>
       <div className="statLabel">{label}</div>
     </div>
@@ -307,59 +307,23 @@ function AnimatedStat({ num, label, icon }: { num: string; label: string; icon: 
 }
 
 // ─── ICONS ────────────────────────────────────────────────────────────────────
-const IconRocket = ({ size = 17 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
-    <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
-    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
-  </svg>
-)
-const IconPlay = () => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/>
-  </svg>
-)
-const IconUsers = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-  </svg>
-)
-const IconLogIn = () => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
-  </svg>
-)
-const IconCheck = ({ size = 10 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
-  </svg>
-)
-const IconShield = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-  </svg>
-)
-const IconStar = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-  </svg>
-)
-const IconGradCap = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
-  </svg>
-)
-const IconMenu = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-  </svg>
-)
-const IconClose = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-  </svg>
-)
+import {
+  Rocket, Play, Users, LogIn, Check, ShieldCheck,
+  Star, GraduationCap, Menu, X,
+  Search, Phone, Mail, Globe, MapPin,
+  BookOpen, Trophy, BadgeCheck, Bot,
+} from 'lucide-react'
+
+const IconRocket   = ({ size = 17 }: { size?: number }) => <Rocket      size={size} strokeWidth={2} />
+const IconPlay     = ()                                  => <Play        size={17}   strokeWidth={2} fill="currentColor" />
+const IconUsers    = ()                                  => <Users       size={16}   strokeWidth={2} />
+const IconLogIn    = ()                                  => <LogIn       size={17}   strokeWidth={2} />
+const IconCheck    = ({ size = 10 }: { size?: number }) => <Check       size={size} strokeWidth={3} />
+const IconShield   = ()                                  => <ShieldCheck size={14}   strokeWidth={2} />
+const IconStar     = ()                                  => <Star        size={14}   fill="currentColor" stroke="none" />
+const IconGradCap  = ()                                  => <GraduationCap size={16} strokeWidth={2} />
+const IconMenu     = ()                                  => <Menu        size={22}   strokeWidth={2} />
+const IconClose    = ()                                  => <X           size={22}   strokeWidth={2} />
 
 // ─── NAV with mobile hamburger ────────────────────────────────────────────────
 function Nav() {
@@ -372,28 +336,19 @@ function Nav() {
         <div className="topbarInner">
           <div className="topbarLeft">
             <a href="tel:02273633669" className="topbarItem">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.18 6.18l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-              </svg>
+              <Phone size={13} strokeWidth={2} />
               0227.3633669
             </a>
             <a href="mailto:support@tbu.edu.vn" className="topbarItem">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
-              </svg>
+              <Mail size={13} strokeWidth={2} />
               support@tbu.edu.vn
             </a>
             <a href="https://tbu.edu.vn" target="_blank" rel="noreferrer" className="topbarItem">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-              </svg>
+              <Globe size={13} strokeWidth={2} />
               tbu.edu.vn
             </a>
             <a href="#" className="topbarItem">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-              </svg>
+              <MapPin size={13} strokeWidth={2} />
               Phường Thái Bình, Hưng Yên
             </a>
           </div>
@@ -434,21 +389,12 @@ function Nav() {
           </Link>
 <div className="headerActions">
   <Link href="/register" className="headerBtnPrimary">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
-      <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
-      <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
-      <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
-    </svg>
-    Đăng Ký Miễn Phí
+  <IconRocket size={15} />
+  Đăng Ký Miễn Phí
   </Link>
   <Link href="/login" className="headerBtnSecondary">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-      <polyline points="10 17 15 12 10 7"/>
-      <line x1="15" y1="12" x2="3" y2="12"/>
-    </svg>
-    Đăng Nhập
+  <IconLogIn />
+  Đăng Nhập
   </Link>
 </div>
         </div>
@@ -461,12 +407,14 @@ function Nav() {
             {mobileOpen ? <IconClose /> : <IconMenu />}
             </button>
             <ul className="navBarLinks">
-            <li><a href="/" className="navBarItem navBarActive">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-              </svg>
-              Trang Chủ
-            </a></li>
+              <li><a href="/" className="navBarItem navBarActive">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Trang Chủ
+              </a></li>
             <li><a href="#features" className="navBarItem">Tính Năng</a></li>
             <li><a href="#exams" className="navBarItem">Chứng Chỉ</a></li>
             <li><a href="#ai" className="navBarItem">AI Gemini</a></li>
@@ -477,9 +425,7 @@ function Nav() {
   <div className="navSearch">
     <input type="text" placeholder="Tìm kiếm..." className="navSearchInput" />
     <button className="navSearchBtn" aria-label="Tìm kiếm">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
+      <Search size={14} strokeWidth={2.5} />
     </button>
   </div>
 </div>
@@ -991,7 +937,7 @@ export default function LandingPage() {
         .statItem { padding:28px 20px; text-align:center; border-right:1px solid rgba(15,28,53,.15); transition:all .25s; cursor:default; }
         .statItem:last-child { border-right:none; }
         .statItem:hover { background:rgba(15,28,53,.06); }
-        .statIcon { font-size:22px; margin-bottom:6px; display:block; }
+        .statIcon { margin-bottom:10px; display:flex; justify-content:center; color:#fff; }
         .statNum { font-family:'Playfair Display',serif; font-size:30px; font-weight:900; color:var(--navy); line-height:1; margin-bottom:5px; }
         .statLabel { font-size:12px; color:rgba(15,28,53,.62); font-weight:600; letter-spacing:.3px; }
 
@@ -1252,7 +1198,7 @@ export default function LandingPage() {
         .faqContactItems { display:flex; flex-direction:column; gap:14px; position:relative; }
         .faqContactItem { display:flex; align-items:center; gap:14px; padding:14px 18px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.09); border-radius:var(--r); transition:all .25s; }
         .faqContactItem:hover { background:rgba(255,255,255,.1); border-color:rgba(201,168,76,.3); }
-        .faqContactIcon { width:36px; height:36px; border-radius:50%; background:rgba(201,168,76,.15); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+        .faqContactIcon { width:36px; height:36px; border-radius:50%; background:rgba(201,168,76,.15); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
         .faqContactText { font-size:13px; color:rgba(255,255,255,.7); }
         .faqContactText strong { color:#fff; display:block; font-size:14px; margin-bottom:1px; }
 
@@ -1417,7 +1363,7 @@ export default function LandingPage() {
       {/* ── STATS ── */}
       <div className="statsBar" role="region" aria-label="Số liệu nổi bật">
         <div className="statsInner">
-          {stats.map((s, i) => <AnimatedStat key={i} num={s.num} label={s.label} icon={s.icon} />)}
+          {stats.map((s, i) => <AnimatedStat key={i} num={s.num} label={s.label} Icon={s.Icon} />)}
         </div>
       </div>
 
@@ -1810,19 +1756,18 @@ export default function LandingPage() {
                 <h3>Vẫn còn câu hỏi?<br />Liên hệ chúng tôi</h3>
                 <p>Đội ngũ phát triển EnglishHub — Khoa Công nghệ và Kỹ thuật, Trường Đại học Thái Bình — luôn sẵn sàng hỗ trợ bạn.</p>
                 <div className="faqContactItems">
-                  {[
-                    { icon: '📧', label: 'Email hỗ trợ', val: 'support@tbu.edu.vn' },
-                    { icon: '📞', label: 'Điện thoại trường', val: '0227.3633669' },
-                    { icon: '📍', label: 'Địa chỉ', val: 'Phường Thái Bình, tỉnh Hưng Yên' },
-                  ].map((c, i) => (
-                    <div key={i} className="faqContactItem">
-                      <div className="faqContactIcon">{c.icon}</div>
-                      <div className="faqContactText">
-                        <strong>{c.label}</strong>
-                        {c.val}
-                      </div>
-                    </div>
-                  ))}
+                  <div className="faqContactItem">
+                    <div className="faqContactIcon"><Mail size={16} strokeWidth={2} color="var(--gold)" /></div>
+                    <div className="faqContactText"><strong>Email hỗ trợ</strong>support@tbu.edu.vn</div>
+                  </div>
+                  <div className="faqContactItem">
+                    <div className="faqContactIcon"><Phone size={16} strokeWidth={2} color="var(--gold)" /></div>
+                    <div className="faqContactText"><strong>Điện thoại trường</strong>0227.3633669</div>
+                  </div>
+                  <div className="faqContactItem">
+                    <div className="faqContactIcon"><MapPin size={16} strokeWidth={2} color="var(--gold)" /></div>
+                    <div className="faqContactText"><strong>Địa chỉ</strong>Phường Thái Bình, tỉnh Hưng Yên</div>
+                  </div>
                 </div>
               </div>
             </Reveal>
@@ -1865,9 +1810,9 @@ export default function LandingPage() {
             <div className="fBrand">English<span>Hub</span></div>
             <p className="fBrandDesc">Nền tảng học tiếng Anh toàn diện tích hợp AI Gemini, được xây dựng dành riêng cho sinh viên Trường Đại học Thái Bình.</p>
             <address className="fContacts" style={{ fontStyle: 'normal' }}>
-              <div className="fContactItem"><span aria-hidden="true">📞</span> <a href="tel:02273633669" style={{ color: 'inherit', textDecoration: 'none' }}>0227.3633669</a></div>
-              <div className="fContactItem"><span aria-hidden="true">📧</span> <a href="mailto:support@tbu.edu.vn" style={{ color: 'inherit', textDecoration: 'none' }}>support@tbu.edu.vn</a></div>
-              <div className="fContactItem"><span aria-hidden="true">📍</span> Phường Thái Bình, tỉnh Hưng Yên</div>
+              <div className="fContactItem"><Phone size={13} strokeWidth={2} /> <a href="tel:02273633669" style={{ color: 'inherit', textDecoration: 'none' }}>0227.3633669</a></div>
+              <div className="fContactItem"><Mail size={13} strokeWidth={2} /> <a href="mailto:support@tbu.edu.vn" style={{ color: 'inherit', textDecoration: 'none' }}>support@tbu.edu.vn</a></div>
+              <div className="fContactItem"><MapPin size={13} strokeWidth={2} /> Phường Thái Bình, tỉnh Hưng Yên</div>
             </address>
           </div>
           <nav aria-label="Tính năng">
