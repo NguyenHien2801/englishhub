@@ -50,27 +50,27 @@ const NAV_GROUPS: NavGroup[] = [
 
 // ── CSS ────────────────────────────────────────────────
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
-.eh-navbar{position:fixed;top:0;left:0;right:0;z-index:9000;height:64px;display:flex;align-items:center;padding:0 16px 0 16px;background:#0F1C35;border-bottom:1px solid rgba(201,168,76,0.18);box-shadow:0 2px 20px rgba(15,28,53,0.4);font-family:'DM Sans',sans-serif;overflow:visible;}
+.eh-navbar{position:fixed;top:0;left:0;right:0;z-index:9000;height:64px;display:flex;align-items:center;padding:0 16px;background:#0F1C35;border-bottom:1px solid rgba(201,168,76,0.18);box-shadow:0 2px 20px rgba(15,28,53,0.4);font-family:'DM Sans',sans-serif;overflow:visible;}
 
-.eh-nav-link{position:relative;display:inline-flex;align-items:center;gap:7px;padding:0 13px;height:64px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:color 0.18s;color:#fff;letter-spacing:0.1px;}
+.eh-nav-link{position:relative;display:inline-flex;align-items:center;gap:7px;padding:0 13px;height:64px;font-size:15px;font-weight:500;font-family:'DM Sans',sans-serif;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:color 0.18s;color:rgba(255,255,255,0.88);letter-spacing:0;}
 .eh-nav-link::after{content:'';position:absolute;bottom:0;left:11px;right:11px;height:2.5px;background:linear-gradient(90deg,#C9A84C,#E8C97A);transform:scaleX(0);transition:transform 0.22s cubic-bezier(0.16,1,0.3,1);border-radius:2px 2px 0 0;}
 .eh-nav-link:hover{color:#C9A84C;}
 .eh-nav-link:hover::after{transform:scaleX(1);}
 .eh-nav-link.active{color:#C9A84C!important;}
 .eh-nav-link.active::after{transform:scaleX(1);}
 
-.eh-nav-btn{position:relative;display:inline-flex;align-items:center;gap:7px;padding:0 13px;height:64px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;white-space:nowrap;flex-shrink:0;background:none;border:none;cursor:pointer;outline:none;transition:color 0.18s;color:#fff;letter-spacing:0.1px;}
+.eh-nav-btn{position:relative;display:inline-flex;align-items:center;gap:7px;padding:0 13px;height:64px;font-size:15px;font-weight:500;font-family:'DM Sans',sans-serif;white-space:nowrap;flex-shrink:0;background:none;border:none;cursor:pointer;outline:none;transition:color 0.18s;color:rgba(255,255,255,0.88);letter-spacing:0;}
 .eh-nav-btn::after{content:'';position:absolute;bottom:0;left:11px;right:11px;height:2.5px;background:linear-gradient(90deg,#C9A84C,#E8C97A);transform:scaleX(0);transition:transform 0.22s cubic-bezier(0.16,1,0.3,1);border-radius:2px 2px 0 0;}
 .eh-nav-btn:hover{color:#C9A84C;}
 .eh-nav-btn:hover::after{transform:scaleX(1);}
 .eh-nav-btn.active{color:#C9A84C!important;}
 .eh-nav-btn.active::after{transform:scaleX(1);}
 
-.eh-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:50px;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif;white-space:nowrap;flex-shrink:0;letter-spacing:0.2px;}
+.eh-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:50px;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;white-space:nowrap;flex-shrink:0;letter-spacing:0;}
 
-.eh-user-menu-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;font-size:13px;font-family:'DM Sans',sans-serif;color:#0F1C35;text-decoration:none;transition:all 0.15s;font-weight:500;}
+.eh-user-menu-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;font-size:15px;font-family:'DM Sans',sans-serif;color:#0F1C35;text-decoration:none;transition:all 0.15s;font-weight:400;}
 .eh-user-menu-item:hover{background:rgba(201,168,76,0.1);color:#8B6914;}
 
 .eh-chevron{transition:transform 0.2s;flex-shrink:0;}
@@ -84,21 +84,21 @@ const CSS = `
 .eh-mobile-menu{position:fixed;top:64px;left:0;right:0;background:#0F1C35;border-bottom:1px solid rgba(201,168,76,0.18);box-shadow:0 8px 32px rgba(15,28,53,0.5);z-index:8999;max-height:0;overflow:hidden;transition:max-height 0.35s cubic-bezier(0.16,1,0.3,1),opacity 0.25s;opacity:0;}
 .eh-mobile-menu.open{max-height:90vh;overflow-y:auto;opacity:1;}
 
-.eh-mobile-link{display:flex;align-items:center;gap:12px;padding:13px 20px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;color:rgba(255,255,255,0.85);text-decoration:none;border-bottom:1px solid rgba(255,255,255,0.05);transition:background 0.15s,color 0.15s;}
+.eh-mobile-link{display:flex;align-items:center;gap:12px;padding:13px 20px;font-size:15px;font-weight:500;font-family:'DM Sans',sans-serif;color:rgba(255,255,255,0.82);text-decoration:none;border-bottom:1px solid rgba(255,255,255,0.05);transition:background 0.15s,color 0.15s;}
 .eh-mobile-link:hover,.eh-mobile-link.active{background:rgba(201,168,76,0.08);color:#C9A84C;}
 
-.eh-mobile-group-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:13px 20px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;color:rgba(255,255,255,0.85);background:none;border:none;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);transition:background 0.15s,color 0.15s;}
+.eh-mobile-group-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:13px 20px;font-size:15px;font-weight:500;font-family:'DM Sans',sans-serif;color:rgba(255,255,255,0.82);background:none;border:none;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);transition:background 0.15s,color 0.15s;}
 .eh-mobile-group-btn:hover,.eh-mobile-group-btn.active{background:rgba(201,168,76,0.08);color:#C9A84C;}
 
 .eh-mobile-children{background:rgba(0,0,0,0.18);}
-.eh-mobile-child-link{display:flex;align-items:center;gap:12px;padding:11px 20px 11px 44px;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;color:rgba(255,255,255,0.7);text-decoration:none;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s,color 0.15s;}
+.eh-mobile-child-link{display:flex;align-items:center;gap:12px;padding:11px 20px 11px 44px;font-size:14px;font-weight:400;font-family:'DM Sans',sans-serif;color:rgba(255,255,255,0.62);text-decoration:none;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s,color 0.15s;}
 .eh-mobile-child-link:hover,.eh-mobile-child-link.active{background:rgba(201,168,76,0.08);color:#C9A84C;}
 
 .eh-mobile-footer{padding:16px 20px;border-top:1px solid rgba(201,168,76,0.15);display:flex;align-items:center;justify-content:space-between;gap:12px;}
 
 @media(max-width:1024px){
-  .eh-nav-link,.eh-nav-btn{font-size:13px;padding:0 9px;}
-  .eh-pill{font-size:11px;padding:3px 9px;}
+  .eh-nav-link,.eh-nav-btn{font-size:14px;padding:0 10px;}
+  .eh-pill{font-size:12px;padding:3px 10px;}
 }
 
 @media(max-width:767px){
@@ -114,7 +114,6 @@ const CSS = `
   .eh-mobile-topright{display:none!important;}
 }
 `
-
 // ── DesktopDropdown ────────────────────────────────────
 function DesktopDropdown({ items, visible }: { items: NavChild[]; visible: boolean }) {
   return (
@@ -133,7 +132,7 @@ function DesktopDropdown({ items, visible }: { items: NavChild[]; visible: boole
         return (
           <Link key={item.href} href={item.href} style={{
             display: 'flex', alignItems: 'center', gap: 10,
-            padding: '10px 18px', fontSize: 13, fontWeight: 600,
+            padding: '11px 18px', fontSize: 15, fontWeight: 400,
             fontFamily: "'DM Sans',sans-serif", color: '#0F1C35', textDecoration: 'none',
             borderBottom: i < items.length - 1 ? '1px solid rgba(201,168,76,0.1)' : 'none',
             transition: 'all 0.15s',
@@ -298,7 +297,7 @@ export default function StudentNavbar({ profile }: StudentNavbarProps) {
                 fontFamily: "'Playfair Display',serif", fontSize: 14, fontWeight: 800,
                 color: '#0F1C35', flexShrink: 0,
               }}>{hoTen.charAt(0)}</div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>
+              <span style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.88)', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>
                 {hoTen}
               </span>
               <ChevronDown size={13} strokeWidth={2.5}
@@ -409,7 +408,7 @@ export default function StudentNavbar({ profile }: StudentNavbarProps) {
               color: '#0F1C35', flexShrink: 0,
             }}>{hoTen.charAt(0)}</div>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: "'DM Sans',sans-serif" }}>{hoTen}</div>
+              <div style={{ fontSize: 15, fontWeight: 500, color: '#fff', fontFamily: "'DM Sans',sans-serif" }}>{hoTen}</div>
               <div style={{ fontSize: 11, color: 'rgba(201,168,76,0.7)', fontFamily: 'monospace' }}>{mssv || mucTieu}</div>
             </div>
           </div>
@@ -442,7 +441,7 @@ export default function StudentNavbar({ profile }: StudentNavbarProps) {
             <button onClick={handleLogout} style={{
               display: 'flex', alignItems: 'center', gap: 12,
               padding: '11px 20px 11px 44px', width: '100%',
-              fontSize: 13, fontWeight: 600, fontFamily: "'DM Sans',sans-serif",
+              fontSize: 15, fontWeight: 500, fontFamily: "'DM Sans',sans-serif",
               color: '#E74C3C', background: 'none', border: 'none', cursor: 'pointer',
               borderTop: '1px solid rgba(255,255,255,0.04)',
             }}>
