@@ -316,7 +316,7 @@ export default function StudentNavbar({ profile }: StudentNavbarProps) {
               }}>
                 <div style={{ padding: '14px 18px', background: 'linear-gradient(135deg,#0F1C35 0%,#1E2F50 100%)', borderBottom: '1px solid rgba(201,168,76,0.15)' }}>
                   <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13.5, fontWeight: 700, color: '#fff', marginBottom: 2 }}>{hoTen}</div>
-                  <div style={{ fontSize: 11, color: 'rgba(201,168,76,0.6)', fontFamily: 'monospace' }}>{mssv || mucTieu}</div>
+                  <div style={{ fontSize: 13, color: 'rgba(201,168,76,0.7)', fontFamily: 'monospace' }}>{mssv || mucTieu}</div>
                 </div>
                 <div style={{ padding: '8px 8px 4px' }}>
                   {userMenuLinks.map(({ href, Icon, label }) => (
@@ -409,7 +409,7 @@ export default function StudentNavbar({ profile }: StudentNavbarProps) {
             }}>{hoTen.charAt(0)}</div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 500, color: '#fff', fontFamily: "'DM Sans',sans-serif" }}>{hoTen}</div>
-              <div style={{ fontSize: 11, color: 'rgba(201,168,76,0.7)', fontFamily: 'monospace' }}>{mssv || mucTieu}</div>
+              <div style={{ fontSize: 13, color: 'rgba(201,168,76,0.7)', fontFamily: 'monospace' }}>{mssv || mucTieu}</div>
             </div>
           </div>
           <button onClick={() => setMobileUserOpen(o => !o)} style={{
