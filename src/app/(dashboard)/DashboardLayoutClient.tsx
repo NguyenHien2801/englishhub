@@ -14,7 +14,8 @@ export default function DashboardLayoutClient({
   const isAdmin = profile?.vai_tro === 'admin'
 
   return (
-    <div className="flex min-h-screen bg-[#F0F2F8]">
+    // bg-[#F8F5EE] = cream đồng bộ Landing page, thay cho bg-[#F0F2F8] xanh xám cũ
+    <div className="flex min-h-screen bg-[#F8F5EE]">
 
       {/* Admin → AdminSidebar dọc | Sinh viên → StudentNavbar ngang */}
       <Sidebar open={sidebarOpen} isAdmin={isAdmin} profile={profile} />
@@ -28,7 +29,7 @@ export default function DashboardLayoutClient({
           transition: 'margin-left 0.25s cubic-bezier(0.4,0,0.2,1)',
         }}
       >
-        <main className="flex-1 p-8">
+        <main className="flex-1">
           {children}
         </main>
       </div>

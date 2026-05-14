@@ -86,7 +86,9 @@ export default async function DashboardPage() {
     da_hoan_thanh:   g.da_hoan_thanh  ?? false,
     diem_bai_tap:    g.diem_bai_tap   ?? null,
     ngay_hoan_thanh: g.ngay_hoan_thanh ? String(g.ngay_hoan_thanh) : null,
-    BaiHocNguPhap:   Array.isArray(g.BaiHocNguPhap) ? (g.BaiHocNguPhap[0] ?? null) : (g.BaiHocNguPhap ?? null),
+    BaiHocNguPhap:   Array.isArray(g.BaiHocNguPhap)
+      ? (g.BaiHocNguPhap[0] ?? null)
+      : (g.BaiHocNguPhap ?? null),
   }))
 
   const grammarLessonsNorm: GrammarLessonNorm[] = (allGrammarLessons ?? []).map(l => ({

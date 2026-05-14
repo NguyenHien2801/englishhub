@@ -320,7 +320,7 @@ const IconUsers    = ()                                  => <Users       size={1
 const IconLogIn    = ()                                  => <LogIn       size={17}   strokeWidth={2} />
 const IconCheck    = ({ size = 10 }: { size?: number }) => <Check       size={size} strokeWidth={3} />
 const IconShield   = ()                                  => <ShieldCheck size={14}   strokeWidth={2} />
-const IconStar     = ()                                  => <Star        size={14}   fill="currentColor" stroke="none" />
+const IconStar     = ()                                  => <Star        size={22}   fill="currentColor" stroke="none" />
 const IconGradCap  = ()                                  => <GraduationCap size={16} strokeWidth={2} />
 const IconMenu     = ()                                  => <Menu        size={22}   strokeWidth={2} />
 const IconClose    = ()                                  => <X           size={22}   strokeWidth={2} />
@@ -914,9 +914,9 @@ export default function LandingPage() {
         .icon-red .icon-bg-squircle,
         .icon-red .icon-bg-diamond { background:rgba(240,100,100,.22); }
         .icon-red .icon-svg { stroke:#F07878; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-
-        .heroCard h3 { font-size:14px; font-weight:700; color:#fff; margin-bottom:6px; line-height:1.35; }
-        .heroCard p  { font-size:12.5px; color:rgba(255,255,255,.42); line-height:1.6; }
+        
+        .heroCard h3 { font-size:17px; font-weight:700; color:#fff; margin-bottom:8px; line-height:1.35; }
+        .heroCard p  { font-size:14.5px; color:rgba(255,255,255,.6); line-height:1.65; }
 
         /* Glowing corner */
         .heroCard::before { content:''; position:absolute; top:-1px; left:-1px; right:-1px; height:2px; background:linear-gradient(90deg,transparent,var(--gold),transparent); opacity:0; transition:opacity .35s; border-radius:var(--r) var(--r) 0 0; }
@@ -1122,63 +1122,150 @@ export default function LandingPage() {
 
         /* ── HOW IT WORKS — TIMELINE ── */
         .stepsSection { background:var(--navy); padding:clamp(60px,8vw,100px) clamp(20px,5%,80px); position:relative; overflow:hidden; }
-        .stepsNetBg { position:absolute; inset:0; pointer-events:none; opacity:.07; }
         .stepsHeader { text-align:center; margin-bottom:72px; position:relative; z-index:1; }
-        .aiTimeline { position:relative; z-index:1; display:flex; flex-direction:column; }
-        .timelineSpine { position:absolute; left:50%; top:32px; bottom:32px; width:2px; background:linear-gradient(to bottom,transparent,rgba(201,168,76,.5) 10%,rgba(201,168,76,.5) 90%,transparent); transform:translateX(-50%); z-index:0; }
-        .timelineRow { display:grid; grid-template-columns:1fr 90px 1fr; align-items:center; min-height:130px; }
-        .tlCard { padding:22px 26px; background:rgba(255,255,255,.055); border:1px solid rgba(255,255,255,.1); border-radius:var(--r-lg); backdrop-filter:blur(8px); transition:all .38s cubic-bezier(.16,1,.3,1); }
-        .tlCard:hover { background:rgba(255,255,255,.1); border-color:rgba(201,168,76,.4); transform:scale(1.025); box-shadow:0 14px 44px rgba(0,0,0,.3); }
-        .tlCardLeft  { text-align:right; margin-right:18px; }
-        .tlCardRight { text-align:left;  margin-left:18px; }
-        .tlTag { display:inline-block; padding:3px 11px; border-radius:50px; font-size:11px; font-weight:700; letter-spacing:.4px; margin-bottom:8px; }
-        .tlCard h3 { font-size:15px; font-weight:700; color:#fff; margin-bottom:5px; }
-        .tlCard p  { font-size:13px; color:rgba(255,255,255,.5); line-height:1.62; }
-        .tlEmpty { visibility:hidden; }
-        .tlNode { display:flex; flex-direction:column; align-items:center; position:relative; z-index:2; }
-        /* Organic node shapes */
-        .tlNodeCircle { width:66px; height:66px; display:flex; align-items:center; justify-content:center; transition:all .38s cubic-bezier(.16,1,.3,1); cursor:pointer; position:relative; }
-        .tlNodeBg {
-  position:absolute; inset:0; border-radius:50%;
-  background:transparent;
-  border:2.5px solid rgba(201,168,76,.6);
-  transition:all .38s;
-}
-.tlNodeCircle:hover .tlNodeBg {
-  background:var(--gold);
-  border-color:var(--gold);
-  transform:scale(1.1);
-}
-.tlNodeNum {
-  font-family:'Playfair Display',serif;
-  font-size:20px; font-weight:900;
-  color:var(--gold);
-  position:relative; z-index:1;
-  transition:color .3s;
-  letter-spacing:1px;
-}
-.tlNodeCircle:hover .tlNodeNum { color:var(--navy); }
-.tlNumBadge { display:none; }
-        .aiChip { display:inline-flex; align-items:center; gap:10px; padding:11px 24px; background:rgba(255,255,255,.07); border:1px solid rgba(201,168,76,.25); border-radius:50px; font-size:13px; font-weight:600; color:rgba(255,255,255,.72); margin:52px auto 0; position:relative; z-index:1; }
         .aiChipDot { width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
+        /* ── STEPPER NGANG ── */
+        .stepperRow {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0;
+          position: relative;
+          z-index: 1;
+          align-items: stretch;
+        }
+        .stepperItem {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+        }
+        .stepperLine {
+          position: absolute;
+          top: 52px;
+          left: calc(50% + 30px);
+          right: -1px;
+          width: calc(100% - 60px);
+          height: 2px;
+          background: rgba(201,168,76,.2);
+          z-index: 0;
+          display: flex;
+          align-items: center;
+        }
+        .stepperLineFill {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg, var(--gold), rgba(201,168,76,.3));
+          border-radius: 2px;
+        }
+        .stepperArrow {
+          position: absolute;
+          right: -10px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 20px;
+          height: 20px;
+        }
+        .stepperCard {
+        margin: 0 12px;
+        padding: 32px 24px 28px;
+  background: var(--white);
+ border: 2px solid rgba(201,168,76,.45);
+  border-radius: var(--r-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  transition: all .38s cubic-bezier(.16,1,.3,1);
+  position: relative;
+  flex: 1;
+  box-shadow: 0 4px 24px rgba(15,28,53,.18), inset 0 0 0 1px rgba(201,168,76,.08);
+}
+.stepperCard:hover {
+  background: var(--gold-pale);
+  border-color: var(--gold);
+  transform: translateY(-8px);
+  box-shadow: 0 24px 56px rgba(15,28,53,.22);
+}
+.stepperNum {
+  font-family: 'Playfair Display', serif;
+  font-size: 42px;
+  font-weight: 900;
+  color: var(--gold);
+  line-height: 1;
+  opacity: .55;
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  letter-spacing: -1px;
+}
+.stepperIconWrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(201,168,76,.12);
+  border: 2px solid rgba(201,168,76,.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--navy);
+  transition: all .3s;
+  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+.stepperCard:hover .stepperIconWrap {
+  background: var(--gold);
+  color: var(--navy);
+  border-color: var(--gold);
+}
+.stepperTag {
+  display: inline-block;
+  padding: 5px 16px;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .3px;
+}
+
+.stepperTitle {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--navy);
+  line-height: 1.35;
+  margin: 0;
+}
+.stepperDesc {
+  font-size: 14px;
+  color: var(--text-mid);
+  line-height: 1.72;
+  margin: 0;
+}
+        @media(max-width:900px){
+          .stepperRow { grid-template-columns: repeat(2,1fr); gap: 16px; }
+          .stepperLine { display: none; }
+          .stepperCard { margin: 0; }
+        }
+        @media(max-width:480px){
+          .stepperRow { grid-template-columns: 1fr; }
+        }
 
         /* ── TESTIMONIALS ── */
         .testiSection { background:var(--cream); padding:clamp(60px,8vw,100px) clamp(20px,5%,80px); }
         .testiGrid { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; margin-top:48px; }
         .testiCard { background:var(--white); border:1px solid var(--border); border-radius:var(--r-lg); padding:30px 26px; transition:all .35s cubic-bezier(.16,1,.3,1); position:relative; overflow:hidden; box-shadow:var(--sh-sm); }
-        .testiCard::before { content:'\u201C'; position:absolute; top:-6px; right:20px; font-family:'Playfair Display',serif; font-size:100px; color:rgba(201,168,76,.1); line-height:1; pointer-events:none; }
+        .testiCard::before {display:none; }
         /* Round accent blob */
-        .testiBlob { position:absolute; top:-30px; left:-30px; width:100px; height:100px; border-radius:60% 40% 30% 70% / 60% 30% 70% 40%; opacity:.06; pointer-events:none; }
+        .testiBlob { position:absolute; top:-20px; right:-20px; width:80px; height:80px; border-radius:50%; opacity:.12; pointer-events:none; filter:blur(18px); }
         .testiCard:hover { transform:translateY(-8px); box-shadow:var(--sh-xl); border-color:rgba(201,168,76,.35); }
-        .stars { color:var(--gold); font-size:14px; margin-bottom:16px; display:flex; gap:3px; }
-        .quoteText { font-size:14px; color:var(--text-mid); line-height:1.8; margin-bottom:22px; font-style:italic; }
+        .stars { color:#F5C518; font-size:24px; margin-bottom:16px; display:flex; gap:4px; }
+        .quoteText { font-size:16px; color:var(--text-mid); line-height:1.8; margin-bottom:22px; font-style:italic; }
         .testiAuthor { display:flex; align-items:center; gap:12px; }
         .avatar { width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0; }
         .avatarGold  { background:rgba(201,168,76,.15); color:var(--gold); border:2px solid rgba(201,168,76,.3); }
         .avatarGreen { background:rgba(0,168,120,.15); color:#00A878; border:2px solid rgba(0,168,120,.3); }
         .avatarBlue  { background:rgba(100,120,240,.15); color:#6478f0; border:2px solid rgba(100,120,240,.3); }
-        .authorName { font-size:14px; font-weight:700; color:var(--navy); }
-        .authorRole { font-size:12px; color:var(--text-mid); }
+        .authorName { font-size:16px; font-weight:700; color:var(--navy); }
+        .authorRole { font-size:14px; color:var(--text-mid); }
+
 
         /* ── FAQ ── */
         .faqSection { background:var(--white); padding:clamp(60px,8vw,100px) clamp(20px,5%,80px); }
@@ -1230,7 +1317,7 @@ export default function LandingPage() {
         .fLinks { list-style:none; display:flex; flex-direction:column; gap:10px; }
         .fLinks a { text-decoration:none; font-size:13.5px; color:rgba(255,255,255,.4); transition:all .22s; }
         .fLinks a:hover { color:var(--gold); padding-left:5px; }
-        .footerBottom { max-width:1280px; margin:0 auto; padding-top:24px; border-top:1px solid rgba(255,255,255,.07); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+        .footerBottom {max-width:1280px; margin:0 auto; padding-top:24px; border-top:2px solid rgba(201,168,76,.35); display:flex; justify-content:center; align-items:center; }
         .footerBottom p { font-size:13px; color:rgba(255,255,255,.24); }
         .techBadges { display:flex; gap:8px; flex-wrap:wrap; }
         .techBadge { padding:4px 12px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); border-radius:50px; font-size:11px; color:rgba(255,255,255,.32); font-weight:600; transition:all .2s; }
@@ -1644,61 +1731,44 @@ export default function LandingPage() {
 
       {/* ══════════════════ HOW IT WORKS ══════════════════ */}
       <section className="stepsSection" id="how" aria-labelledby="how-heading">
-        {/* SVG network background */}
-        <svg className="stepsNetBg" viewBox="0 0 1200 600" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-          {[[600,60],[600,200],[600,340],[600,480],[200,130],[400,130],[800,130],[1000,130],[200,270],[400,270],[800,270],[1000,270],[200,410],[400,410],[800,410],[1000,410]].map(([cx,cy],i) => (
-            <circle key={i} cx={cx} cy={cy} r="4" fill="#C8A84B" opacity=".8" />
-          ))}
-          {[[600,60,200,130],[600,60,800,130],[600,200,400,130],[600,200,800,270],[600,340,400,270],[600,340,800,410],[600,480,200,410],[600,480,1000,410]].map(([x1,y1,x2,y2],i) => (
-            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#C8A84B" strokeWidth="1" opacity=".6" strokeDasharray="1000" style={{animation:`drawLine 2s ease ${i*0.2}s both`}} />
-          ))}
-        </svg>
-
+        <div className="stepsNetBg" aria-hidden="true" />
         <div className="inner">
           <div className="stepsHeader">
             <div className="tagDark">Cách hoạt động</div>
             <h2 id="how-heading" className="h2 h2w">Bắt đầu trong <span className="g">4 bước đơn giản</span></h2>
-            <p className="sub subD" style={{ margin: '0 auto' }}>Chỉ cần email là đủ. AI Gemini sẽ phân tích và lập lộ trình học cho riêng bạn.</p>
+            <p className="sub subD" style={{ margin: '0 auto' }}>Chỉ cần email là đủ. AI sẽ phân tích và lập lộ trình học cho riêng bạn.</p>
           </div>
 
-          <ol className="aiTimeline" style={{ listStyle: 'none' }}>
-            <div className="timelineSpine" aria-hidden="true" />
-            {steps.map((s, i) => {
-              const isLeft = i % 2 === 0
-              return (
-                <li key={i} className="timelineRow">
-                  {isLeft ? (
-                    <div className="tlCardLeft">
-                      <div className="tlCard">
-                        <div className="tlTag" style={{ background: `${s.tagColor}22`, color: s.tagColor, border: `1px solid ${s.tagColor}44` }}>{s.tag}</div>
-                        <h3>{s.title}</h3>
-                        <p>{s.desc}</p>
-                      </div>
-                    </div>
-                  ) : <div className="tlEmpty" aria-hidden="true"><div className="tlCard" /></div>}
-
-                  <div className="tlNode" aria-hidden="true">
-                    <div className="tlNodeCircle">
-                      <div className="tlNodeBg" />
-                      <span className="tlNodeNum">{s.num}</span>
-                      </div>
+          <div className="stepperRow">
+            {steps.map((s, i) => (
+              <div key={i} className="stepperItem">
+                {i < steps.length - 1 && (
+                  <div className="stepperLine">
+                    <div className="stepperLineFill" />
+                    <svg className="stepperArrow" viewBox="0 0 20 20" fill="none">
+                      <path d="M4 10h12M12 5l5 5-5 5" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                   </div>
+                )}
+                <div className="stepperCard">
+                  <div className="stepperNum">{s.num}</div>
+                  <div className="stepperIconWrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+                      strokeLinecap="round" strokeLinejoin="round" width="28" height="28">
+                      {s.svg}
+                    </svg>
+                  </div>
+                  <div className="stepperTag" style={{ background: `${s.tagColor}22`, color: s.tagColor, border: `1px solid ${s.tagColor}55` }}>
+                    {s.tag}
+                  </div>
+                  <h3 className="stepperTitle">{s.title}</h3>
+                  <p className="stepperDesc">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
 
-                  {!isLeft ? (
-                    <div className="tlCardRight">
-                      <div className="tlCard">
-                        <div className="tlTag" style={{ background: `${s.tagColor}22`, color: s.tagColor, border: `1px solid ${s.tagColor}44` }}>{s.tag}</div>
-                        <h3>{s.title}</h3>
-                        <p>{s.desc}</p>
-                      </div>
-                    </div>
-                  ) : <div className="tlEmpty" aria-hidden="true"><div className="tlCard" /></div>}
-                </li>
-              )
-            })}
-          </ol>
-
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 52 }}>
             <div className="aiChip" role="note">
               <div className="aiChipDot" aria-hidden="true" />
               AI Gemini phân tích kết quả và lập lộ trình ngay sau Level Test
@@ -1808,7 +1878,7 @@ export default function LandingPage() {
         <div className="footerGrid">
           <div>
             <div className="fBrand">English<span>Hub</span></div>
-            <p className="fBrandDesc">Nền tảng học tiếng Anh toàn diện tích hợp AI Gemini, được xây dựng dành riêng cho sinh viên Trường Đại học Thái Bình.</p>
+            <p className="fBrandDesc">Nền tảng học tiếng Anh toàn diện tích hợp AI, được xây dựng dành riêng cho sinh viên Trường Đại học Thái Bình.</p>
             <address className="fContacts" style={{ fontStyle: 'normal' }}>
               <div className="fContactItem"><Phone size={13} strokeWidth={2} /> <a href="tel:02273633669" style={{ color: 'inherit', textDecoration: 'none' }}>0227.3633669</a></div>
               <div className="fContactItem"><Mail size={13} strokeWidth={2} /> <a href="mailto:support@tbu.edu.vn" style={{ color: 'inherit', textDecoration: 'none' }}>support@tbu.edu.vn</a></div>
@@ -1847,18 +1917,7 @@ export default function LandingPage() {
           </nav>
         </div>
         <div className="footerBottom">
-          <p>
-            <span itemScope itemType="https://schema.org/Organization">
-              <span itemProp="name">EnglishHub</span>
-            </span>
-            {' '}© 2025 · Khóa luận tốt nghiệp · Khoa CNTT · Trường ĐH Thái Bình
-          </p>
-          <div className="techBadges">
-            <span className="techBadge">Next.js</span>
-            <span className="techBadge">Supabase</span>
-            <span className="techBadge">Gemini AI</span>
-            <span className="techBadge">TypeScript</span>
-          </div>
+            <p>© 2025 EnglishHub- Trường Đại học Thái Bình</p>
         </div>
       </footer>
     </div>
