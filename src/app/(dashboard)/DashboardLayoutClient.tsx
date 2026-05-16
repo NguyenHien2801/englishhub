@@ -14,19 +14,17 @@ export default function DashboardLayoutClient({
   const isAdmin = profile?.vai_tro === 'admin'
 
   return (
-    // bg-[#F8F5EE] = cream đồng bộ Landing page, thay cho bg-[#F0F2F8] xanh xám cũ
-    <div className="flex min-h-screen bg-[#F8F5EE]">
+    // --cream từ Landing: #F8F5EE
+    <div className="flex min-h-screen" style={{ background: '#F8F5EE' }}>
 
-      {/* Admin → AdminSidebar dọc | Sinh viên → StudentNavbar ngang */}
       <Sidebar open={sidebarOpen} isAdmin={isAdmin} profile={profile} />
 
-      {/* Nội dung chính */}
       <div
         className="flex-1 flex flex-col"
         style={{
-          paddingTop: isAdmin ? 0 : 58,   // tránh bị StudentNavbar che
-          marginLeft: isAdmin ? 240 : 0,  // nhường chỗ cho AdminSidebar
-          transition: 'margin-left 0.25s cubic-bezier(0.4,0,0.2,1)',
+          paddingTop: isAdmin ? 0 : 58,
+          marginLeft: isAdmin ? 240 : 0,
+          transition: 'margin-left 0.28s cubic-bezier(.16,1,.3,1)',
         }}
       >
         <main className="flex-1">
@@ -34,14 +32,61 @@ export default function DashboardLayoutClient({
         </main>
       </div>
 
-      {/* Floating AI Chat Button */}
+      {/*
+        Floating AI Chat Button
+        — Navy nền + viền gold + pill-radius 50px khớp .ctaPrimary Landing
+        — hover: scale + shadow vàng như .ctaPrimary:hover
+      */}
       <Link
         href="/ai-chat"
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:scale-110"
-        style={{ background: 'linear-gradient(135deg, #1a2744 0%, #1e3060 100%)', border: '2px solid #c9a227' }}
-        title="AI Chatbot"
+        title="AI Chatbot — Hỏi gì cũng được"
+        style={{
+          position: 'fixed',
+          bottom: 28,
+          right: 28,
+          zIndex: 50,
+          width: 56,
+          height: 56,
+          borderRadius: 50,
+          background: '#0F1C35',           // --navy
+          border: '2px solid #C9A84C',     // --gold
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 6px 24px rgba(15,28,53,.35)',
+          transition: 'all .32s cubic-bezier(.34,1.56,.64,1)',
+          textDecoration: 'none',
+        }}
+        onMouseEnter={e => {
+          const el = e.currentTarget as HTMLAnchorElement
+          el.style.transform = 'translateY(-4px) scale(1.08)'
+          el.style.boxShadow = '0 12px 32px rgba(201,168,76,.45)'
+          el.style.background = '#1E2F50'  // --navy-lg khi hover
+        }}
+        onMouseLeave={e => {
+          const el = e.currentTarget as HTMLAnchorElement
+          el.style.transform = 'translateY(0) scale(1)'
+          el.style.boxShadow = '0 6px 24px rgba(15,28,53,.35)'
+          el.style.background = '#0F1C35'
+        }}
       >
-        <span className="text-2xl">🤖</span>
+        {/* Icon Sparkles SVG — cùng stroke style với aiFeatIcon trong Dashboard */}
+        <svg
+          width="22" height="22" viewBox="0 0 24 24"
+          fill="none" stroke="#C9A84C" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 3a1 1 0 0 1 1 1v1a1 1 0 0 1-2 0V4a1 1 0 0 1 1-1z"/>
+          <path d="M12 19a1 1 0 0 1 1 1v1a1 1 0 0 1-2 0v-1a1 1 0 0 1 1-1z"/>
+          <path d="M3 12a1 1 0 0 1 1-1h1a1 1 0 0 1 0 2H4a1 1 0 0 1-1-1z"/>
+          <path d="M19 12a1 1 0 0 1 1-1h1a1 1 0 0 1 0 2h-1a1 1 0 0 1-1-1z"/>
+          <path d="M5.64 5.64a1 1 0 0 1 1.41 0l.71.71a1 1 0 0 1-1.41 1.41l-.71-.71a1 1 0 0 1 0-1.41z"/>
+          <path d="M16.24 16.24a1 1 0 0 1 1.41 0l.71.71a1 1 0 0 1-1.41 1.41l-.71-.71a1 1 0 0 1 0-1.41z"/>
+          <path d="M5.64 18.36a1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1-1.41 0z"/>
+          <path d="M16.24 7.76a1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1-1.41 0z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
       </Link>
     </div>
   )

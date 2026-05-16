@@ -1,9 +1,9 @@
 'use client'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DashboardClient.tsx — EnglishHub Dashboard
-// KHÔNG có header riêng — StudentNavbar đã mount ở layout.tsx
-// Nền cream/trắng, layout dọc editorial đồng bộ Landing page
+// DashboardClient.tsx — EnglishHub Analytics Dashboard
+// Layout: thuần trang thống kê, không sidebar, không tab bar
+// Recharts: Area, Bar, Composed, Pie, Radar
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
@@ -12,16 +12,19 @@ import {
   AreaChart, Area, BarChart, Bar, ComposedChart,
   PieChart, Pie, Cell, RadarChart, Radar,
   PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend, LabelList,
 } from 'recharts'
+
 import {
   type LucideIcon,
-  Flame, BookOpen, CheckCircle2, Target, TrendingUp, TrendingDown,
-  Minus, Brain, Mic, Headphones, PenLine, Eye, BarChart2,
-  Award, Zap, ChevronRight, RefreshCw, Calendar,
-  AlertCircle, Loader2, GraduationCap, Activity, Star,
-  ArrowUpRight, ArrowDownRight, Sparkles, BookMarked,
-  FileText, MessageSquare, Clock, Layers, Trophy, LayoutDashboard,
+  Flame, BookOpen, CheckCircle2, Target, Clock,
+  Brain, Mic, Headphones, PenLine, Eye,
+  Award, Zap, ChevronRight, RefreshCw,
+  Loader2, Activity, Star,
+  ArrowUpRight, ArrowDownRight, Minus, Sparkles,
+  BookMarked, FileText, MessageSquare, TrendingUp,
+  BarChart2, Calendar,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -40,6 +43,7 @@ interface ExamRow {
   id?: string; ky_nang?: string; loai_chung_chi?: string
   so_cau_dung?: number; tong_so_cau?: number
   thoi_gian_lam_bai?: number; created_at?: string
+  diem_so?: number; diem_quy_doi?: number
 }
 interface GrammarProgressRow {
   da_hoan_thanh?: boolean; diem_bai_tap?: number | null
@@ -57,223 +61,440 @@ interface Props {
   grammarDoneCount: number; chatHistory: ChatRow[]
 }
 
-// ─── Design Tokens — đồng bộ Landing ─────────────────────────────────────────
+// ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
-  navy:    '#0F1C35',
-  navyMid: '#162444',
-  gold:    '#C9A84C',
-  goldLt:  '#E8C97A',
-  goldPale:'#FDF8EE',
-  cream:   '#F8F5EE',
+  bg:      '#F8F5EE',    // --cream từ Landing
   white:   '#FFFFFF',
-  green:   '#00A878',
-  greenLt: '#4ECBA8',
-  violet:  '#6478F0',
-  rose:    '#F06464',
+  navy:    '#0F1C35',    // --navy
+  navyMid: '#1E2F50',    // --navy-lg
+  gold:    '#C9A84C',    // --gold (sửa từ #C9933A)
+  goldLt:  '#E8C97A',    // --gold-lt
+  goldPale:'#FDF8EE',    // --gold-pale
+  green:   '#00A878',    // --green
+  greenLt: '#4ECBA8',    // --green-lt
+  blue:    '#2B6CB0',
+  blueLt:  '#4299E1',
+  violet:  '#6478F0',    // --violet (sửa từ #6C63D4)
+  rose:    '#F06464',    // --rose (sửa từ #E05252)
+  roseLt:  '#F08080',
+  slate:   '#64748B',
+  border:  'rgba(201,168,76,0.18)',  // --border từ Landing (gold-tinted)
+  borderMd:'rgba(201,168,76,0.30)',
   text:    '#1A1E2E',
   textMid: '#4A5568',
-  border:  'rgba(201,168,76,0.2)',
-  borderL: 'rgba(0,0,0,0.06)',
+  textLt:  '#94A3B8',
 }
 
 const RANGE_OPTS = [
-  { key:'week',    label:'Tuần',   days:7   },
-  { key:'month',   label:'Tháng',  days:30  },
-  { key:'quarter', label:'Quý',    days:90  },
-  { key:'year',    label:'Năm',    days:365 },
+  { key: 'week',    label: 'Tuần',  days: 7   },
+  { key: 'month',   label: 'Tháng', days: 30  },
+  { key: 'quarter', label: 'Quý',   days: 90  },
+  { key: 'year',    label: 'Năm',   days: 365 },
 ]
 
-const SKILL_META: Record<string, { label:string; Icon:LucideIcon; color:string }> = {
-  NGHE:     { label:'Nghe',     Icon:Headphones, color:'#0ea5e9' },
-  DOC:      { label:'Đọc',      Icon:Eye,        color:C.greenLt },
-  VIET:     { label:'Viết',     Icon:PenLine,    color:C.gold    },
-  NOI:      { label:'Nói',      Icon:Mic,        color:C.violet  },
-  TU_VUNG:  { label:'Từ vựng',  Icon:BookOpen,   color:'#ec4899' },
-  NGU_PHAP: { label:'Ngữ pháp', Icon:Brain,      color:'#06b6d4' },
+const SKILL_META: Record<string, { label: string; Icon: LucideIcon; color: string; bg: string }> = {
+  NGHE:     { label: 'Nghe',     Icon: Headphones, color: C.blueLt,  bg: '#EBF4FF' },
+  DOC:      { label: 'Đọc',      Icon: Eye,        color: C.greenLt, bg: '#E6FDF4' },
+  VIET:     { label: 'Viết',     Icon: PenLine,    color: C.gold,    bg: C.goldPale},
+  NOI:      { label: 'Nói',      Icon: Mic,        color: C.violet,  bg: '#F0EFFE' },
+  TU_VUNG:  { label: 'Từ vựng',  Icon: BookOpen,   color: '#EC4899', bg: '#FDF2F8' },
+  NGU_PHAP: { label: 'Ngữ pháp', Icon: Brain,      color: '#06B6D4', bg: '#ECFEFF' },
 }
 
-const CERT_COLORS: Record<string,string> = { VSTEP:C.greenLt, TOEIC:C.gold, APTIS:C.violet }
-const LEVEL_ORDER  = ['A1','A2','B1','B2','C1','C2']
-const LEVEL_COLORS = ['#94a3b8','#0ea5e9',C.greenLt,C.gold,C.violet,C.rose]
+const CERT_COLORS: Record<string, string> = {
+  VSTEP: C.greenLt, TOEIC: C.gold, APTIS: C.violet,
+}
+
+const LEVEL_ORDER  = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+const LEVEL_COLORS = ['#94A3B8', '#38BDF8', '#34C897', '#C9933A', '#6C63D4', '#E05252']
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
-const pct  = (n?:number, d?:number) => (d ? Math.round(((n??0)/d)*100) : 0)
-const fmt  = (n?:number) => (n??0).toLocaleString('vi-VN')
-const fmtH = (s:number) => { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h>0?`${h}h${m}p`:`${m}p` }
-const scoreColor = (s:number) => s>=80?C.green:s>=60?C.gold:C.rose
-const scoreBg    = (s:number) => s>=80?'rgba(0,168,120,0.08)':s>=60?'rgba(201,168,76,0.08)':'rgba(240,100,100,0.08)'
+const pct  = (n?: number, d?: number) => d ? Math.round(((n ?? 0) / d) * 100) : 0
+const fmt  = (n?: number) => (n ?? 0).toLocaleString('vi-VN')
+const fmtH = (s: number) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h${m}p` : `${m}p` }
+const scoreColor = (s: number) => s >= 80 ? C.green : s >= 60 ? C.gold : C.rose
+const scoreBg    = (s: number) => s >= 80 ? '#E6FDF4' : s >= 60 ? C.goldPale : '#FEF2F2'
 
-function filterByDays<R extends {created_at?:string}>(rows:R[], days:number):R[] {
-  const c=new Date(); c.setDate(c.getDate()-days)
-  return rows.filter(r=>r.created_at && new Date(r.created_at)>=c)
+function filterByDays<R extends { created_at?: string }>(rows: R[], days: number): R[] {
+  const c = new Date(); c.setDate(c.getDate() - days)
+  return rows.filter(r => r.created_at && new Date(r.created_at) >= c)
 }
 
-function groupExams(rows:ExamRow[], days:number) {
-  const f=filterByDays(rows,days)
-  const m:Record<string,{label:string;soPhien:number;totalScore:number;thoiGian:number}>={}
-  f.forEach(r=>{
-    const d=new Date(r.created_at!)
-    let k:string
-    if(days<=7)       k=d.toLocaleDateString('vi-VN',{weekday:'short',day:'numeric'})
-    else if(days<=30) k=`${d.getDate()}/${d.getMonth()+1}`
-    else if(days<=90) k=`T${d.getMonth()+1} W${Math.ceil(d.getDate()/7)}`
-    else              k=`Th${d.getMonth()+1}`
-    if(!m[k]) m[k]={label:k,soPhien:0,totalScore:0,thoiGian:0}
-    m[k].soPhien++; m[k].totalScore+=pct(r.so_cau_dung,r.tong_so_cau); m[k].thoiGian+=r.thoi_gian_lam_bai??0
+function groupExams(rows: ExamRow[], days: number) {
+  const f = filterByDays(rows, days)
+  const m: Record<string, { label: string; soPhien: number; totalScore: number; thoiGian: number }> = {}
+  f.forEach(r => {
+    const d = new Date(r.created_at!)
+    let k: string
+    if (days <= 7)       k = d.toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric' })
+    else if (days <= 30) k = `${d.getDate()}/${d.getMonth() + 1}`
+    else if (days <= 90) k = `T${d.getMonth() + 1} W${Math.ceil(d.getDate() / 7)}`
+    else                 k = `Th${d.getMonth() + 1}`
+    if (!m[k]) m[k] = { label: k, soPhien: 0, totalScore: 0, thoiGian: 0 }
+    m[k].soPhien++; m[k].totalScore += pct(r.so_cau_dung, r.tong_so_cau); m[k].thoiGian += r.thoi_gian_lam_bai ?? 0
   })
-  return Object.values(m).map(g=>({label:g.label,soPhien:g.soPhien,diemTB:g.soPhien?Math.round(g.totalScore/g.soPhien):0,thoiGian:Math.round(g.thoiGian/60)}))
+  return Object.values(m).map(g => ({
+    label: g.label, soPhien: g.soPhien,
+    diemTB: g.soPhien ? Math.round(g.totalScore / g.soPhien) : 0,
+    thoiGian: Math.round(g.thoiGian / 60),
+  }))
 }
 
-function groupVocab(rows:VocabRow[]) {
-  const m:Record<string,{label:string;hoc:number;onTap:number;thuanThuc:number}>={}
-  rows.forEach(r=>{
-    const d=r.lan_cuoi_on??r.ngay_on_tiep_theo; if(!d) return
-    const k=String(d).slice(5)
-    if(!m[k]) m[k]={label:k.replace('-','/'),hoc:0,onTap:0,thuanThuc:0}
-    if(r.trang_thai==='moi'||r.trang_thai==='dang_hoc') m[k].hoc++
-    else if(r.trang_thai==='on_tap') m[k].onTap++
-    else if(r.trang_thai==='thuan_thuc') m[k].thuanThuc++
+function groupVocabByDay(rows: VocabRow[], days: number) {
+  const result: Record<string, { label: string; hoc: number; onTap: number; thuanThuc: number }> = {}
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days)
+  rows.forEach(r => {
+    const rawDate = r.lan_cuoi_on ?? r.ngay_on_tiep_theo
+    if (!rawDate) return
+    const d = new Date(String(rawDate))
+    if (d < cutoff) return
+    const k = String(rawDate).slice(0, 10)
+    if (!result[k]) result[k] = { label: k.slice(5).replace('-', '/'), hoc: 0, onTap: 0, thuanThuc: 0 }
+    if (r.trang_thai === 'moi' || r.trang_thai === 'dang_hoc') result[k].hoc++
+    else if (r.trang_thai === 'on_tap') result[k].onTap++
+    else if (r.trang_thai === 'thuan_thuc') result[k].thuanThuc++
   })
-  return Object.values(m).slice(-30)
+  return Object.values(result).slice(-30)
 }
 
-function weeklyHeatmap(s:Set<string>) {
-  const today=new Date(),weeks:{key:string;active:boolean;isToday:boolean}[][]=[]
-  let week:{key:string;active:boolean;isToday:boolean}[]=[]
-  for(let i=363;i>=0;i--){
-    const d=new Date(today); d.setDate(today.getDate()-i)
-    const key=d.toISOString().split('T')[0]
-    week.push({key,active:s.has(key),isToday:i===0})
-    if(week.length===7){weeks.push(week);week=[]}
+function weeklyHeatmap(s: Set<string>) {
+  const today = new Date()
+  const weeks: { key: string; active: boolean; isToday: boolean }[][] = []
+  let week: { key: string; active: boolean; isToday: boolean }[] = []
+  for (let i = 363; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i)
+    const key = d.toISOString().split('T')[0]
+    week.push({ key, active: s.has(key), isToday: i === 0 })
+    if (week.length === 7) { weeks.push(week); week = [] }
   }
-  if(week.length) weeks.push(week)
+  if (week.length) weeks.push(week)
   return weeks
 }
 
-// ─── Tooltip ──────────────────────────────────────────────────────────────────
-function CreamTooltip({active,payload,label}:{active?:boolean;payload?:{name:string;value:number;color:string}[];label?:string}) {
-  if(!active||!payload?.length) return null
+// ─── Custom Tooltip ───────────────────────────────────────────────────────────
+function ChartTooltip({ active, payload, label }: {
+  active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string
+}) {
+  if (!active || !payload?.length) return null
   return (
-    <div style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:12,padding:'10px 14px',fontSize:12,boxShadow:'0 4px 20px rgba(15,28,53,0.12)',fontFamily:"'DM Sans',sans-serif"}}>
-      <div style={{color:C.gold,marginBottom:5,fontWeight:700,fontSize:10,letterSpacing:'0.5px',textTransform:'uppercase'}}>{label}</div>
-      {payload.map((p,i)=>(
-        <div key={i} style={{display:'flex',alignItems:'center',gap:7,marginBottom:2}}>
-          <span style={{width:7,height:7,borderRadius:'50%',background:p.color,display:'inline-block'}}/>
-          <span style={{color:C.textMid}}>{p.name}:</span>
-          <span style={{color:C.navy,fontWeight:700}}>{fmt(p.value)}</span>
+    <div style={{
+      background: C.white, border: `1px solid ${C.border}`,
+      borderRadius: 10, padding: '10px 14px', fontSize: 12,
+      boxShadow: '0 4px 24px rgba(15,28,53,0.10)',
+      fontFamily: "'DM Sans', sans-serif",
+    }}>
+      <div style={{ color: C.textMid, fontSize: 13, fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
+      {payload.map((p, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 2 }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: p.color, display: 'inline-block' }} />
+          <span style={{ color: C.textMid, fontSize: 14 }}>{p.name}:</span>
+          <span style={{ color: C.navy, fontWeight: 700, fontSize: 14 }}>{fmt(p.value)}</span>
         </div>
       ))}
     </div>
   )
 }
+// ─── Personal Roadmap Banner ─────────────────────────────────────────────────
+function PersonalRoadmap({ profile, totalMastered, avgScore, grammarDoneCount, totalGrammar }: {
+  profile: Profile | null
+  totalMastered: number
+  avgScore: number
+  grammarDoneCount: number
+  totalGrammar: number
+}) {
+  if (!profile) return null
 
-// ─── Section Title — editorial, giống Landing ────────────────────────────────
-function SectionTitle({tag,title,sub}:{tag:string;title:string;sub?:string}) {
+  const certLabel: Record<string, string> = {
+    VSTEP: 'VSTEP B1', TOEIC: 'TOEIC 600+', APTIS: 'APTIS B2', GENERAL: 'Tiếng Anh tổng quát'
+  }
+  const levelOrder = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+  const levelIdx = Math.max(0, levelOrder.indexOf(profile.trinh_do_hien_tai ?? 'A1'))
+
+  // Tiến độ tổng thể: trung bình 3 chỉ số
+  const vocabPct   = Math.min(100, Math.round((totalMastered / 500) * 100))
+  const grammarPct = totalGrammar ? Math.round((grammarDoneCount / totalGrammar) * 100) : 0
+  const overall    = Math.round((vocabPct + grammarPct + Math.min(100, avgScore)) / 3)
+
+  const milestones = [
+    { label: 'Từ vựng', pct: vocabPct,   color: C.blueLt },
+    { label: 'Ngữ pháp', pct: grammarPct, color: C.violet },
+    { label: 'Luyện thi', pct: Math.min(100, avgScore), color: C.gold  },
+  ]
+
   return (
-    <div style={{marginBottom:24}}>
-      <div style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 12px',background:C.goldPale,border:`1px solid ${C.border}`,borderRadius:50,fontSize:11,fontWeight:700,color:'#8B6914',textTransform:'uppercase',letterSpacing:'1px',marginBottom:8}}>
-        {tag}
+    <div style={{
+      background: C.navy,
+      borderRadius: 20,
+      border: `1px solid rgba(201,168,76,.2)`,
+      padding: '24px 28px',
+      marginBottom: 24,
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Blob trang trí góc phải — giống Landing */}
+      <div style={{
+        position: 'absolute', top: -40, right: -40,
+        width: 180, height: 180,
+        background: 'rgba(201,168,76,.07)',
+        borderRadius: '60% 40% 30% 70% / 60% 30% 70% 40%',
+        pointerEvents: 'none',
+      }} />
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: 20, position: 'relative' }}>
+
+        {/* Trái: thông tin lộ trình */}
+        <div style={{ flex: 1, minWidth: 240 }}>
+          {/* Tag nhỏ kiểu Landing */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            padding: '4px 14px',
+            background: 'rgba(201,168,76,.12)',
+            border: '1px solid rgba(201,168,76,.25)',
+            borderRadius: 50,
+            fontSize: 11, fontWeight: 700, color: C.gold,
+            textTransform: 'uppercase', letterSpacing: '1px',
+            marginBottom: 12,
+          }}>
+            Lộ trình của bạn
+          </div>
+
+          <div style={{
+            fontSize: 'clamp(18px,2vw,24px)', fontWeight: 900, color: '#fff',
+            fontFamily: "'Playfair Display', serif", lineHeight: 1.2, marginBottom: 8,
+          }}>
+            Mục tiêu:{' '}
+            <span style={{ color: C.gold }}>
+              {certLabel[profile.muc_tieu_hoc ?? 'VSTEP']}
+            </span>
+          </div>
+
+          <div style={{ fontSize: 16, color: 'rgba(255,255,255,.55)', marginBottom: 18, lineHeight: 1.6 }}>
+            Trình độ hiện tại · Streak{' '}
+            <span style={{ color: C.greenLt, fontWeight: 700,
+              display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Flame size={14} color={C.greenLt} strokeWidth={1.8} />
+                {profile.streak_hien_tai ?? 0} ngày
+            </span>
+            {profile.diem_yeu && (
+              <span style={{ color: C.rose }}>
+                {' '}· Cần cải thiện: {profile.diem_yeu}
+              </span>
+            )}
+          </div>
+
+          {/* Level progress bar */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 0, marginBottom: 6 }}>
+              {levelOrder.map((lv, i) => (
+                <div key={lv} style={{
+                  flex: 1, textAlign: 'center',
+                  fontSize: 11, fontWeight: 700,
+                  color: i <= levelIdx ? C.gold : 'rgba(255,255,255,.2)',
+                  transition: 'color .3s',
+                }}>{lv}</div>
+              ))}
+            </div>
+            <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 3 }}>
+              <div style={{
+                width: `${((levelIdx + 1) / levelOrder.length) * 100}%`,
+                height: '100%',
+                background: `linear-gradient(90deg, ${C.greenLt}, ${C.gold})`,
+                borderRadius: 3,
+                transition: 'width .85s cubic-bezier(.16,1,.3,1)',
+              }} />
+            </div>
+          </div>
+
+          {/* 3 milestone mini bars */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {milestones.map((m, i) => (
+              <div key={i} style={{ flex: 1, minWidth: 80 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between',
+                  fontSize: 14, color: 'rgba(255,255,255,.45)', marginBottom: 5 }}>
+                  <span>{m.label}</span>
+                  <span style={{ color: m.color, fontWeight: 700 }}>{m.pct}%</span>
+                </div>
+                <div style={{ height: 4, background: 'rgba(255,255,255,.08)', borderRadius: 2 }}>
+                  <div style={{
+                    width: `${m.pct}%`, height: '100%',
+                    background: m.color, borderRadius: 2,
+                    transition: 'width .85s cubic-bezier(.16,1,.3,1)',
+                    opacity: 0.85,
+                  }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Phải: Overall score — kiểu số lớn Playfair */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', gap: 4,
+          padding: '16px 24px',
+          background: 'rgba(255,255,255,.05)',
+          border: '1px solid rgba(201,168,76,.2)',
+          borderRadius: 16,
+          minWidth: 120,
+        }}>
+          <div style={{
+            fontSize: 48, fontWeight: 900, lineHeight: 1,
+            fontFamily: "'Playfair Display', serif",
+            color: overall >= 70 ? C.greenLt : overall >= 40 ? C.goldLt : C.roseLt,
+          }}>{overall}%</div>
+          <div style={{ fontSize: 15, color: 'rgba(255,255,255,.45)', textAlign: 'center' }}>
+            Tiến độ tổng thể
+          </div>
+          {/* Mô tả ngắn */}
+          <div style={{
+            marginTop: 6, fontSize: 14, fontWeight: 700, textAlign: 'center',
+            color: overall >= 70 ? C.greenLt : overall >= 40 ? C.gold : C.rose,
+          }}>
+            {overall >= 70 ? '🚀 Xuất sắc' : overall >= 40 ? '📈 Đang tiến bộ' : '💪 Hãy cố lên!'}
+          </div>
+        </div>
       </div>
-      <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:'clamp(20px,2.5vw,28px)',fontWeight:900,color:C.navy,lineHeight:1.2,margin:0}}>{title}</h2>
-      {sub&&<p style={{fontSize:13,color:C.textMid,marginTop:5,lineHeight:1.7}}>{sub}</p>}
     </div>
   )
 }
-
-// ─── Stat Row — horizontal, editorial ────────────────────────────────────────
-function StatRow({icon:Icon,label,value,note,color,trend}:{icon:LucideIcon;label:string;value:string;note?:string;color:string;trend?:number}) {
-  const TIcon=trend===undefined?null:trend>0?ArrowUpRight:trend<0?ArrowDownRight:Minus
-  const tc=trend===undefined?'':trend>0?C.green:trend<0?C.rose:'#94a3b8'
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
+function KpiCard({
+  icon: Icon, label, value, sub, color, bg, trend, suffix,
+}: {
+  icon: LucideIcon; label: string; value: string | number; sub?: string
+  color: string; bg: string; trend?: number; suffix?: string
+}) {
+  const TIcon = trend === undefined ? null : trend > 0 ? ArrowUpRight : trend < 0 ? ArrowDownRight : Minus
+  const tc = trend === undefined ? '' : trend > 0 ? C.green : trend < 0 ? C.rose : C.textLt
   return (
-    <div style={{display:'flex',alignItems:'center',gap:14,padding:'13px 0',borderBottom:`1px solid ${C.borderL}`}}>
-      <div style={{width:38,height:38,borderRadius:9,background:`${color}10`,border:`1px solid ${color}20`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-        <Icon size={16} color={color}/>
-      </div>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{fontSize:12,color:C.textMid,fontWeight:500}}>{label}</div>
-        {note&&<div style={{fontSize:11,color:'#94a3b8',marginTop:1}}>{note}</div>}
-      </div>
-      <div style={{display:'flex',alignItems:'center',gap:7,flexShrink:0}}>
-        <span style={{fontSize:19,fontWeight:800,color:C.navy,fontFamily:"'DM Mono',monospace"}}>{value}</span>
-        {TIcon&&trend!==undefined&&(
-          <span style={{display:'flex',alignItems:'center',gap:2,fontSize:10,fontWeight:700,color:tc,background:`${tc}12`,padding:'2px 6px',borderRadius:5}}>
-            <TIcon size={10}/>{Math.abs(trend)}%
-          </span>
+  <div style={{
+    background: C.white, borderRadius: 20,
+    border: `1px solid rgba(201,168,76,.18)`,
+    padding: '24px 26px',
+    display: 'flex', flexDirection: 'column', gap: 12,
+    boxShadow: '0 2px 12px rgba(15,28,53,.07)',
+    transition: 'box-shadow .25s',
+  }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{
+           width: 52, height: 52, borderRadius: 15, background: bg, border: `1px solid ${color}20`,
+           display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Icon size={24} color={color} strokeWidth={1.8} />
+        </div>
+        {TIcon && trend !== undefined && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            fontSize: 13, fontWeight: 700, color: tc,
+            background: `${tc}15`, padding: '4px 10px', borderRadius: 20,
+          }}>
+            <TIcon size={13} />{Math.abs(trend)}%
+          </div>
         )}
       </div>
-    </div>
-  )
-}
-
-// ─── Progress bar ─────────────────────────────────────────────────────────────
-function ProgBar({label,done,total,color}:{label:string;done:number;total:number;color:string}) {
-  const p=pct(done,total||1)
-  return (
-    <div style={{marginBottom:14}}>
-      <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
-        <div style={{display:'flex',alignItems:'center',gap:8}}>
-          <span style={{display:'inline-flex',padding:'2px 8px',borderRadius:5,background:`${color}10`,border:`1px solid ${color}25`,fontSize:10,fontWeight:700,color}}>{label}</span>
-          <span style={{fontSize:11,color:C.textMid}}>{done}/{total} bài</span>
+      <div>
+        <div style={{ fontSize: 15, color: C.textMid, fontWeight: 500, marginBottom: 6, fontFamily: "'DM Sans', sans-serif" }}>{label}</div>
+        <div style={{ fontSize: 'clamp(22px, 3vw, 36px)', fontWeight: 900, color: C.navy, lineHeight: 1, fontFamily: "'Playfair Display', serif", letterSpacing: '-0.5px' }}>
+          {value}{suffix && <span style={{ fontSize: 17, color: C.textMid, fontWeight: 400, marginLeft: 5 }}>{suffix}</span>}
         </div>
-        <span style={{fontSize:12,fontWeight:800,color,fontFamily:"'DM Mono',monospace"}}>{p}%</span>
-      </div>
-      <div style={{height:6,background:'rgba(0,0,0,0.06)',borderRadius:3}}>
-        <div style={{width:`${p}%`,height:'100%',background:`linear-gradient(90deg,${color}88,${color})`,borderRadius:3,transition:'width .8s ease'}}/>
+        {sub && <div style={{ fontSize: 15, color: C.textLt, marginTop: 8 }}>{sub}</div>}
       </div>
     </div>
   )
 }
 
-// ─── Heatmap 52 tuần ─────────────────────────────────────────────────────────
-function Heatmap({streakDates,streakDatesArr}:{streakDates:Set<string>;streakDatesArr:string[]}) {
-  const weeks=useMemo(()=>weeklyHeatmap(streakDates),[streakDates])
-  const activeDays=streakDates.size
-  const longest=useMemo(()=>{
-    if(!streakDatesArr.length) return 0
-    const sorted=[...streakDatesArr].sort(); let max=1,cur=1
-    for(let i=1;i<sorted.length;i++){
-      const diff=(new Date(sorted[i]).getTime()-new Date(sorted[i-1]).getTime())/86400000
-      cur=diff===1?cur+1:1; max=Math.max(max,cur)
+// ─── Section Header ───────────────────────────────────────────────────────────
+function SectionHeader({ icon: Icon, title, sub, color }: {
+  icon: LucideIcon; title: string; sub?: string; color: string
+}) {
+return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+      <div style={{
+        width: 48, height: 48, borderRadius: 14,
+        background: `${color}15`, border: `1px solid ${color}28`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <Icon size={24} color={color} strokeWidth={1.8} />
+      </div>
+      <div>
+        <div style={{
+          fontSize: 18, fontWeight: 700, color: C.navy,
+          fontFamily: "'DM Sans', sans-serif", letterSpacing: '-0.2px',
+        }}>{title}</div>
+        {sub && <div style={{ fontSize: 15, color: C.textMid, marginTop: 4 }}>{sub}</div>}
+      </div>
+    </div>
+  )
+}
+
+// ─── Panel ────────────────────────────────────────────────────────────────────
+function Panel({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
+  return (
+    <div className={`dash-panel${className ? ` ${className}` : ''}`} style={{
+      background: C.white, borderRadius: 20,
+      border: `1px solid rgba(201,168,76,.18)`,
+      padding: '28px 30px',
+      boxShadow: '0 2px 12px rgba(15,28,53,.07)',
+      ...style,
+    }}>
+      {children}
+    </div>
+  )
+}
+
+// ─── Heatmap ──────────────────────────────────────────────────────────────────
+function Heatmap({ streakDates, streakDatesArr }: { streakDates: Set<string>; streakDatesArr: string[] }) {
+  const weeks = useMemo(() => weeklyHeatmap(streakDates), [streakDates])
+  const activeDays = streakDates.size
+  const longest = useMemo(() => {
+    if (!streakDatesArr.length) return 0
+    const sorted = [...streakDatesArr].sort(); let max = 1, cur = 1
+    for (let i = 1; i < sorted.length; i++) {
+      const diff = (new Date(sorted[i]).getTime() - new Date(sorted[i - 1]).getTime()) / 86400000
+      cur = diff === 1 ? cur + 1 : 1; max = Math.max(max, cur)
     }
     return max
-  },[streakDatesArr])
+  }, [streakDatesArr])
   return (
     <div>
-      <div style={{overflowX:'auto'}}>
-        <div style={{display:'flex',gap:3,minWidth:560}}>
-          {weeks.map((wk,wi)=>(
-            <div key={wi} style={{display:'flex',flexDirection:'column',gap:3}}>
-              {wk.map((c,di)=>(
+      <div style={{ overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: 4, minWidth: 660 }}>
+          {weeks.map((wk, wi) => (
+            <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {wk.map((c, di) => (
                 <div key={di} title={c.key} style={{
-                  width:11,height:11,borderRadius:2,cursor:'default',
-                  background:c.isToday?C.gold:c.active?'rgba(201,168,76,0.55)':'rgba(0,0,0,0.07)',
-                  border:c.isToday?`1px solid ${C.gold}`:'1px solid transparent',
-                  transition:'transform .1s',
+                  width: 14, height: 14, borderRadius: 3, cursor: 'default',
+                  background: c.isToday ? C.gold : c.active ? `${C.gold}55` : `${C.navy}08`,
+                  border: c.isToday ? `1px solid ${C.gold}` : '1px solid transparent',
+                  transition: 'transform .1s',
                 }}
-                  onMouseEnter={e=>(e.currentTarget.style.transform='scale(1.5)')}
-                  onMouseLeave={e=>(e.currentTarget.style.transform='scale(1)')}
+                  onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.6)')}
+                  onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
                 />
               ))}
             </div>
           ))}
         </div>
       </div>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:10,flexWrap:'wrap',gap:8}}>
-        <div style={{display:'flex',alignItems:'center',gap:5}}>
-          <span style={{fontSize:9,color:C.textMid}}>Ít</span>
-          {[0.15,0.3,0.5,0.7,0.9].map((o,i)=>(
-            <div key={i} style={{width:9,height:9,borderRadius:2,background:`rgba(201,168,76,${o})`}}/>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 13, color: C.textLt }}>Ít</span>
+         {[0.12, 0.28, 0.46, 0.65, 0.85].map((o, i) => (
+          <div key={i} style={{ width: 11, height: 11, borderRadius: 3, background: `rgba(201,147,58,${o})` }} />
           ))}
-          <span style={{fontSize:9,color:C.textMid}}>Nhiều</span>
+          <span style={{ fontSize: 11, color: C.textLt }}>Nhiều</span>
         </div>
-        <div style={{display:'flex',gap:20}}>
-          <div style={{textAlign:'center'}}>
-            <div style={{fontSize:14,fontWeight:800,color:C.gold,fontFamily:"'DM Mono',monospace"}}>{activeDays}</div>
-            <div style={{fontSize:9,color:C.textMid}}>Ngày hoạt động</div>
+        <div style={{ display: 'flex', gap: 24 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 26, fontWeight: 900, color: C.gold,
+              fontFamily: "'Playfair Display', serif" }}>{activeDays}</div>
+            <div style={{ fontSize: 14, color: C.textMid }}>Ngày hoạt động</div>
           </div>
-          <div style={{textAlign:'center'}}>
-            <div style={{fontSize:14,fontWeight:800,color:C.green,fontFamily:"'DM Mono',monospace"}}>{longest}</div>
-            <div style={{fontSize:9,color:C.textMid}}>Streak dài nhất</div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 26, fontWeight: 900, color: C.green, fontFamily: "'Playfair Display', serif" }}>{longest}</div>
+            <div style={{ fontSize: 14, color: C.textMid }}>Streak dài nhất</div>
           </div>
         </div>
       </div>
@@ -281,757 +502,1128 @@ function Heatmap({streakDates,streakDatesArr}:{streakDates:Set<string>;streakDat
   )
 }
 
-// ─── Range selector ───────────────────────────────────────────────────────────
-function RangeBar({value,onChange}:{value:string;onChange:(r:string)=>void}) {
+// ─── Progress Bar Row ─────────────────────────────────────────────────────────
+function ProgRow({ label, done, total, color }: { label: string; done: number; total: number; color: string }) {
+  const p = pct(done, total || 1)
   return (
-    <div style={{display:'flex',gap:2,background:C.cream,borderRadius:9,padding:3,border:`1px solid ${C.borderL}`}}>
-      {RANGE_OPTS.map(o=>(
-        <button key={o.key} onClick={()=>onChange(o.key)} style={{
-          padding:'5px 11px',borderRadius:7,fontSize:11,fontWeight:700,
-          border:'none',cursor:'pointer',transition:'all .15s',
-          fontFamily:"'DM Sans',sans-serif",
-          background:value===o.key?C.gold:'transparent',
-          color:value===o.key?C.navy:C.textMid,
-        }}>{o.label}</button>
-      ))}
+    <div style={{ marginBottom: 13 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            display: 'inline-block', padding: '1px 8px', borderRadius: 5,
+            background: `${color}14`, border: `1px solid ${color}28`,
+            fontSize: 12, fontWeight: 700, color,
+          }}>{label}</span>
+          <span style={{ fontSize: 12, color: C.textMid }}>{done}/{total}</span>
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 700, color }}>{p}%</span>
+      </div>
+      <div style={{ height: 6, background: `${C.navy}08`, borderRadius: 3 }}>
+        <div style={{ width: `${p}%`, height: '100%',background: color,borderRadius: 3, transition: 'width .85s cubic-bezier(.16,1,.3,1)',}} />
+      </div>
     </div>
   )
 }
 
 // ─── AI Insight ───────────────────────────────────────────────────────────────
-function AIInsight({profile,dueToday,totalMastered,avgScore}:{profile:Profile|null;dueToday:number;totalMastered:number;avgScore:number}) {
-  const [text,setText]=useState('')
-  const [loading,setLoading]=useState(false)
-  const [done,setDone]=useState(false)
-  const run=useCallback(async()=>{
-    if(loading||!profile) return
+function AIInsight({ profile, dueToday, totalMastered, avgScore }: {
+  profile: Profile | null; dueToday: number; totalMastered: number; avgScore: number
+}) {
+  const [text, setText] = useState('')
+  const [prevText, setPrevText] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+
+  const run = useCallback(async () => {
+    if (loading || !profile) return
+    setPrevText(text)
     setLoading(true)
     try {
-      const res=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`Gia sư AI cho ${profile.ho_ten}. Dữ liệu: ${profile.muc_tieu_hoc}|${profile.trinh_do_hien_tai}|Streak ${profile.streak_hien_tai}|Thuần thục ${totalMastered}|Ôn hôm nay ${dueToday}|Điểm TB ${avgScore}%|Yếu ${profile.diem_yeu??'chưa rõ'}. 3 nhận xét sắc bén (emoji + 1 dòng) + 1 mục tiêu tuần (**...**). Tối đa 100 từ tiếng Việt.`}]}),
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+          messages: [{ role: 'user', content: `Gia sư AI cho ${profile.ho_ten}. Dữ liệu: ${profile.muc_tieu_hoc}|${profile.trinh_do_hien_tai}|Streak ${profile.streak_hien_tai}|Thuần thục ${totalMastered}|Ôn hôm nay ${dueToday}|Điểm TB ${avgScore}%|Yếu ${profile.diem_yeu ?? 'chưa rõ'}. 3 nhận xét sắc bén (emoji + 1 dòng) + 1 mục tiêu tuần (**...**). Tối đa 100 từ tiếng Việt.` }],
+        }),
       })
-      const d=await res.json()
-      setText(d.content?.map((b:{text?:string})=>b.text||'').join('')||'...')
+      const d = await res.json()
+      setText(d.content?.map((b: { text?: string }) => b.text || '').join('') || '...')
       setDone(true)
     } catch { setText('Không kết nối được AI.'); setDone(true) }
     finally { setLoading(false) }
-  },[loading,profile,dueToday,totalMastered,avgScore])
+  }, [loading, profile, dueToday, totalMastered, avgScore, text])
 
   return (
-    <div style={{background:`linear-gradient(135deg,${C.goldPale},${C.white})`,border:`1px solid ${C.border}`,borderRadius:16,padding:24}}>
-      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
-        <div style={{width:34,height:34,borderRadius:9,background:`${C.gold}12`,border:`1px solid ${C.gold}25`,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <Sparkles size={15} color={C.gold}/>
+    <Panel>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: 12,
+            background: 'rgba(201,168,76,.1)',
+            border: '1px solid rgba(201,168,76,.28)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Sparkles size={16} color={C.gold} />
+          </div>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: C.navy }}>AI Insight</div>
+            <div style={{ fontSize: 14, color: C.textMid }}>Phân tích cá nhân hoá</div>
+          </div>
         </div>
-        <div>
-          <div style={{fontSize:13,fontWeight:700,color:C.navy}}>AI Insight</div>
-          <div style={{fontSize:10,color:C.textMid}}>Phân tích cá nhân hoá từ dữ liệu thực</div>
-        </div>
+        {done && !loading && (
+          <button onClick={() => { run() }} style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '5px 10px', borderRadius: 7, background: 'transparent',
+            border: `1px solid ${C.border}`, color: C.textMid, fontSize: 12, cursor: 'pointer',
+            fontFamily: "'DM Sans', sans-serif",
+          }}>
+            <RefreshCw size={11} /> Làm mới
+          </button>
+        )}
       </div>
-      {!done?(
-        <div style={{textAlign:'center',padding:'14px 0'}}>
-          <p style={{fontSize:12,color:C.textMid,marginBottom:14,lineHeight:1.7}}>AI phân tích toàn bộ dữ liệu học tập và đưa ra lời khuyên cá nhân hóa</p>
-          <button onClick={run} disabled={loading} style={{display:'inline-flex',alignItems:'center',gap:7,padding:'9px 20px',borderRadius:50,background:loading?`${C.gold}14`:C.gold,border:'none',color:loading?C.gold:C.navy,fontSize:12,fontWeight:700,cursor:loading?'default':'pointer',fontFamily:"'DM Sans',sans-serif"}}>
-            {loading?<><Loader2 size={13} style={{animation:'spin 1s linear infinite'}}/> Đang phân tích...</>:<><Sparkles size={13}/> Phân tích ngay</>}
+
+      {!done ? (
+        <div style={{ textAlign: 'center', padding: '8px 0 12px' }}>
+          <p style={{ fontSize: 16, color: C.textMid, marginBottom: 16, lineHeight: 1.75 }}>
+            AI phân tích dữ liệu học tập và đưa ra lời khuyên cá nhân hoá cho bạn.
+          </p>
+          <button onClick={run} disabled={loading} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '10px 24px', borderRadius: 50,
+            background: loading ? 'rgba(201,168,76,.1)' : C.gold,
+            border: 'none', color: loading ? C.gold : C.navy,
+            fontSize: 13, fontWeight: 700, cursor: loading ? 'default' : 'pointer',
+            fontFamily: "'DM Sans', sans-serif",
+            boxShadow: loading ? 'none' : '0 6px 20px rgba(201,168,76,.35)',
+            transition: 'all .32s cubic-bezier(.34,1.56,.64,1)',
+            transformOrigin: 'center',
+          }}>
+            {loading
+              ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Đang phân tích...</>
+              : <><Sparkles size={14} /> Phân tích ngay</>}
           </button>
         </div>
-      ):(
-        <div>
-          <div style={{fontSize:13,color:C.text,lineHeight:1.9,whiteSpace:'pre-line',background:C.white,borderRadius:10,padding:'12px 14px',border:`1px solid ${C.borderL}`}}>{text}</div>
-          <button onClick={()=>{setDone(false);setText('')}} style={{display:'inline-flex',alignItems:'center',gap:5,marginTop:8,padding:'4px 10px',borderRadius:6,background:'transparent',border:`1px solid ${C.borderL}`,color:C.textMid,fontSize:10,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>
-            <RefreshCw size={10}/> Làm mới
-          </button>
+      ) : (
+        <div style={{
+          fontSize: 16, color: C.text, lineHeight: 1.85, whiteSpace: 'pre-line',
+          background: `${C.navy}04`, borderRadius: 10,
+          padding: '14px 16px', border: `1px solid ${C.border}`,
+          opacity: loading ? 0.4 : 1,
+          transition: 'opacity .3s ease',
+          position: 'relative',
+        }}>
+          {loading && prevText ? prevText : text}
+          {loading && (
+            <div style={{
+              position: 'absolute', top: 10, right: 12,
+              display: 'flex', alignItems: 'center', gap: 5,
+              fontSize: 12, color: C.gold,
+            }}>
+              <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
+              Đang cập nhật...
+            </div>
+          )}
         </div>
       )}
+    </Panel>
+  )
+}
+// ─── Empty State ──────────────────────────────────────────────────────────────
+function EmptyChart({ label, href }: { label: string; href: string }) {
+  return (
+    <div style={{
+      minHeight: 180, height: 180, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: 10,
+    }}>
+      <BarChart2 size={30} color={C.gold} opacity={0.3} />
+      <div style={{ fontSize: 14, color: C.textMid }}>{label}</div>
+      <Link href={href} style={{
+        fontSize: 13, color: C.gold, fontWeight: 700,
+        textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4,
+      }}>
+        Bắt đầu ngay <ChevronRight size={12} />
+      </Link>
     </div>
   )
 }
 
-// ─── Tab config ───────────────────────────────────────────────────────────────
-const TABS=[
-  {key:'overview',label:'Tổng quan',  Icon:LayoutDashboard},
-  {key:'vocab',   label:'Từ vựng',    Icon:BookOpen},
-  {key:'exam',    label:'Luyện thi',  Icon:FileText},
-  {key:'grammar', label:'Ngữ pháp',   Icon:Brain},
-  {key:'time',    label:'Thời gian',  Icon:Clock},
-]
-
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function DashboardClient({
-  profile,allVocabProgress,dueTodayCount,totalMastered,totalLearning,totalReview,totalNew,
-  streakDatesArr,recentExams,avgScoreAll,allGrammarProgress,allGrammarLessons,grammarDoneCount,chatHistory,
-}:Props) {
-  const [range,setRange]=useState('month')
-  const [activeTab,setActiveTab]=useState('overview')
-  const [isMobile,setIsMobile]=useState(false)
+  profile, allVocabProgress, dueTodayCount, totalMastered, totalLearning, totalReview, totalNew,
+  streakDatesArr, recentExams, avgScoreAll, allGrammarProgress, allGrammarLessons,
+  grammarDoneCount, chatHistory,
+}: Props) {
+  const [range, setRange] = useState('month')
+  const [isMobile, setIsMobile] = useState(false)
 
-  useEffect(()=>{
-    const check=()=>setIsMobile(window.innerWidth<768)
-    check(); window.addEventListener('resize',check); return()=>window.removeEventListener('resize',check)
-  },[])
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check(); window.addEventListener('resize', check); return () => window.removeEventListener('resize', check)
+  }, [])
 
-  const rangeDays   =RANGE_OPTS.find(r=>r.key===range)?.days??30
-  const streakDates =useMemo(()=>new Set(streakDatesArr),[streakDatesArr])
-  const examInRange =useMemo(()=>filterByDays(recentExams,rangeDays),[recentExams,rangeDays])
-  const chatInRange =useMemo(()=>filterByDays(chatHistory,rangeDays).length,[chatHistory,rangeDays])
+  const rangeDays    = RANGE_OPTS.find(r => r.key === range)?.days ?? 30
+  const rangeLabel   = RANGE_OPTS.find(r => r.key === range)?.label ?? 'Tháng'
+  const streakDates  = useMemo(() => new Set(streakDatesArr), [streakDatesArr])
+  const examInRange  = useMemo(() => filterByDays(recentExams, rangeDays), [recentExams, rangeDays])
+  const chatInRange  = useMemo(() => filterByDays(chatHistory, rangeDays).length, [chatHistory, rangeDays])
 
-  const avgScoreRange=useMemo(()=>{
-    if(!examInRange.length) return 0
-    return Math.round(examInRange.reduce((s,r)=>s+pct(r.so_cau_dung,r.tong_so_cau),0)/examInRange.length)
-  },[examInRange])
+  const avgScoreRange = useMemo(() => {
+    if (!examInRange.length) return 0
+    return Math.round(examInRange.reduce((s, r) => s + pct(r.so_cau_dung, r.tong_so_cau), 0) / examInRange.length)
+  }, [examInRange])
 
-  const examChartData  =useMemo(()=>groupExams(recentExams,rangeDays),[recentExams,rangeDays])
-  const vocabChartData =useMemo(()=>groupVocab(allVocabProgress),[allVocabProgress])
+  const examChartData = useMemo(() => groupExams(recentExams, rangeDays), [recentExams, rangeDays])
+  const vocabChartData = useMemo(() => groupVocabByDay(allVocabProgress, rangeDays), [allVocabProgress, rangeDays])
 
-  const bySkill=useMemo(()=>{
-    const m:Record<string,{total:number;correct:number;count:number;thoiGian:number}>={}
-    examInRange.forEach(r=>{
-      const k=r.ky_nang??'OTHER'
-      if(!m[k]) m[k]={total:0,correct:0,count:0,thoiGian:0}
-      m[k].total+=r.tong_so_cau??0; m[k].correct+=r.so_cau_dung??0
-      m[k].count++; m[k].thoiGian+=r.thoi_gian_lam_bai??0
+  const bySkill = useMemo(() => {
+    const m: Record<string, { total: number; correct: number; count: number; thoiGian: number }> = {}
+    examInRange.forEach(r => {
+      const k = r.ky_nang ?? 'OTHER'
+      if (!m[k]) m[k] = { total: 0, correct: 0, count: 0, thoiGian: 0 }
+      m[k].total += r.tong_so_cau ?? 0; m[k].correct += r.so_cau_dung ?? 0
+      m[k].count++; m[k].thoiGian += r.thoi_gian_lam_bai ?? 0
     })
     return m
-  },[examInRange])
+  }, [examInRange])
 
-  const certPie=useMemo(()=>{
-    const m:Record<string,number>={}
-    examInRange.forEach(r=>{m[r.loai_chung_chi??'?']=(m[r.loai_chung_chi??'?']??0)+1})
-    return Object.entries(m).map(([name,value])=>({name,value,color:CERT_COLORS[name]??'#94a3b8'}))
-  },[examInRange])
+  const certPie = useMemo(() => {
+    const m: Record<string, number> = {}
+    examInRange.forEach(r => { m[r.loai_chung_chi ?? '?'] = (m[r.loai_chung_chi ?? '?'] ?? 0) + 1 })
+    return Object.entries(m).map(([name, value]) => ({ name, value, color: CERT_COLORS[name] ?? '#94A3B8' }))
+  }, [examInRange])
 
-  const byLevel=useMemo(()=>{
-    const m:Record<string,number>={}
-    allVocabProgress.forEach(r=>{const lv=r.TuVung?.cap_do??'N/A';m[lv]=(m[lv]??0)+1})
+  const vocabByLevel = useMemo(() => {
+    const m: Record<string, number> = {}
+    allVocabProgress.forEach(r => { const lv = r.TuVung?.cap_do ?? 'N/A'; m[lv] = (m[lv] ?? 0) + 1 })
     return m
-  },[allVocabProgress])
+  }, [allVocabProgress])
 
-  const grammarByLevel=useMemo(()=>{
-    const total:Record<string,number>={},done:Record<string,number>={}
-    allGrammarLessons.forEach(l=>{total[l.cap_do??'?']=(total[l.cap_do??'?']??0)+1})
-    allGrammarProgress.filter(g=>g.da_hoan_thanh).forEach(g=>{const lv=g.BaiHocNguPhap?.cap_do??'?';done[lv]=(done[lv]??0)+1})
-    return LEVEL_ORDER.map((lv,i)=>({lv,color:LEVEL_COLORS[i],done:done[lv]??0,total:total[lv]??0}))
-  },[allGrammarProgress,allGrammarLessons])
-
-  const radarData=useMemo(()=>Object.entries(bySkill).map(([k,v])=>({skill:SKILL_META[k]?.label??k,diemTB:pct(v.correct,v.total)})),[bySkill])
-  const totalThoiGian     =useMemo(()=>recentExams.reduce((s,r)=>s+(r.thoi_gian_lam_bai??0),0),[recentExams])
-  const totalThoiGianRange=useMemo(()=>examInRange.reduce((s,r)=>s+(r.thoi_gian_lam_bai??0),0),[examInRange])
-  const bestExam =useMemo(()=>examInRange.length?examInRange.reduce((b,r)=>pct(r.so_cau_dung,r.tong_so_cau)>pct(b.so_cau_dung,b.tong_so_cau)?r:b,examInRange[0]):null,[examInRange])
-  const worstExam=useMemo(()=>examInRange.length?examInRange.reduce((w,r)=>pct(r.so_cau_dung,r.tong_so_cau)<pct(w.so_cau_dung,w.tong_so_cau)?r:w,examInRange[0]):null,[examInRange])
-  const grammarAvg=useMemo(()=>{const d=allGrammarProgress.filter(g=>g.diem_bai_tap!=null);return d.length?Math.round(d.reduce((s,g)=>s+(g.diem_bai_tap??0),0)/d.length*10):0},[allGrammarProgress])
-
-  const chatGrouped=useMemo(()=>{
-    const m:Record<string,number>={}
-    filterByDays(chatHistory,rangeDays).forEach(c=>{
-      if(!c.created_at) return
-      const d=new Date(c.created_at)
-      const k=rangeDays<=30?`${d.getDate()}/${d.getMonth()+1}`:`T${d.getMonth()+1}`
-      m[k]=(m[k]??0)+1
+  const grammarByLevel = useMemo(() => {
+    const total: Record<string, number> = {}, done: Record<string, number> = {}
+    allGrammarLessons.forEach(l => { total[l.cap_do ?? '?'] = (total[l.cap_do ?? '?'] ?? 0) + 1 })
+    allGrammarProgress.filter(g => g.da_hoan_thanh).forEach(g => {
+      const lv = g.BaiHocNguPhap?.cap_do ?? '?'; done[lv] = (done[lv] ?? 0) + 1
     })
-    return Object.entries(m).map(([label,count])=>({label,count}))
-  },[chatHistory,rangeDays])
+    return LEVEL_ORDER.map((lv, i) => ({ lv, color: LEVEL_COLORS[i], done: done[lv] ?? 0, total: total[lv] ?? 0 }))
+  }, [allGrammarProgress, allGrammarLessons])
 
-  const hourDist=useMemo(()=>{
-    const b=Array(24).fill(0).map((_,h)=>({hour:`${h}h`,count:0,h}))
-    recentExams.forEach(r=>{if(r.created_at) b[new Date(r.created_at).getHours()].count++})
-    return b.filter(b=>b.h>=5&&b.h<=23)
-  },[recentExams])
+  const radarData = useMemo(() =>
+    Object.entries(bySkill).map(([k, v]) => ({ skill: SKILL_META[k]?.label ?? k, diem: pct(v.correct, v.total) }))
+  , [bySkill])
 
-  const streak=profile?.streak_hien_tai??0
-  const streakMax=profile?.streak_cao_nhat??0
+  const skillBarData = useMemo(() =>
+    Object.entries(bySkill).map(([k, v]) => ({
+      skill: SKILL_META[k]?.label ?? k,
+      diem: pct(v.correct, v.total),
+      color: SKILL_META[k]?.color ?? C.gold,
+    }))
+  , [bySkill])
 
-  const g2=isMobile?'1fr':'1fr 1fr'
-  const axisTick={fontSize:10,fill:C.textMid,fontFamily:"'DM Sans',sans-serif"}
-  const ttStyle={background:C.white,border:`1px solid ${C.border}`,borderRadius:10,fontFamily:"'DM Sans',sans-serif"}
+  const totalThoiGian      = useMemo(() => recentExams.reduce((s, r) => s + (r.thoi_gian_lam_bai ?? 0), 0), [recentExams])
+  const totalThoiGianRange = useMemo(() => examInRange.reduce((s, r) => s + (r.thoi_gian_lam_bai ?? 0), 0), [examInRange])
+  const grammarAvg = useMemo(() => {
+    const d = allGrammarProgress.filter(g => g.diem_bai_tap != null)
+    return d.length ? Math.round(d.reduce((s, g) => s + (g.diem_bai_tap ?? 0), 0) / d.length * 10) : 0
+  }, [allGrammarProgress])
 
-  const Divider=()=><hr style={{border:'none',borderTop:`1px solid ${C.borderL}`,margin:'28px 0'}}/>
+  const chatGrouped = useMemo(() => {
+    const m: Record<string, number> = {}
+    filterByDays(chatHistory, rangeDays).forEach(c => {
+      if (!c.created_at) return
+      const d = new Date(c.created_at)
+      const k = rangeDays <= 30 ? `${d.getDate()}/${d.getMonth() + 1}` : `T${d.getMonth() + 1}`
+      m[k] = (m[k] ?? 0) + 1
+    })
+    return Object.entries(m).map(([label, count]) => ({ label, count }))
+  }, [chatHistory, rangeDays])
+
+  const hourDist = useMemo(() => {
+    const b = Array(24).fill(0).map((_, h) => ({ hour: `${h}h`, count: 0, h }))
+    recentExams.forEach(r => { if (r.created_at) b[new Date(r.created_at).getHours()].count++ })
+    return b.filter(b => b.h >= 5 && b.h <= 23)
+  }, [recentExams])
+
+  const streak    = profile?.streak_hien_tai ?? 0
+  const streakMax = profile?.streak_cao_nhat ?? 0
+
+  const col2 = isMobile ? '1fr' : '1fr 1fr'
+  const col3 = isMobile ? '1fr' : '1fr 1fr 1fr'
+  const col4 = isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr'
+
+  const axis = { fontSize: 14, fill: C.textMid, fontFamily: "'DM Sans', sans-serif" }
+  const ttStyle = {
+    background: C.white, border: `1px solid ${C.border}`,
+    borderRadius: 12, fontFamily: "'DM Sans', sans-serif",
+  }
+  const maxHour = Math.max(...hourDist.map(d => d.count))
+
+  // ─── Vocab SRS pie data
+  const srsPie = [
+    { name: 'Thuần thục', value: totalMastered,  color: C.green   },
+    { name: 'Đang học',   value: totalLearning,  color: C.blueLt  },
+    { name: 'Cần ôn',     value: totalReview,    color: C.gold    },
+    { name: 'Chưa học',   value: totalNew,        color: C.textLt  },
+  ].filter(d => d.value > 0)
 
   return (
-    // Không có header riêng — StudentNavbar đã có ở layout.tsx
-    <div style={{background:C.cream,minHeight:'100vh',fontFamily:"'DM Sans',sans-serif"}}>
-      <style suppressHydrationWarning dangerouslySetInnerHTML={{__html:`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500;600&display=swap');
-        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-        ::-webkit-scrollbar{width:4px;height:4px}
-        ::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.3);border-radius:4px}
-        ::-webkit-scrollbar-track{background:transparent}
-        .recharts-cartesian-grid-horizontal line,.recharts-cartesian-grid-vertical line{stroke:rgba(0,0,0,0.05)!important}
-      `}}/>
+  <div style={{
+    background: C.bg, minHeight: '100vh',
+    fontFamily: "'DM Sans', sans-serif",
+  }}>
 
-      {/* ── Tab bar + Range — sticky dưới StudentNavbar ── */}
-      <div style={{
-        position:'sticky',top:60,zIndex:90,
-        background:'rgba(255,255,255,0.96)',backdropFilter:'blur(12px)',
-        borderBottom:`1px solid ${C.borderL}`,
-        boxShadow:'0 1px 8px rgba(15,28,53,0.05)',
-      }}>
-        <div style={{maxWidth:1280,margin:'0 auto',padding:'0 clamp(12px,3vw,28px)',height:52,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+    <style suppressHydrationWarning dangerouslySetInnerHTML={{
+      __html: `
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+@keyframes fadeUp { from { opacity:0;transform:translateY(16px) } to { opacity:1;transform:translateY(0) } }
+::-webkit-scrollbar { width: 4px; height: 4px }
+::-webkit-scrollbar-thumb { background: rgba(201,168,76,.25); border-radius: 4px }
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line { stroke: rgba(15,28,53,.05) !important }
+.recharts-tooltip-wrapper { outline: none !important }
+.dash-card { animation: fadeUp .4s cubic-bezier(.16,1,.3,1) both }
 
-          {/* Tabs */}
-          <nav style={{display:'flex',gap:2,overflowX:'auto'}}>
-            {TABS.map(t=>(
-              <button key={t.key} onClick={()=>setActiveTab(t.key)} style={{
-                display:'flex',alignItems:'center',gap:5,padding:'6px 13px',
-                borderRadius:8,fontSize:12,fontWeight:700,border:'none',cursor:'pointer',
-                transition:'all .15s',whiteSpace:'nowrap',fontFamily:"'DM Sans',sans-serif",
-                background:activeTab===t.key?C.navy:'transparent',
-                color:activeTab===t.key?'#fff':C.textMid,
-              }}>
-                <t.Icon size={12}/>{t.label}
-              </button>
-            ))}
-          </nav>
+/* ── BASE SCALE — giống Landing ── */
+* { box-sizing: border-box; }
+body, .dash-root { font-size: 16px; line-height: 1.7; }
 
-          {/* Range */}
-          <RangeBar value={range} onChange={setRange}/>
+/* ── RESPONSIVE ── */
+@media (max-width: 1024px) {
+  .dash-grid-4  { grid-template-columns: 1fr 1fr !important; }
+  .dash-grid-3  { grid-template-columns: 1fr 1fr !important; }
+  .dash-grid-2l { grid-template-columns: 1fr !important; }
+  .dash-grid-3l { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 768px) {
+  .dash-grid-4  { grid-template-columns: 1fr 1fr !important; }
+  .dash-grid-3  { grid-template-columns: 1fr !important; }
+  .dash-grid-2  { grid-template-columns: 1fr !important; }
+  .dash-grid-2l { grid-template-columns: 1fr !important; }
+  .dash-grid-3l { grid-template-columns: 1fr !important; }
+  .dash-hide-mobile { display: none !important; }
+  .dash-panel { padding: 18px 16px !important; }
+}
+@media (max-width: 480px) {
+  .dash-grid-4  { grid-template-columns: 1fr !important; }
+  .dash-header-row { flex-direction: column !important; align-items: flex-start !important; }
+  .dash-range-sel { width: 100% !important; justify-content: space-between !important; }
+  .dash-range-sel button { padding: 6px 10px !important; font-size: 12px !important; }
+}
+`
+      }} />
+
+      <div style={{ maxWidth: 1320, margin: '0 auto', padding: '28px clamp(12px,3vw,32px) 72px' }}>
+
+        {/* ── Header row ── */}
+        <div className="dash-header-row" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: 12, marginBottom: 28,
+        }}>
+        <div>
+          <h1 style={{ fontSize: 'clamp(22px,2.5vw,32px)', fontWeight: 900, color: C.navy, margin: 0, fontFamily: "'Playfair Display', serif", letterSpacing: '-0.3px' }}>
+            Thống kê học tập
+          </h1>
+          <p style={{ fontSize: 13, color: C.textLt, marginTop: 4, fontWeight: 400 }}>
+            {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
         </div>
-      </div>
 
-      {/* ── Main content ── */}
-      <main style={{maxWidth:1280,margin:'0 auto',padding:'28px clamp(12px,3vw,28px) 64px'}}>
-
-        {/* Banner ôn tập */}
-        {dueTodayCount>0&&(
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10,background:'linear-gradient(90deg,rgba(0,168,120,0.06),rgba(0,168,120,0.02))',border:'1px solid rgba(0,168,120,0.18)',borderRadius:14,padding:'12px 18px',marginBottom:24}}>
-            <div style={{display:'flex',alignItems:'center',gap:11}}>
-              <div style={{width:32,height:32,borderRadius:8,background:'rgba(0,168,120,0.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                <Zap size={15} color={C.green}/>
+      {/* Range selector */}
+      <div className="dash-range-sel" style={{
+        display: 'flex', gap: 3, background: C.white,
+        borderRadius: 50, padding: 4,
+        border: `1px solid rgba(201,168,76,.22)`,
+        boxShadow: '0 2px 12px rgba(15,28,53,.07)',
+        }}>
+          {RANGE_OPTS.map(o => (
+            <button key={o.key} onClick={() => setRange(o.key)} style={{
+              padding: '6px 18px', borderRadius: 50,
+              fontSize: 13, fontWeight: 700,
+              border: 'none', cursor: 'pointer',
+              transition: 'all .28s cubic-bezier(.16,1,.3,1)',
+              fontFamily: "'DM Sans', sans-serif",
+              background: range === o.key ? C.navy : 'transparent',
+              color: range === o.key ? '#fff' : C.textMid,
+              boxShadow: range === o.key ? '0 2px 10px rgba(15,28,53,.22)' : 'none',
+           }}>{o.label}</button>
+          ))}
+        </div>
+        </div>
+        {/* ── Personal Roadmap ── */}
+        <PersonalRoadmap
+        profile={profile}
+        totalMastered={totalMastered}
+        avgScore={avgScoreAll}
+        grammarDoneCount={grammarDoneCount}
+        totalGrammar={allGrammarLessons.length}
+        />
+        {/* ── Due today banner ── */}
+        {dueTodayCount > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: 10,
+            background: `rgba(0,168,120,.05)`,
+            border: `1px solid rgba(0,168,120,.2)`, borderRadius: 20,
+            padding: '13px 20px', marginBottom: 24,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 52, height: 52, borderRadius: 14, background: `${C.green}15`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                  <Zap size={26} color={C.green} strokeWidth={1.8} />
               </div>
               <div>
-                <div style={{fontSize:13,fontWeight:800,color:C.green}}>{dueTodayCount} từ cần ôn tập hôm nay!</div>
-                <div style={{fontSize:11,color:C.textMid}}>Ôn đúng lịch SRS giúp ghi nhớ lâu hơn 60% — Đừng bỏ lỡ!</div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: C.green }}>
+                  {dueTodayCount} từ cần ôn tập hôm nay!
+                </div>
+                <div style={{ fontSize: 15, color: C.textMid, marginTop: 3  }}>
+                  Ôn đúng lịch SRS giúp ghi nhớ lâu hơn 60% — đừng bỏ lỡ!
+                </div>
               </div>
             </div>
-            <Link href="/vocabulary?mode=review" style={{display:'inline-flex',alignItems:'center',gap:6,padding:'7px 15px',borderRadius:8,background:C.green,color:'#fff',fontSize:12,fontWeight:800,textDecoration:'none',fontFamily:"'DM Sans',sans-serif"}}>
-              Ôn ngay <ChevronRight size={13}/>
+            <Link href="/vocabulary?mode=review" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '9px 20px', borderRadius: 50,
+              background: C.green, color: '#fff', fontSize: 13, fontWeight: 700,
+              fontFamily: "'DM Sans', sans-serif",
+              boxShadow: `0 4px 14px rgba(0,168,120,.3)`,
+              transition: 'all .28s cubic-bezier(.34,1.56,.64,1)',
+            }}>
+              Ôn ngay <ChevronRight size={13} />
             </Link>
           </div>
         )}
 
-        {/* ════ TỔNG QUAN ════════════════════════════════════════════════ */}
-        {activeTab==='overview'&&(
-          <div>
-            <SectionTitle tag="Tổng quan" title="Bức tranh học tập của bạn" sub={`Kỳ: ${RANGE_OPTS.find(r=>r.key===range)?.label} · Cập nhật thực tế`}/>
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 1 — KPI CARDS (4 cột)
+        ═══════════════════════════════════════════════════════════ */}
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: col4, gap: 14, marginBottom: 20 }}>
+          <div className="dash-card" style={{ animationDelay: '0ms' }}>
+            <KpiCard icon={Flame} label="Streak hiện tại" value={`🔥 ${streak}`} suffix="ngày"
+            sub={`Kỷ lục cá nhân: ${streakMax} ngày`} color={C.gold} bg={C.goldPale}
+            />
+          </div>
+          <div className="dash-card" style={{ animationDelay: '60ms' }}>
+            <KpiCard icon={BookOpen} label="Tổng từ đã học" value={fmt(profile?.tong_so_tu_da_hoc)} suffix="từ"
+            sub={`${dueTodayCount} từ đến hạn ôn hôm nay`} color={C.blueLt} bg="#EBF4FF"
+            />
+          </div>
+          <div className="dash-card" style={{ animationDelay: '120ms' }}>
+            <KpiCard icon={Target} label={`Điểm TB (${rangeLabel})`} value={avgScoreRange || '—'}
+            suffix={avgScoreRange ? '%' : ''} sub={`${examInRange.length} phiên thi`}
+            color={C.violet} bg="#F0EFFE"
+            />
+          </div>
+          <div className="dash-card" style={{ animationDelay: '180ms' }}>
+            <KpiCard
+              icon={Clock} label={`Thời gian (${rangeLabel})`}
+              value={fmtH(totalThoiGianRange)}
+              sub={`Tổng tất cả: ${fmtH(totalThoiGian)}`}
+              color={C.rose} bg="#FEF2F2"
+            />
+          </div>
+        </div>
 
-            {/* Stat rows + AI Insight */}
-            <div style={{display:'grid',gridTemplateColumns:g2,gap:20,marginBottom:28}}>
-              <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`}}>
-                <div style={{fontSize:11,fontWeight:700,color:C.textMid,textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:2}}>Chỉ số học tập</div>
-                <StatRow icon={Flame}        label="Streak hiện tại"   value={`🔥 ${streak} ngày`}  note={`Kỷ lục cá nhân: ${streakMax} ngày`} color={C.gold}    trend={streak>=(streakMax*0.8)?12:-5}/>
-                <StatRow icon={BookOpen}     label="Tổng từ đã học"    value={fmt(profile?.tong_so_tu_da_hoc)} note={`${dueTodayCount} từ cần ôn hôm nay`} color='#0ea5e9' trend={8}/>
-                <StatRow icon={CheckCircle2} label="Tỷ lệ thuần thục"  value={`${pct(totalMastered,allVocabProgress.length||1)}%`} note={`${fmt(totalMastered)}/${fmt(allVocabProgress.length)} từ`} color={C.greenLt} trend={15}/>
-                <StatRow icon={Target}       label="Điểm TB luyện thi" value={avgScoreRange?`${avgScoreRange}%`:'—'} note={`${examInRange.length} phiên · ${RANGE_OPTS.find(r=>r.key===range)?.label}`} color={C.violet} trend={examInRange.length>0?4:undefined}/>
-                <StatRow icon={Clock}        label="Thời gian học"     value={fmtH(totalThoiGianRange)} note={`Tổng tất cả: ${fmtH(totalThoiGian)}`} color={C.rose}/>
-                <div style={{paddingTop:8,display:'flex',gap:16}}>
-                  {[{val:`${grammarDoneCount}/${allGrammarLessons.length}`,lbl:'Bài ngữ pháp',c:C.violet},{val:fmt(chatInRange),lbl:'Câu AI (kỳ này)',c:'#0ea5e9'},{val:`${grammarAvg}%`,lbl:'Điểm ngữ pháp TB',c:C.gold}].map((s,i)=>(
-                    <div key={i} style={{textAlign:'center',flex:1}}>
-                      <div style={{fontSize:15,fontWeight:800,color:s.c,fontFamily:"'DM Mono',monospace"}}>{s.val}</div>
-                      <div style={{fontSize:10,color:C.textMid,marginTop:1}}>{s.lbl}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <AIInsight profile={profile} dueToday={dueTodayCount} totalMastered={totalMastered} avgScore={avgScoreAll}/>
+        {/* ── Row 2: 4 KPI nhỏ hơn ── */}
+        <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: col4, gap: 14, marginBottom: 28 }}>
+          {[
+            { icon: CheckCircle2, label: 'Thuần thục', value: fmt(totalMastered), sub: `${pct(totalMastered, allVocabProgress.length || 1)}% tổng từ`, color: C.green,  bg: '#E6FDF4' },
+            { icon: Brain,        label: 'Bài ngữ pháp', value: `${grammarDoneCount}/${allGrammarLessons.length}`, sub: `Điểm TB ${grammarAvg}%`, color: C.violet, bg: '#F0EFFE' },
+            { icon: MessageSquare,label: `Câu AI (${rangeLabel})`, value: fmt(chatInRange), sub: `Tổng: ${fmt(chatHistory.length)} lượt`, color: '#06B6D4', bg: '#ECFEFF' },
+            { icon: Award,        label: 'Điểm TB tổng', value: `${avgScoreAll}%`, sub: `${recentExams.length} phiên tất cả`, color: C.gold, bg: C.goldPale },
+          ].map((item, i) => (
+            <div key={i} className="dash-card" style={{ animationDelay: `${240 + i * 60}ms` }}>
+              <KpiCard {...item} />
             </div>
+          ))}
+        </div>
 
-            <Divider/>
-            <SectionTitle tag="Hoạt động" title="Lịch học 52 tuần qua"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:28}}>
-              <Heatmap streakDates={streakDates} streakDatesArr={streakDatesArr}/>
-            </div>
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 2 — BIỂU ĐỒ LUYỆN THI (Area + Bar) + AI Insight
+        ═══════════════════════════════════════════════════════════ */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 16, marginBottom: 16 }}>
 
-            <Divider/>
-            <SectionTitle tag="Luyện thi" title="Tiến độ luyện thi" sub="Điểm trung bình và số phiên theo thời gian"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:28}}>
-              {examChartData.length===0?(
-                <div style={{height:200,display:'flex',alignItems:'center',justifyContent:'center',color:C.textMid,fontSize:13,flexDirection:'column',gap:8}}>
-                  <Activity size={26} color={C.gold} opacity={0.4}/> Chưa có dữ liệu luyện thi trong kỳ này
-                </div>
-              ):(
-                <ResponsiveContainer width="100%" height={200}>
-                  <ComposedChart data={examChartData} margin={{top:5,right:5,bottom:0,left:-22}}>
+          {/* Area chart: điểm luyện thi */}
+          <Panel>
+            <SectionHeader icon={TrendingUp} title="Xu hướng luyện thi" sub={`Điểm và số phiên — ${rangeLabel}`} color={C.gold} />
+            {examChartData.length === 0
+              ? <EmptyChart label="Chưa có phiên thi nào trong kỳ này" href="/exam" />
+              : (
+                <ResponsiveContainer width="100%" height={210}>
+                  <ComposedChart data={examChartData} margin={{ top: 5, right: 8, bottom: 0, left: -20 }}>
                     <defs>
-                      <linearGradient id="gD" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor={C.gold} stopOpacity={0.18}/>
-                        <stop offset="95%" stopColor={C.gold} stopOpacity={0}/>
+                      <linearGradient id="gExam" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={C.gold} stopOpacity={0.18} />
+                        <stop offset="95%" stopColor={C.gold} stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3"/>
-                    <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false}/>
-                    <YAxis yAxisId="l" tick={axisTick} axisLine={false} tickLine={false}/>
-                    <YAxis yAxisId="r" orientation="right" tick={axisTick} axisLine={false} tickLine={false}/>
-                    <Tooltip content={<CreamTooltip/>}/>
-                    <Area yAxisId="l" type="monotone" dataKey="diemTB" name="Điểm TB(%)" stroke={C.gold} fill="url(#gD)" strokeWidth={2.5} dot={{r:3,fill:C.gold}}/>
-                    <Bar  yAxisId="r" dataKey="soPhien" name="Số phiên" fill={C.violet} fillOpacity={0.22} radius={[4,4,0,0]} maxBarSize={18}/>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" tick={axis} axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="l" tick={axis} axisLine={false} tickLine={false} domain={[0, 100]} />
+                    <YAxis yAxisId="r" orientation="right" tick={axis} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<ChartTooltip />} />
+                    <Area yAxisId="l" type="monotone" dataKey="diemTB" name="Điểm TB(%)"
+                      stroke={C.gold} fill="url(#gExam)" strokeWidth={2.5}
+                      dot={{ r: 3, fill: C.gold, strokeWidth: 0 }}
+                      activeDot={{ r: 5, fill: C.gold }}
+                    />
+                    <Bar yAxisId="r" dataKey="soPhien" name="Số phiên"
+                      fill={C.violet} fillOpacity={0.2}
+                      radius={[4, 4, 0, 0]} maxBarSize={16}
+                    />
                   </ComposedChart>
                 </ResponsiveContainer>
               )}
-            </div>
+          </Panel>
 
-            <Divider/>
-            <SectionTitle tag="Phân tích" title="Kỹ năng & Chứng chỉ"/>
-            <div style={{display:'grid',gridTemplateColumns:g2,gap:20,marginBottom:28}}>
-              <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`}}>
-                <div style={{fontSize:13,fontWeight:700,color:C.navy,marginBottom:3}}>Radar kỹ năng</div>
-                <div style={{fontSize:11,color:C.textMid,marginBottom:12}}>% đúng trung bình theo kỹ năng</div>
-                {radarData.length<2?(
-                  <div style={{height:190,display:'flex',alignItems:'center',justifyContent:'center',color:C.textMid,fontSize:12,textAlign:'center',flexDirection:'column',gap:6}}>
-                    <BarChart2 size={22} color={C.gold} opacity={0.4}/>Cần ít nhất 2 kỹ năng
-                  </div>
-                ):(
-                  <ResponsiveContainer width="100%" height={200}>
-                    <RadarChart data={radarData}>
-                      <PolarGrid stroke="rgba(0,0,0,0.07)"/>
-                      <PolarAngleAxis dataKey="skill" tick={{fontSize:11,fill:C.textMid,fontFamily:"'DM Sans',sans-serif"}}/>
-                      <PolarRadiusAxis domain={[0,100]} tick={{fontSize:9,fill:'#94a3b8'}} tickCount={4}/>
-                      <Radar name="Điểm TB" dataKey="diemTB" stroke={C.gold} fill={C.gold} fillOpacity={0.1} strokeWidth={2} dot={{r:3,fill:C.gold}}/>
-                      <Tooltip formatter={(v:number)=>[`${v}%`,'Điểm TB']} contentStyle={ttStyle}/>
-                    </RadarChart>
+          {/* AI Insight */}
+          <AIInsight
+            profile={profile} dueToday={dueTodayCount}
+            totalMastered={totalMastered} avgScore={avgScoreAll}
+          />
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 3 — TỪ VỰNG (Area chart + Pie SRS + Bar CEFR)
+        ═══════════════════════════════════════════════════════════ */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 16, marginBottom: 16 }}>
+
+          {/* Area chart: vocab activity */}
+          <Panel>
+            <SectionHeader icon={BookOpen} title="Hoạt động từ vựng" sub={`Từ mới · Ôn tập · Thuần thục — ${rangeLabel}`} color={C.blueLt} />
+            {vocabChartData.length === 0
+              ? <EmptyChart label="Chưa có dữ liệu từ vựng" href="/vocabulary" />
+              : (
+                <ResponsiveContainer width="100%" height={210}>
+                  <AreaChart data={vocabChartData} margin={{ top: 5, right: 8, bottom: 0, left: -20 }}>
+                    <defs>
+                      {[
+                        { id: 'vHoc', c: C.blueLt },
+                        { id: 'vOn',  c: C.gold   },
+                        { id: 'vTT',  c: C.greenLt},
+                      ].map(g => (
+                        <linearGradient key={g.id} id={g.id} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%"  stopColor={g.c} stopOpacity={0.2} />
+                          <stop offset="95%" stopColor={g.c} stopOpacity={0}   />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" tick={axis} axisLine={false} tickLine={false}
+                      interval={Math.ceil(vocabChartData.length / 8)} />
+                    <YAxis tick={axis} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<ChartTooltip />} />
+                    <Legend iconType="circle" iconSize={7}
+                    wrapperStyle={{ fontSize: 12, color: C.textMid, fontFamily: "'DM Sans', sans-serif" }}
+                    />
+                    <Area type="monotone" dataKey="hoc"       name="Từ mới"     stroke={C.blueLt}  fill="url(#vHoc)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="onTap"     name="Ôn tập"     stroke={C.gold}    fill="url(#vOn)"  strokeWidth={2} />
+                    <Area type="monotone" dataKey="thuanThuc" name="Thuần thục" stroke={C.greenLt} fill="url(#vTT)"  strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+          </Panel>
+
+          {/* Pie: SRS health */}
+          <Panel>
+            <SectionHeader icon={Activity} title="Sức khoẻ SRS" sub="Phân bổ trạng thái kho từ" color={C.greenLt} />
+            {srsPie.length === 0
+              ? <EmptyChart label="Chưa có dữ liệu SRS" href="/vocabulary" />
+              : (
+                <>
+                  <ResponsiveContainer width="100%" height={140}>
+                    <PieChart>
+                      <Pie data={srsPie} cx="50%" cy="50%"
+                        innerRadius={38} outerRadius={58}
+                        dataKey="value" paddingAngle={4} strokeWidth={0}
+                      >
+                        {srsPie.map((d, i) => <Cell key={i} fill={d.color} />)}
+                      </Pie>
+                      <Tooltip formatter={(v, n) => [`${fmt(v as number)} từ`, n]} contentStyle={ttStyle} />
+                    </PieChart>
                   </ResponsiveContainer>
-                )}
-              </div>
-              <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`}}>
-                <div style={{fontSize:13,fontWeight:700,color:C.navy,marginBottom:3}}>Phân bổ chứng chỉ</div>
-                <div style={{fontSize:11,color:C.textMid,marginBottom:12}}>Số phiên thi theo loại</div>
-                {certPie.length===0?(
-                  <div style={{height:160,display:'flex',alignItems:'center',justifyContent:'center',color:C.textMid,fontSize:12}}>Chưa có dữ liệu</div>
-                ):(
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 4 }}>
+                    {srsPie.map((d, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color }} />
+                          <span style={{ fontSize: 12, color: C.textMid }}>{d.name}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 40, height: 3, background: `${C.navy}08`, borderRadius: 2 }}>
+                            <div style={{
+                              width: `${pct(d.value, allVocabProgress.length || 1)}%`,
+                              height: '100%', background: d.color, borderRadius: 2,
+                            }} />
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: d.color, minWidth: 36, textAlign: 'right' }}>
+                            {fmt(d.value)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+          </Panel>
+        </div>
+
+        {/* ── Bar: từ vựng theo CEFR ── */}
+       <div className="dash-grid-2" style={{ display: 'grid', gridTemplateColumns: col2, gap: 18, marginBottom: 18 }}>
+          <Panel>
+            <SectionHeader icon={BookMarked} title="Từ vựng theo cấp CEFR" sub="Số từ đã học ở từng cấp độ" color={C.green} />
+            <ResponsiveContainer width="100%" height={170}>
+              <BarChart
+                data={LEVEL_ORDER.map((lv, i) => ({ lv, soTu: vocabByLevel[lv] ?? 0, color: LEVEL_COLORS[i] }))}
+                margin={{ top: 5, right: 5, bottom: 0, left: -20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="lv" tick={axis} axisLine={false} tickLine={false} />
+                <YAxis tick={axis} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(v, n) => [`${fmt(v as number)} từ`, 'Từ vựng']} contentStyle={ttStyle} />
+                <Bar dataKey="soTu" radius={[6, 6, 0, 0]} maxBarSize={44}>
+                  {LEVEL_ORDER.map((_, i) => <Cell key={i} fill={LEVEL_COLORS[i]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
+              {LEVEL_ORDER.map((lv, i) => (
+                <div key={lv} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: C.textMid }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: LEVEL_COLORS[i] }} />
+                  {lv}: <span style={{ color: C.navy, fontWeight: 700 }}>{fmt(vocabByLevel[lv] ?? 0)}</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          {/* Radar: kỹ năng */}
+          <Panel>
+            <SectionHeader icon={BarChart2} title="Radar kỹ năng" sub="% đúng trung bình theo kỹ năng" color={C.violet} />
+            {radarData.length < 2
+             ? <EmptyChart label="Cần ít nhất 2 kỹ năng để hiển thị radar" href="/exam" />
+              : (
+                <ResponsiveContainer width="100%" height={210}>
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke={`${C.navy}0A`} />
+                    <PolarAngleAxis dataKey="skill" tick={{ fontSize: 12, fill: C.textMid, fontFamily: "'DM Sans', sans-serif" }} />
+                    <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10, fill: C.textLt }} tickCount={4} />
+                    <Radar name="Điểm TB" dataKey="diem"
+                      stroke={C.gold} fill={C.gold} fillOpacity={0.12}
+                      strokeWidth={2} dot={{ r: 3, fill: C.gold, strokeWidth: 0 }}
+                    />
+                    <Tooltip formatter={(v: number) => [`${v}%`, 'Điểm TB']} contentStyle={ttStyle} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              )}
+          </Panel>
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 4 — KỸ NĂNG (Bar ngang) + CHỨNG CHỈ (Pie)
+        ═══════════════════════════════════════════════════════════ */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '3fr 2fr', gap: 16, marginBottom: 16 }}>
+
+          {/* Bar ngang: điểm theo kỹ năng */}
+          <Panel>
+            <SectionHeader icon={Activity} title="Điểm theo kỹ năng" sub={`Chi tiết từng kỹ năng — ${rangeLabel}`} color={C.violet} />
+            {Object.keys(bySkill).length === 0
+              ? <EmptyChart label="Chưa có dữ liệu luyện thi" href="/exam" />
+              : (
+                <>
+                  <ResponsiveContainer width="100%" height={Math.max(160, Object.keys(bySkill).length * 52 + 30)}>
+                    <BarChart
+                      layout="vertical"
+                      data={skillBarData}
+                      margin={{ top: 0, right: 48, bottom: 0, left: 4 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" domain={[0, 100]} tick={axis} axisLine={false} tickLine={false}
+                        tickFormatter={v => `${v}%`} />
+                      <YAxis type="category" dataKey="skill"
+                        tick={{ ...axis, fill: C.text, fontSize: 12 }}
+                        axisLine={false} tickLine={false} width={62}
+                      />
+                      <Tooltip formatter={(v: number) => [`${v}%`, 'Điểm TB']} contentStyle={ttStyle} />
+                      <Bar dataKey="diem" name="Điểm TB" radius={[0, 6, 6, 0]} maxBarSize={22}>
+                        {skillBarData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                    {Object.entries(bySkill).map(([k, v]) => {
+                      const meta = SKILL_META[k], sc = pct(v.correct, v.total)
+                      return (
+                        <div key={k} style={{
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          padding: '10px 14px', borderRadius: 10,
+                          border: `1px solid ${C.border}`,
+                          background: scoreBg(sc),
+                        }}>
+                          {meta && (
+                            <div style={{
+                              width: 40, height: 40, borderRadius: 10, background: meta.bg,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                              }}>
+                              <meta.Icon size={20} color={meta.color} />
+                            </div>
+                          )}
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: C.navy }}>{meta?.label ?? k}</div>
+                            <div style={{ fontSize: 14, color: C.textMid }}>
+                              {v.correct}/{v.total} câu · {v.count} phiên · {Math.round(v.thoiGian / 60)}p
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 22, fontWeight: 900, color: scoreColor(sc), fontFamily: "'Playfair Display', serif" }}>{sc}%</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+          </Panel>
+
+          {/* Pie: chứng chỉ + Pie: phân bổ thời gian */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <Panel>
+              <SectionHeader icon={Award} title="Phân bổ chứng chỉ" sub="Số phiên theo loại chứng chỉ" color={C.goldLt} />
+              {certPie.length === 0
+                ? <EmptyChart label="Chưa có dữ liệu" href="/exam" />
+                : (
                   <>
                     <ResponsiveContainer width="100%" height={120}>
                       <PieChart>
-                        <Pie data={certPie} cx="50%" cy="50%" innerRadius={34} outerRadius={52} dataKey="value" paddingAngle={5} strokeWidth={0}>
-                          {certPie.map((d,i)=><Cell key={i} fill={d.color}/>)}
+                        <Pie data={certPie} cx="50%" cy="50%"
+                          innerRadius={32} outerRadius={50}
+                          dataKey="value" paddingAngle={5} strokeWidth={0}
+                        >
+                          {certPie.map((d, i) => <Cell key={i} fill={d.color} />)}
                         </Pie>
-                        <Tooltip formatter={(v,n)=>[`${v} phiên`,n]} contentStyle={ttStyle}/>
+                        <Tooltip formatter={(v, n) => [`${v} phiên`, n]} contentStyle={ttStyle} />
                       </PieChart>
                     </ResponsiveContainer>
-                    <div style={{display:'flex',flexDirection:'column',gap:7,marginTop:6}}>
-                      {certPie.map((d,i)=>(
-                        <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                          <div style={{display:'flex',alignItems:'center',gap:7}}>
-                            <div style={{width:8,height:8,borderRadius:2,background:d.color}}/>
-                            <span style={{fontSize:12,color:C.textMid}}>{d.name}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                      {certPie.map((d, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color }} />
+                            <span style={{ fontSize: 12, color: C.textMid }}>{d.name}</span>
                           </div>
-                          <div style={{display:'flex',alignItems:'center',gap:8}}>
-                            <div style={{width:44,height:3,background:'rgba(0,0,0,0.07)',borderRadius:2}}>
-                              <div style={{width:`${pct(d.value,examInRange.length)}%`,height:'100%',background:d.color,borderRadius:2}}/>
-                            </div>
-                            <span style={{fontSize:12,fontWeight:700,color:d.color,fontFamily:"'DM Mono',monospace"}}>{d.value}</span>
-                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: d.color }}>{d.value}</span>
                         </div>
                       ))}
                     </div>
                   </>
                 )}
-              </div>
-            </div>
+            </Panel>
 
-            <Divider/>
-            <SectionTitle tag="Lịch sử" title="Phiên luyện thi gần nhất" sub={`${examInRange.length} phiên · ${RANGE_OPTS.find(r=>r.key===range)?.label}`}/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`}}>
-              {recentExams.length===0?(
-                <div style={{padding:'22px 0',textAlign:'center',color:C.textMid,fontSize:13}}>
-                  Chưa có phiên nào. <Link href="/exam" style={{color:C.gold,fontWeight:700}}>Luyện ngay →</Link>
-                </div>
-              ):(
-                <div style={{overflowX:'auto'}}>
-                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-                    <thead>
-                      <tr>{['Kỹ năng','Chứng chỉ','Đúng/Tổng','Tỉ lệ','Thời gian','Ngày thi'].map((h,i)=>(
-                        <th key={i} style={{textAlign:'left',padding:'7px 12px',color:C.textMid,fontWeight:600,borderBottom:`2px solid ${C.border}`,fontSize:10,letterSpacing:'0.4px',textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>
-                      ))}</tr>
-                    </thead>
-                    <tbody>
-                      {recentExams.slice(0,10).map((r,i)=>{
-                        const sc=pct(r.so_cau_dung,r.tong_so_cau),sc2=scoreColor(sc),sm=SKILL_META[r.ky_nang??'']
-                        return (
-                          <tr key={i} style={{borderBottom:`1px solid ${C.borderL}`,transition:'background .15s'}}
-                            onMouseEnter={e=>(e.currentTarget.style.background=C.cream)}
-                            onMouseLeave={e=>(e.currentTarget.style.background='transparent')}
-                          >
-                            <td style={{padding:'9px 12px'}}>
-                              <div style={{display:'flex',alignItems:'center',gap:7}}>
-                                {sm&&<sm.Icon size={13} color={sm.color}/>}
-                                <span style={{color:C.navy,fontWeight:600}}>{sm?.label??r.ky_nang}</span>
-                              </div>
-                            </td>
-                            <td style={{padding:'9px 12px'}}>
-                              <span style={{display:'inline-flex',padding:'2px 8px',borderRadius:5,background:`${CERT_COLORS[r.loai_chung_chi??'']??'#94a3b8'}12`,border:`1px solid ${CERT_COLORS[r.loai_chung_chi??'']??'#94a3b8'}25`,fontSize:10,fontWeight:700,color:CERT_COLORS[r.loai_chung_chi??'']??'#94a3b8'}}>{r.loai_chung_chi??'?'}</span>
-                            </td>
-                            <td style={{padding:'9px 12px'}}>
-                              <span style={{color:sc2,fontWeight:800,fontFamily:"'DM Mono',monospace"}}>{r.so_cau_dung}</span>
-                              <span style={{color:C.textMid}}>/{r.tong_so_cau}</span>
-                            </td>
-                            <td style={{padding:'9px 12px',minWidth:110}}>
-                              <div style={{display:'flex',alignItems:'center',gap:7}}>
-                                <div style={{flex:1,height:5,background:'rgba(0,0,0,0.07)',borderRadius:3}}>
-                                  <div style={{width:`${sc}%`,height:'100%',background:sc2,borderRadius:3}}/>
-                                </div>
-                                <span style={{fontSize:11,fontWeight:800,color:sc2,fontFamily:"'DM Mono',monospace",minWidth:30}}>{sc}%</span>
-                              </div>
-                            </td>
-                            <td style={{padding:'9px 12px',color:C.textMid,fontFamily:"'DM Mono',monospace",fontSize:12}}>
-                              {r.thoi_gian_lam_bai?`${Math.round(r.thoi_gian_lam_bai/60)}p`:'—'}
-                            </td>
-                            <td style={{padding:'9px 12px',color:C.textMid,fontSize:12,whiteSpace:'nowrap'}}>
-                              {r.created_at?new Date(r.created_at).toLocaleDateString('vi-VN',{day:'numeric',month:'short',year:'numeric'}):'—'}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                  <div style={{paddingTop:12,textAlign:'right'}}>
-                    <Link href="/exam" style={{fontSize:12,color:C.gold,textDecoration:'none',fontWeight:700,display:'inline-flex',alignItems:'center',gap:4}}>
-                      Xem tất cả phiên thi <ChevronRight size={12}/>
-                    </Link>
+            {/* Top/worst exam */}
+            <Panel>
+              <SectionHeader icon={Star} title="Điểm nổi bật" sub={rangeLabel} color={C.green} />
+              {(() => {
+                if (!examInRange.length) return (
+                  <div style={{ fontSize: 13, color: C.textMid, textAlign: 'center', padding: '16px 0' }}>
+                    Chưa có phiên nào
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ════ TỪ VỰNG ═════════════════════════════════════════════════ */}
-        {activeTab==='vocab'&&(
-          <div>
-            <SectionTitle tag="Từ vựng" title="Thống kê từ vựng chi tiết" sub={`Tổng ${fmt(allVocabProgress.length)} từ trong kho của bạn`}/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              <StatRow icon={CheckCircle2} label="Thuần thục (≥5 lần đúng)" value={fmt(totalMastered)} note={`${pct(totalMastered,allVocabProgress.length||1)}% tổng · Đạt mục tiêu`} color={C.greenLt} trend={15}/>
-              <StatRow icon={BookOpen}     label="Đang học (trong vòng SRS)" value={fmt(totalLearning)} note={`${pct(totalLearning,allVocabProgress.length||1)}% tổng`} color='#0ea5e9' trend={8}/>
-              <StatRow icon={RefreshCw}    label="Cần ôn tập"                value={fmt(totalReview)}   note={`${pct(totalReview,allVocabProgress.length||1)}% · ${dueTodayCount} từ đến hạn hôm nay`} color={C.gold} trend={-3}/>
-              <StatRow icon={BookMarked}   label="Từ mới (chưa học)"         value={fmt(totalNew)}      note={`${pct(totalNew,allVocabProgress.length||1)}% tổng`} color='#94a3b8'/>
-            </div>
-            <Divider/>
-            <SectionTitle tag="Hoạt động" title="Biểu đồ hoạt động từ vựng" sub="Từ mới / ôn tập / thuần thục theo ngày"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              {vocabChartData.length===0?(<div style={{height:200,display:'flex',alignItems:'center',justifyContent:'center',color:C.textMid,fontSize:13}}>Chưa có dữ liệu</div>):(
-                <ResponsiveContainer width="100%" height={210}>
-                  <AreaChart data={vocabChartData} margin={{top:5,right:5,bottom:0,left:-22}}>
-                    <defs>
-                      {[{id:'vH',c:'#0ea5e9'},{id:'vO',c:C.gold},{id:'vT',c:C.greenLt}].map(g=>(
-                        <linearGradient key={g.id} id={g.id} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor={g.c} stopOpacity={0.18}/>
-                          <stop offset="95%" stopColor={g.c} stopOpacity={0}/>
-                        </linearGradient>
-                      ))}
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3"/>
-                    <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} interval={Math.ceil(vocabChartData.length/8)}/>
-                    <YAxis tick={axisTick} axisLine={false} tickLine={false}/>
-                    <Tooltip content={<CreamTooltip/>}/>
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{fontSize:11,color:C.textMid,fontFamily:"'DM Sans',sans-serif"}}/>
-                    <Area type="monotone" dataKey="hoc"       name="Từ mới"     stroke="#0ea5e9" fill="url(#vH)" strokeWidth={2}/>
-                    <Area type="monotone" dataKey="onTap"     name="Ôn tập"     stroke={C.gold}  fill="url(#vO)" strokeWidth={2}/>
-                    <Area type="monotone" dataKey="thuanThuc" name="Thuần thục" stroke={C.greenLt} fill="url(#vT)" strokeWidth={2}/>
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-            <Divider/>
-            <SectionTitle tag="Cấp độ CEFR" title="Phân bổ từ vựng theo CEFR"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              <ResponsiveContainer width="100%" height={170}>
-                <BarChart data={LEVEL_ORDER.map((lv,i)=>({lv,soTu:byLevel[lv]??0,color:LEVEL_COLORS[i]}))} margin={{top:5,right:5,bottom:0,left:-22}}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                  <XAxis dataKey="lv" tick={axisTick} axisLine={false} tickLine={false}/>
-                  <YAxis tick={axisTick} axisLine={false} tickLine={false}/>
-                  <Tooltip formatter={(v,n)=>[`${v} từ`,n]} contentStyle={ttStyle}/>
-                  <Bar dataKey="soTu" name="Số từ" radius={[5,5,0,0]} maxBarSize={48}>
-                    {LEVEL_ORDER.map((_,i)=><Cell key={i} fill={LEVEL_COLORS[i]}/>)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              <div style={{display:'flex',flexWrap:'wrap',gap:10,marginTop:10}}>
-                {LEVEL_ORDER.map((lv,i)=>(
-                  <div key={lv} style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:C.textMid}}>
-                    <div style={{width:8,height:8,borderRadius:2,background:LEVEL_COLORS[i]}}/>
-                    {lv}: <span style={{color:C.navy,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{fmt(byLevel[lv]??0)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <Divider/>
-            <SectionTitle tag="Heatmap" title="Lịch ôn tập SRS — 52 tuần"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              <Heatmap streakDates={streakDates} streakDatesArr={streakDatesArr}/>
-            </div>
-            <Divider/>
-            <SectionTitle tag="Sức khỏe SRS" title="Phân tích hệ thống nhắc lại SM-2"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`}}>
-              {[
-                {label:'Đến hạn ôn hôm nay',  value:dueTodayCount, max:allVocabProgress.length||1, color:C.rose,   icon:AlertCircle},
-                {label:'Đã thuần thục',         value:totalMastered, max:allVocabProgress.length||1, color:C.greenLt,icon:CheckCircle2},
-                {label:'Trong vòng học SRS',    value:totalLearning+totalReview, max:allVocabProgress.length||1, color:'#0ea5e9',icon:RefreshCw},
-                {label:'Chờ bắt đầu',           value:totalNew, max:allVocabProgress.length||1, color:'#94a3b8',icon:BookMarked},
-              ].map((s,i)=>(
-                <div key={i} style={{marginBottom:14}}>
-                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:5,alignItems:'center'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:7}}>
-                      <s.icon size={13} color={s.color}/>
-                      <span style={{fontSize:12,color:C.text,fontWeight:600}}>{s.label}</span>
-                    </div>
-                    <span style={{fontSize:12,fontWeight:800,color:s.color,fontFamily:"'DM Mono',monospace"}}>
-                      {fmt(s.value)} <span style={{fontSize:11,color:C.textMid,fontWeight:400}}>({pct(s.value,s.max)}%)</span>
-                    </span>
-                  </div>
-                  <div style={{height:7,background:'rgba(0,0,0,0.06)',borderRadius:4}}>
-                    <div style={{width:`${pct(s.value,s.max)}%`,height:'100%',background:`linear-gradient(90deg,${s.color}88,${s.color})`,borderRadius:4,transition:'width .8s ease'}}/>
-                  </div>
-                </div>
-              ))}
-              <div style={{marginTop:14,padding:'10px 13px',background:C.goldPale,borderRadius:10,border:`1px solid ${C.border}`,fontSize:12,color:C.text,lineHeight:1.7}}>
-                💡 Ôn đúng lịch tăng tỷ lệ nhớ từ <strong style={{color:C.rose}}>20%</strong> lên <strong style={{color:C.green}}>90%</strong> sau 30 ngày. SM-2 tự tính khoảng cách ôn tối ưu cho từng từ.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ════ LUYỆN THI ═══════════════════════════════════════════════ */}
-        {activeTab==='exam'&&(
-          <div>
-            <SectionTitle tag="Luyện thi" title="Thống kê luyện thi chi tiết" sub={`${examInRange.length} phiên · ${RANGE_OPTS.find(r=>r.key===range)?.label}`}/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              <StatRow icon={Target}       label="Điểm TB kỳ này"      value={avgScoreRange?`${avgScoreRange}%`:'—'}   note={`${examInRange.length} phiên thi`} color={C.gold}/>
-              <StatRow icon={TrendingUp}   label="Điểm cao nhất"        value={bestExam?`${pct(bestExam.so_cau_dung,bestExam.tong_so_cau)}%`:'—'} note={bestExam?SKILL_META[bestExam.ky_nang??'']?.label??'':''} color={C.greenLt} trend={4}/>
-              <StatRow icon={TrendingDown} label="Điểm thấp nhất"       value={worstExam?`${pct(worstExam.so_cau_dung,worstExam.tong_so_cau)}%`:'—'} note={worstExam?SKILL_META[worstExam.ky_nang??'']?.label??'':''} color={C.rose}/>
-              <StatRow icon={Clock}        label="Thời gian thi kỳ này" value={fmtH(totalThoiGianRange)} note={examInRange.length?`Trung bình: ${Math.round(totalThoiGianRange/examInRange.length/60)}p/phiên`:'Chưa có'} color={C.violet}/>
-            </div>
-            <Divider/>
-            <SectionTitle tag="Xu hướng" title="Điểm và thời gian theo thời gian"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              {examChartData.length===0?(<div style={{height:200,display:'flex',alignItems:'center',justifyContent:'center',color:C.textMid,fontSize:13}}>Chưa có dữ liệu</div>):(
-                <ResponsiveContainer width="100%" height={210}>
-                  <ComposedChart data={examChartData} margin={{top:5,right:10,bottom:0,left:-22}}>
-                    <defs>
-                      <linearGradient id="gD2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor={C.gold} stopOpacity={0.15}/>
-                        <stop offset="95%" stopColor={C.gold} stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3"/>
-                    <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false}/>
-                    <YAxis yAxisId="l" tick={axisTick} axisLine={false} tickLine={false}/>
-                    <YAxis yAxisId="r" orientation="right" tick={axisTick} axisLine={false} tickLine={false}/>
-                    <Tooltip content={<CreamTooltip/>}/>
-                    <Area yAxisId="l" type="monotone" dataKey="diemTB" name="Điểm TB(%)" stroke={C.gold} fill="url(#gD2)" strokeWidth={2.5} dot={{r:3,fill:C.gold}} activeDot={{r:5}}/>
-                    <Bar  yAxisId="r" dataKey="thoiGian" name="Thời gian(p)" fill={C.violet} fillOpacity={0.22} radius={[4,4,0,0]} maxBarSize={18}/>
-                  </ComposedChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-            <Divider/>
-            <SectionTitle tag="Theo kỹ năng" title="Điểm trung bình mỗi kỹ năng"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              {Object.keys(bySkill).length===0?(<div style={{height:180,display:'flex',alignItems:'center',justifyContent:'center',color:C.textMid,fontSize:13}}>Chưa có dữ liệu</div>):(
-                <>
-                  <ResponsiveContainer width="100%" height={Object.keys(bySkill).length*50+40}>
-                    <BarChart layout="vertical" data={Object.entries(bySkill).map(([k,v])=>({skill:SKILL_META[k]?.label??k,pct:pct(v.correct,v.total)}))} margin={{top:0,right:20,bottom:0,left:8}}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false}/>
-                      <XAxis type="number" domain={[0,100]} tick={axisTick} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/>
-                      <YAxis type="category" dataKey="skill" tick={{...axisTick,fill:C.text}} axisLine={false} tickLine={false} width={60}/>
-                      <Tooltip formatter={(v:number)=>[`${v}%`,'Điểm TB']} contentStyle={ttStyle}/>
-                      <Bar dataKey="pct" name="Điểm TB" radius={[0,6,6,0]} maxBarSize={22}>
-                        {Object.keys(bySkill).map((k,i)=><Cell key={i} fill={SKILL_META[k]?.color??C.gold}/>)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                  <div style={{marginTop:16,display:'flex',flexDirection:'column',gap:10}}>
-                    {Object.entries(bySkill).map(([k,v])=>{
-                      const meta=SKILL_META[k],sc=pct(v.correct,v.total),sc2=scoreColor(sc)
+                )
+                const best  = examInRange.reduce((b, r) => pct(r.so_cau_dung, r.tong_so_cau) > pct(b.so_cau_dung, b.tong_so_cau) ? r : b, examInRange[0])
+                const worst = examInRange.reduce((w, r) => pct(r.so_cau_dung, r.tong_so_cau) < pct(w.so_cau_dung, w.tong_so_cau) ? r : w, examInRange[0])
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {[
+                      { label: '🏆 Cao nhất', exam: best, color: C.green },
+                      { label: '📉 Thấp nhất', exam: worst, color: C.rose },
+                    ].map(({ label, exam, color }, i) => {
+                      const sc = pct(exam.so_cau_dung, exam.tong_so_cau)
+                      const meta = SKILL_META[exam.ky_nang ?? '']
                       return (
-                        <div key={k} style={{display:'flex',alignItems:'center',gap:12,padding:'11px 14px',borderRadius:10,border:`1px solid ${C.borderL}`,background:scoreBg(sc)}}>
-                          {meta&&<meta.Icon size={15} color={meta.color}/>}
-                          <div style={{flex:1}}>
-                            <div style={{fontSize:13,fontWeight:700,color:C.navy}}>{meta?.label??k}</div>
-                            <div style={{fontSize:11,color:C.textMid}}>{v.correct}/{v.total} câu đúng · {v.count} phiên · {Math.round(v.thoiGian/60)}p</div>
+                        <div key={i} style={{
+                          padding: '10px 12px', borderRadius: 10,
+                          background: `${color}08`, border: `1px solid ${color}18`,
+                        }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color, marginBottom: 6, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{label}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: C.navy }}>
+                                {meta?.label ?? exam.ky_nang} · {exam.loai_chung_chi}
+                              </div>
+                              <div style={{ fontSize: 14, color: C.textMid }}>
+                                {exam.so_cau_dung}/{exam.tong_so_cau} câu đúng
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 22, fontWeight: 800, color }}>{sc}%</div>
                           </div>
-                          <div style={{fontSize:22,fontWeight:800,color:sc2,fontFamily:"'DM Mono',monospace"}}>{sc}%</div>
                         </div>
                       )
                     })}
                   </div>
-                </>
-              )}
-            </div>
+                )
+              })()}
+            </Panel>
           </div>
-        )}
+        </div>
 
-        {/* ════ NGỮ PHÁP ════════════════════════════════════════════════ */}
-        {activeTab==='grammar'&&(
-          <div>
-            <SectionTitle tag="Ngữ pháp" title="Tiến độ học ngữ pháp" sub={`${grammarDoneCount}/${allGrammarLessons.length} bài đã hoàn thành`}/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              <StatRow icon={Brain}        label="Bài đã hoàn thành"  value={`${grammarDoneCount}/${allGrammarLessons.length}`} note={`${pct(grammarDoneCount,allGrammarLessons.length||1)}% hoàn thành`} color={C.violet}/>
-              <StatRow icon={Star}         label="Điểm TB bài tập"    value={`${grammarAvg}%`} note="Thang điểm 0–100%" color={C.gold}/>
-              <StatRow icon={CheckCircle2} label="Điểm xuất sắc ≥80%" value={fmt(allGrammarProgress.filter(g=>g.da_hoan_thanh&&(g.diem_bai_tap??0)>=8).length)} note="Số bài đạt xuất sắc" color={C.greenLt}/>
-              <StatRow icon={AlertCircle}  label="Chưa hoàn thành"    value={fmt(allGrammarLessons.length-grammarDoneCount)} note="Cần hoàn thành" color={C.rose}/>
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 5 — NGỮ PHÁP
+        ═══════════════════════════════════════════════════════════ */}
+        <div style={{ display: 'grid', gridTemplateColumns: col2, gap: 16, marginBottom: 16 }}>
+
+          {/* Progress bars ngữ pháp */}
+          <Panel>
+            <SectionHeader icon={Brain} title="Tiến độ ngữ pháp" sub={`${grammarDoneCount}/${allGrammarLessons.length} bài · Điểm TB ${grammarAvg}%`} color={C.violet} />
+            {grammarByLevel.map(lv => (
+              <ProgRow key={lv.lv} label={lv.lv} done={lv.done} total={lv.total} color={lv.color} />
+            ))}
+            <div style={{
+              marginTop: 14, padding: '10px 13px',
+              background: C.goldPale, borderRadius: 10,
+              border: `1px solid ${C.gold}20`,
+              fontSize: 14, color: C.text, lineHeight: 1.75,
+            }}>
+              💡 Điểm TB ngữ pháp: <strong style={{ color: scoreColor(grammarAvg) }}>{grammarAvg}%</strong>
+              &ensp;·&ensp;
+              {allGrammarProgress.filter(g => g.da_hoan_thanh && (g.diem_bai_tap ?? 0) >= 8).length} bài xuất sắc (≥8/10)
             </div>
-            <Divider/>
-            <SectionTitle tag="Tiến độ CEFR" title="Hoàn thành theo từng cấp độ"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              {grammarByLevel.map(lv=><ProgBar key={lv.lv} label={lv.lv} done={lv.done} total={lv.total} color={lv.color}/>)}
-            </div>
-            <Divider/>
-            <SectionTitle tag="Điểm theo cấp" title="Điểm bài tập trung bình mỗi cấp CEFR"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              <ResponsiveContainer width="100%" height={170}>
-                <BarChart data={grammarByLevel.filter(g=>g.done>0).map(g=>{
-                  const d=allGrammarProgress.filter(p=>p.da_hoan_thanh&&p.BaiHocNguPhap?.cap_do===g.lv&&p.diem_bai_tap!=null)
-                  return{lv:g.lv,diemTB:d.length?Math.round(d.reduce((s,p)=>s+(p.diem_bai_tap??0),0)/d.length*10):0}
-                })} margin={{top:5,right:5,bottom:0,left:-22}}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                  <XAxis dataKey="lv" tick={axisTick} axisLine={false} tickLine={false}/>
-                  <YAxis tick={axisTick} axisLine={false} tickLine={false} domain={[0,100]}/>
-                  <Tooltip formatter={(v:number)=>[`${v}%`,'Điểm TB']} contentStyle={ttStyle}/>
-                  <Bar dataKey="diemTB" name="Điểm TB" radius={[5,5,0,0]} maxBarSize={50}>
-                    {LEVEL_ORDER.map((_,i)=><Cell key={i} fill={LEVEL_COLORS[i]}/>)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <Divider/>
-            <SectionTitle tag="Lịch sử" title="10 bài học đã hoàn thành gần nhất"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`}}>
-              {allGrammarProgress.filter(g=>g.da_hoan_thanh).length===0?(
-                <div style={{padding:'20px 0',textAlign:'center',color:C.textMid,fontSize:13}}>
-                  Chưa hoàn thành bài nào. <Link href="/grammar" style={{color:C.gold,fontWeight:700}}>Học ngay →</Link>
-                </div>
-              ):(
-                <div style={{display:'flex',flexDirection:'column',gap:7}}>
-                  {[...allGrammarProgress].filter(g=>g.da_hoan_thanh)
-                    .sort((a,b)=>(b.ngay_hoan_thanh??'').localeCompare(a.ngay_hoan_thanh??''))
-                    .slice(0,10).map((g,i)=>{
-                      const lv=g.BaiHocNguPhap?.cap_do,lc=LEVEL_COLORS[LEVEL_ORDER.indexOf(lv??'')]??'#94a3b8'
-                      const sc2=scoreColor((g.diem_bai_tap??0)*10)
-                      return(
-                        <div key={i} style={{display:'flex',alignItems:'center',gap:9,padding:'9px 13px',borderRadius:10,border:`1px solid ${C.borderL}`,transition:'background .15s'}}
-                          onMouseEnter={e=>(e.currentTarget.style.background=C.cream)}
-                          onMouseLeave={e=>(e.currentTarget.style.background='transparent')}
-                        >
-                          <CheckCircle2 size={13} color={C.green} style={{flexShrink:0}}/>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:13,color:C.navy,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.BaiHocNguPhap?.tieu_de??'Bài học'}</div>
-                            <div style={{fontSize:11,color:C.textMid}}>{g.BaiHocNguPhap?.danh_muc}</div>
-                          </div>
-                          <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-                            {lv&&<span style={{padding:'2px 7px',borderRadius:5,background:`${lc}10`,border:`1px solid ${lc}22`,fontSize:10,fontWeight:700,color:lc}}>{lv}</span>}
-                            {g.diem_bai_tap!=null&&<span style={{fontSize:13,fontWeight:800,color:sc2,fontFamily:"'DM Mono',monospace"}}>{g.diem_bai_tap}/10</span>}
-                            <span style={{fontSize:11,color:C.textMid}}>{g.ngay_hoan_thanh?new Date(g.ngay_hoan_thanh).toLocaleDateString('vi-VN',{day:'numeric',month:'short'}):''}</span>
-                          </div>
+          </Panel>
+
+          {/* Bar chart: điểm ngữ pháp theo CEFR */}
+          <Panel>
+            <SectionHeader icon={BarChart2} title="Điểm ngữ pháp theo CEFR" sub="Điểm TB bài tập từng cấp" color={C.blue} />
+ {(() => {
+  const grammarChartData = grammarByLevel.filter(g => g.done > 0).map(g => {
+    const d = allGrammarProgress.filter(p => p.da_hoan_thanh && p.BaiHocNguPhap?.cap_do === g.lv && p.diem_bai_tap != null)
+    return {
+      lv: g.lv, color: g.color,
+      diemTB: d.length ? Math.round(d.reduce((s, p) => s + (p.diem_bai_tap ?? 0), 0) / d.length * 10) : 0,
+    }
+  })
+  if (grammarChartData.length === 0) {
+    return <EmptyChart label="Chưa có bài ngữ pháp nào hoàn thành" href="/grammar" />
+  }
+  return (
+    <ResponsiveContainer width="100%" height={200}>
+      <BarChart
+        data={grammarChartData}
+        margin={{ top: 5, right: 5, bottom: 0, left: -20 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="lv" tick={axis} axisLine={false} tickLine={false} />
+        <YAxis tick={axis} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={v => `${v}%`} width={42} />
+        <Tooltip formatter={(v: number) => [`${v}%`, 'Điểm TB']} contentStyle={ttStyle} />
+        <Bar dataKey="diemTB" name="Điểm TB" radius={[6, 6, 0, 0]} maxBarSize={50}>
+          {LEVEL_ORDER.map((_, i) => <Cell key={i} fill={LEVEL_COLORS[i]} />)}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  )
+})()}
+
+            {/* Lịch sử bài học */}
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.textMid, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                Gần đây
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {[...allGrammarProgress]
+                  .filter(g => g.da_hoan_thanh)
+                  .sort((a, b) => (b.ngay_hoan_thanh ?? '').localeCompare(a.ngay_hoan_thanh ?? ''))
+                  .slice(0, 4).map((g, i) => {
+                    const lv = g.BaiHocNguPhap?.cap_do
+                    const lc = LEVEL_COLORS[LEVEL_ORDER.indexOf(lv ?? '')] ?? C.textLt
+                    const sc2 = scoreColor((g.diem_bai_tap ?? 0) * 10)
+                    return (
+                      <div key={i} style={{
+                        display: 'flex', alignItems: 'center', gap: 9,
+                        padding: '8px 11px', borderRadius: 9, border: `1px solid ${C.border}`,
+                      }}>
+                        <CheckCircle2 size={12} color={C.green} style={{ flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 16, color: C.navy, fontWeight: 600,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>{g.BaiHocNguPhap?.tieu_de ?? 'Bài học'}</div>
+                          <div style={{ fontSize: 14, color: C.textLt }}>{g.BaiHocNguPhap?.danh_muc}</div>
                         </div>
-                      )
-                    })}
-                </div>
-              )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          {lv && (
+                            <span style={{
+                              padding: '2px 6px', borderRadius: 4,
+                              background: `${lc}12`, border: `1px solid ${lc}22`,
+                              fontSize: 12, fontWeight: 700, color: lc,
+                            }}>{lv}</span>
+                          )}
+                          {g.diem_bai_tap != null && (
+                            <span style={{ fontSize: 15, fontWeight: 700, color: sc2 }}>
+                              {g.diem_bai_tap}/10
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
             </div>
-          </div>
-        )}
+          </Panel>
+        </div>
 
-        {/* ════ THỜI GIAN ════════════════════════════════════════════════ */}
-        {activeTab==='time'&&(
-          <div>
-            <SectionTitle tag="Thời gian" title="Phân tích thời gian học tập"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              <StatRow icon={Clock}        label="Tổng giờ học (tất cả)"   value={fmtH(totalThoiGian)}      note="Luyện thi tích lũy" color={C.gold}/>
-              <StatRow icon={Clock}        label={`Giờ học (${RANGE_OPTS.find(r=>r.key===range)?.label})`} value={fmtH(totalThoiGianRange)} note={`${examInRange.length} phiên`} color={C.violet}/>
-              <StatRow icon={Activity}     label="Trung bình mỗi phiên"    value={`${examInRange.length?Math.round(totalThoiGianRange/examInRange.length/60):0}p`} note="Phút/phiên thi" color='#0ea5e9'/>
-              <StatRow icon={MessageSquare}label="Câu hỏi AI (tất cả)"     value={fmt(chatHistory.length)} note={`${chatInRange} lượt kỳ này`} color={C.greenLt}/>
-            </div>
-            <Divider/>
-            <SectionTitle tag="Biểu đồ" title="Phút học theo kỳ"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              {examChartData.length===0?(<div style={{height:190,display:'flex',alignItems:'center',justifyContent:'center',color:C.textMid,fontSize:13}}>Chưa có dữ liệu</div>):(
-                <ResponsiveContainer width="100%" height={190}>
-                  <BarChart data={examChartData} margin={{top:5,right:5,bottom:0,left:-22}}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                    <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false}/>
-                    <YAxis tick={axisTick} axisLine={false} tickLine={false} unit="p"/>
-                    <Tooltip formatter={(v:number)=>[`${v} phút`,'Thời gian']} contentStyle={ttStyle}/>
-                    <Bar dataKey="thoiGian" name="Thời gian(p)" fill={C.gold} fillOpacity={0.7} radius={[5,5,0,0]} maxBarSize={44}/>
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 6 — THỜI GIAN & HOẠT ĐỘNG
+        ═══════════════════════════════════════════════════════════ */}
+        <div className="dash-grid-3l" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 18, marginBottom: 18 }}>
+          {/* Bar: phút học theo kỳ */}
+          <Panel>
+            <SectionHeader icon={Clock} title="Phút học" sub={`Thời gian luyện thi — ${rangeLabel}`} color={C.rose} />
+            {examChartData.length === 0
+              ? <EmptyChart label="Chưa có dữ liệu" href="/exam" />
+              : (
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={examChartData} margin={{ top: 5, right: 5, bottom: 0, left: -24 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={axis} axisLine={false} tickLine={false} />
+                    <YAxis tick={axis} axisLine={false} tickLine={false} unit="p" allowDecimals={false} />
+                    <Tooltip formatter={(v: number) => [`${v} phút`, 'Thời gian']} contentStyle={ttStyle} />
+                    <Bar dataKey="thoiGian" name="Thời gian" fill={C.rose} fillOpacity={0.7}
+                      radius={[5, 5, 0, 0]} maxBarSize={40}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               )}
-            </div>
-            <Divider/>
-            <SectionTitle tag="Khung giờ" title="Bạn thường học lúc mấy giờ?"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`,marginBottom:24}}>
-              {hourDist.every(h=>h.count===0)?(<div style={{height:190,display:'flex',alignItems:'center',justifyContent:'center',color:C.textMid,fontSize:13}}>Chưa có dữ liệu</div>):(
+          </Panel>
+
+          {/* Bar: khung giờ học */}
+          <Panel>
+            <SectionHeader icon={Calendar} title="Khung giờ học" sub="Số phiên thi theo giờ trong ngày" color={C.navy} />
+            {hourDist.every(h => h.count === 0)
+              ? <EmptyChart label="Chưa có dữ liệu" href="/exam" />
+              : (
                 <>
-                  <ResponsiveContainer width="100%" height={190}>
-                    <BarChart data={hourDist} margin={{top:5,right:5,bottom:0,left:-28}}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                      <XAxis dataKey="hour" tick={axisTick} axisLine={false} tickLine={false} interval={2}/>
-                      <YAxis tick={axisTick} axisLine={false} tickLine={false}/>
-                      <Tooltip formatter={(v:number)=>[`${v} phiên`,'Số phiên']} contentStyle={ttStyle}/>
-                      <Bar dataKey="count" radius={[4,4,0,0]} maxBarSize={22}>
-                        {hourDist.map((h,i)=>{const mx=Math.max(...hourDist.map(d=>d.count));return <Cell key={i} fill={h.count===mx&&mx>0?C.gold:C.navy} fillOpacity={h.count===mx&&mx>0?0.85:0.18}/>})}
-                      </Bar>
+                  <ResponsiveContainer width="100%" height={160}>
+                    <BarChart data={hourDist} margin={{ top: 5, right: 5, bottom: 0, left: -28 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="hour" tick={axis} axisLine={false} tickLine={false} interval={2} />
+                      <YAxis hide />
+<Tooltip formatter={(v: number) => [`${v} phiên`, 'Số phiên']} contentStyle={ttStyle} />
+<Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={22}>
+  {hourDist.map((h, i) => (
+    <Cell key={i}
+      fill={h.count === maxHour && maxHour > 0 ? C.gold : C.navy}
+      fillOpacity={h.count === maxHour && maxHour > 0 ? 0.85 : 0.16}
+    />
+  ))}
+  <LabelList
+    dataKey="count"
+    position="top"
+    formatter={(v: number) => v > 0 ? v : ''}
+    style={{ fontSize: 11, fill: C.textMid, fontFamily: "'DM Sans', sans-serif" }}
+  />
+</Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                  <div style={{fontSize:12,color:C.textMid,marginTop:8}}>
-                    {(()=>{const p=hourDist.reduce((a,b)=>b.count>a.count?b:a,hourDist[0]);return p?.count>0?`🏆 Khung giờ học nhiều nhất: ${p.hour} (${p.count} phiên)`:''})()}
+                  <div style={{ fontSize: 14, color: C.textMid, marginTop: 10 }}>
+                    {(() => {
+                      const p = hourDist.reduce((a, b) => b.count > a.count ? b : a, hourDist[0])
+                      return p?.count > 0
+                        ? `🏆 Hay học nhất: ${p.hour} (${p.count} phiên)`
+                        : ''
+                    })()}
                   </div>
                 </>
               )}
-            </div>
-            <Divider/>
-            <SectionTitle tag="AI Chatbot" title="Tần suất sử dụng AI theo thời gian"/>
-            <div style={{background:C.white,borderRadius:16,padding:'20px 22px',border:`1px solid ${C.borderL}`}}>
-              {chatHistory.length===0?(
-                <div style={{padding:'20px 0',textAlign:'center',color:C.textMid,fontSize:13}}>
-                  Chưa sử dụng AI. <Link href="/ai-chat" style={{color:C.gold,fontWeight:700}}>Chat với AI →</Link>
+          </Panel>
+
+          {/* Area: AI chat */}
+          <Panel>
+            <SectionHeader icon={MessageSquare} title="Tần suất AI chat" sub={`Lượt hỏi theo thời gian — ${rangeLabel}`} color="#06B6D4" />
+            {chatGrouped.length === 0
+              ? (
+                <div style={{ height: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <MessageSquare size={26} color={C.textLt} opacity={0.5} />
+                  <div style={{ fontSize: 15, color: C.textMid }}>Chưa sử dụng AI</div>
+                  <Link href="/ai-chat" style={{ fontSize: 14, color: '#06B6D4', fontWeight: 700, textDecoration: 'none' }}>
+                    Chat ngay →
+                  </Link>
                 </div>
-              ):chatGrouped.length===0?(
-                <div style={{padding:'14px 0',textAlign:'center',color:C.textMid,fontSize:13}}>Không có dữ liệu trong kỳ này</div>
-              ):(
-                <ResponsiveContainer width="100%" height={150}>
-                  <AreaChart data={chatGrouped} margin={{top:5,right:5,bottom:0,left:-22}}>
+              )
+              : (
+                <ResponsiveContainer width="100%" height={160}>
+                  <AreaChart data={chatGrouped} margin={{ top: 5, right: 5, bottom: 0, left: -24 }}>
                     <defs>
                       <linearGradient id="gChat" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor={C.greenLt} stopOpacity={0.18}/>
-                        <stop offset="95%" stopColor={C.greenLt} stopOpacity={0}/>
+                        <stop offset="5%"  stopColor="#06B6D4" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#06B6D4" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3"/>
-                    <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false}/>
-                    <YAxis tick={axisTick} axisLine={false} tickLine={false}/>
-                    <Tooltip formatter={(v:number)=>[`${v} câu`,'Hỏi AI']} contentStyle={ttStyle}/>
-                    <Area type="monotone" dataKey="count" name="Hỏi AI" stroke={C.greenLt} fill="url(#gChat)" strokeWidth={2} dot={{r:3,fill:C.greenLt}}/>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" tick={axis} axisLine={false} tickLine={false} />
+                    <YAxis tick={axis} axisLine={false} tickLine={false} />
+                    <Tooltip formatter={(v: number) => [`${v} câu`, 'Hỏi AI']} contentStyle={ttStyle} />
+                    <Area type="monotone" dataKey="count" name="Hỏi AI"
+                      stroke="#06B6D4" fill="url(#gChat)" strokeWidth={2}
+                      dot={{ r: 3, fill: '#06B6D4', strokeWidth: 0 }}
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* Truy cập nhanh */}
-        <div style={{marginTop:36,paddingTop:24,borderTop:`1px solid ${C.border}`}}>
-          <div style={{fontSize:11,fontWeight:700,color:C.textMid,textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:12}}>Truy cập nhanh</div>
-          <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr 1fr':'repeat(4,1fr)',gap:10}}>
-            {[
-              {href:'/vocabulary',Icon:BookOpen,     label:'Học từ vựng',  desc:'SRS thông minh',    color:C.greenLt},
-              {href:'/grammar',   Icon:Brain,         label:'Ngữ pháp',     desc:'A1 → C1',           color:C.violet },
-              {href:'/exam',      Icon:FileText,      label:'Luyện thi',    desc:'VSTEP·TOEIC·APTIS', color:C.gold   },
-              {href:'/ai-chat',   Icon:MessageSquare, label:'AI Chatbot',   desc:'Luyện nói 24/7',    color:'#0ea5e9'},
-            ].map(m=>(
-              <Link key={m.href} href={m.href} style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',borderRadius:12,background:C.white,border:`1px solid ${C.borderL}`,textDecoration:'none',transition:'all .18s',fontFamily:"'DM Sans',sans-serif"}}
-                onMouseEnter={e=>{const el=e.currentTarget as HTMLAnchorElement;el.style.background=`${m.color}08`;el.style.borderColor=`${m.color}28`;el.style.transform='translateY(-2px)'}}
-                onMouseLeave={e=>{const el=e.currentTarget as HTMLAnchorElement;el.style.background=C.white;el.style.borderColor=C.borderL;el.style.transform='translateY(0)'}}
-              >
-                <div style={{width:32,height:32,borderRadius:8,background:`${m.color}10`,border:`1px solid ${m.color}20`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                  <m.Icon size={14} color={m.color}/>
-                </div>
-                <div>
-                  <div style={{fontSize:12,fontWeight:700,color:C.navy}}>{m.label}</div>
-                  <div style={{fontSize:10,color:C.textMid,marginTop:1}}>{m.desc}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          </Panel>
         </div>
-      </main>
+
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 7 — HEATMAP 52 TUẦN
+        ═══════════════════════════════════════════════════════════ */}
+        <Panel style={{ marginBottom: 16 }}>
+          <SectionHeader icon={Calendar} title="Lịch học 52 tuần qua" sub="Vòng tròn vàng = hôm nay" color={C.gold} />
+          <Heatmap streakDates={streakDates} streakDatesArr={streakDatesArr} />
+        </Panel>
+
+        {/* ══════════════════════════════════════════════════════════
+            SECTION 8 — BẢNG LỊCH SỬ PHIÊN THI
+        ═══════════════════════════════════════════════════════════ */}
+        <Panel style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+           <SectionHeader
+           icon={FileText}
+           title="Lịch sử phiên thi"
+           sub={`${examInRange.length} phiên — ${rangeLabel}${recentExams.length > 12 ? ` (hiển thị 12/${recentExams.length})` : ''}`}
+           color={C.navy}
+           />
+            <Link href="/exam" style={{
+              fontSize: 12, color: C.gold, fontWeight: 700, textDecoration: 'none',
+              display: 'flex', alignItems: 'center', gap: 4,
+            }}>
+              Xem tất cả <ChevronRight size={12} />
+            </Link>
+          </div>
+          {recentExams.length === 0
+            ? (
+              <div style={{ padding: '20px 0', textAlign: 'center', color: C.textMid, fontSize: 13 }}>
+                Chưa có phiên nào.{' '}
+                <Link href="/exam" style={{ color: C.gold, fontWeight: 700 }}>Luyện ngay →</Link>
+              </div>
+            )
+            : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr>
+                      {['Kỹ năng', 'Chứng chỉ', 'Đúng/Tổng', 'Tỷ lệ', 'Thời gian', 'Ngày thi'].map((h, i) => (
+                        <th key={i} style={{
+                          textAlign: 'left', padding: '10px 14px',
+                          color: C.textMid, fontWeight: 600,
+                          borderBottom: `2px solid rgba(201,168,76,.2)`,
+                          fontSize: 13, letterSpacing: '0.8px', textTransform: 'uppercase',
+                          whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif",
+                          background: '#FDFAF3',
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentExams.slice(0, 12).map((r, i) => {
+                      const sc = pct(r.so_cau_dung, r.tong_so_cau)
+                      const sc2 = scoreColor(sc)
+                      const meta = SKILL_META[r.ky_nang ?? '']
+                      const certColor = CERT_COLORS[r.loai_chung_chi ?? ''] ?? C.textLt
+                      return (
+                        <tr key={i}
+                          style={{ borderBottom: `1px solid ${C.border}`, transition: 'background .12s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <td style={{ padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              {meta && (
+                                <div style={{
+                                  width: 34, height: 34, borderRadius: 9, background: meta.bg,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                  <meta.Icon size={17} color={meta.color} />
+                                </div>
+                              )}
+                              <span style={{ color: C.navy, fontWeight: 600 }}>{meta?.label ?? r.ky_nang}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{
+                              display: 'inline-flex', padding: '2px 8px', borderRadius: 5,
+                              background: `${certColor}12`, border: `1px solid ${certColor}25`,
+                              fontSize: 11, fontWeight: 700, color: certColor,
+                            }}>{r.loai_chung_chi ?? '?'}</span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{ color: sc2, fontWeight: 800 }}>{r.so_cau_dung}</span>
+                            <span style={{ color: C.textLt }}>/{r.tong_so_cau}</span>
+                          </td>
+                          <td style={{ padding: '10px 12px', minWidth: 110 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ flex: 1, height: 5, background: `${C.navy}08`, borderRadius: 3 }}>
+                                <div style={{ width: `${sc}%`, height: '100%', background: sc2, borderRadius: 3 }} />
+                              </div>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: sc2, minWidth: 32 }}>{sc}%</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '10px 14px', color: C.textMid, fontSize: 13 }}>
+                            {r.thoi_gian_lam_bai ? `${Math.round(r.thoi_gian_lam_bai / 60)}p` : '—'}
+                          </td>
+                          <td style={{ padding: '10px 14px', color: C.textMid, fontSize: 13, whiteSpace: 'nowrap' }}>
+                            {r.created_at
+                              ? new Date(r.created_at).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short', year: 'numeric' })
+                              : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+        </Panel>
+
+        {/* ── Shortcut buttons ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)', gap: 10 }}>
+          {[
+            { href: '/vocabulary', Icon: BookOpen,      label: 'Học từ vựng',  desc: 'SRS thông minh',     color: C.greenLt },
+            { href: '/grammar',    Icon: Brain,          label: 'Ngữ pháp',     desc: 'A1 → C2 đầy đủ',    color: C.violet  },
+            { href: '/exam',       Icon: FileText,       label: 'Luyện thi',    desc: 'VSTEP · TOEIC · APTIS', color: C.gold  },
+            { href: '/ai-chat',    Icon: MessageSquare,  label: 'AI Chatbot',   desc: 'Luyện nói 24/7',     color: '#06B6D4' },
+          ].map(m => (
+            <Link key={m.href} href={m.href} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px',
+              borderRadius: 16, background: C.white,
+              border: '1px solid rgba(201,168,76,.18)',
+              boxShadow: '0 2px 8px rgba(15,28,53,.06)',
+              textDecoration: 'none',
+              transition: 'all .28s cubic-bezier(.16,1,.3,1)',
+            }}
+              onMouseEnter={e => {
+                const el = e.currentTarget as HTMLAnchorElement
+                el.style.background = `${m.color}08`
+                el.style.borderColor = `${m.color}30`
+                el.style.transform = 'translateY(-2px)'
+                el.style.boxShadow = `0 6px 20px ${m.color}20`
+              }}
+              onMouseLeave={e => {
+                const el = e.currentTarget as HTMLAnchorElement
+                el.style.background = C.white
+                el.style.borderColor = C.border
+                el.style.transform = 'translateY(0)'
+                el.style.boxShadow = 'none'
+              }}
+            >
+              <div style={{
+                width: 44, height: 44, borderRadius: 13,
+                background: `${m.color}12`, border: `1px solid ${m.color}22`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <m.Icon size={20} color={m.color} strokeWidth={1.8} />
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.navy,fontFamily: "'DM Sans', sans-serif" }}>{m.label}</div>
+                <div style={{ fontSize: 14, color: C.textMid, marginTop: 4 }}>{m.desc}</div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
