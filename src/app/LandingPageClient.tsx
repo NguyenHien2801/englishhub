@@ -915,8 +915,8 @@ export default function LandingPage() {
         .icon-red .icon-bg-diamond { background:rgba(240,100,100,.22); }
         .icon-red .icon-svg { stroke:#F07878; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
         
-        .heroCard h3 { font-size:17px; font-weight:700; color:#fff; margin-bottom:8px; line-height:1.35; }
-        .heroCard p  { font-size:14.5px; color:rgba(255,255,255,.6); line-height:1.65; }
+        .heroCard h3 { font-size:16px; font-weight:700; color:#fff; margin-bottom:8px; line-height:1.35; }
+        .heroCard p  { font-size:14px; color:rgba(255,255,255,.6); line-height:1.65; }
 
         /* Glowing corner */
         .heroCard::before { content:''; position:absolute; top:-1px; left:-1px; right:-1px; height:2px; background:linear-gradient(90deg,transparent,var(--gold),transparent); opacity:0; transition:opacity .35s; border-radius:var(--r) var(--r) 0 0; }
@@ -974,9 +974,9 @@ export default function LandingPage() {
           animation:blobMorph 9s ease-in-out infinite; opacity:.15; z-index:0;
         }
         .uniContent h2 { font-family:'Playfair Display',serif; font-size:clamp(26px,2.8vw,38px); font-weight:900; color:var(--navy); line-height:1.22; margin-bottom:16px; }
-        .uniContent p { font-size:15px; color:var(--text-mid); line-height:1.82; margin-bottom:14px; }
+        .uniContent p { font-size:14px; color:var(--text-mid); line-height:1.82; margin-bottom:14px; }
         .uniHL { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:28px; }
-        .uniHLItem { display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--cream); border-radius:12px; border:1px solid rgba(201,168,76,.2); font-size:13px; font-weight:600; color:var(--navy); transition:all .25s; }
+        .uniHLItem { display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--cream); border-radius:12px; border:1px solid rgba(201,168,76,.2); font-size:14px; font-weight:600; color:var(--navy); transition:all .25s; }
         .uniHLItem:hover { background:var(--gold-pale); border-color:rgba(201,168,76,.5); transform:translateX(5px); }
         .hlDot { width:8px; height:8px; background:var(--gold); border-radius:50%; flex-shrink:0; }
 
@@ -1022,10 +1022,10 @@ export default function LandingPage() {
         .fcImgLabel { position:absolute; bottom:12px; left:14px; z-index:2; display:flex; align-items:center; gap:9px; }
         .fcImgIcon { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.2); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.3); }
         .fcImgIcon svg { width:15px; height:15px; stroke:#fff; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
-        .fcImgTitle { font-size:13px; font-weight:700; color:#fff; text-shadow:0 1px 6px rgba(0,0,0,.5); }
+        .fcImgTitle { font-size:12px; font-weight:700; color:#fff; text-shadow:0 1px 6px rgba(0,0,0,.5); }
         .fcBody { padding:20px 20px 24px; }
-        .fcBody h3 { font-size:15px; font-weight:700; color:var(--navy); margin-bottom:8px; line-height:1.35; }
-        .fcBody p  { font-size:13px; color:var(--text-mid); line-height:1.68; }
+        .fcBody h3 { font-size:16px; font-weight:700; color:var(--navy); margin-bottom:8px; line-height:1.35; }
+        .fcBody p  { font-size:14px; color:var(--text-mid); line-height:1.68; }
         .featCard::after { content:''; position:absolute; bottom:0; left:0; width:0; height:3px; transition:width .45s cubic-bezier(.16,1,.3,1); border-radius:0 0 var(--r-lg) var(--r-lg); }
         .featCard:hover::after { width:100%; }
         .featCard:nth-child(1)::after { background:var(--green); }
@@ -1048,12 +1048,12 @@ export default function LandingPage() {
         .examCard:hover .examImgWrap img { transform:scale(1.08); filter:brightness(.58) saturate(1.3); }
         .examOverlay { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:flex-end; padding:16px 20px; background:linear-gradient(to top,rgba(15,28,53,.7),transparent); }
         .examLogo { font-family:'Playfair Display',serif; font-size:38px; font-weight:900; color:#fff; line-height:1; }
-        .examTitle { font-size:11px; color:rgba(255,255,255,.55); margin-top:4px; line-height:1.4; }
-        .examPurpose { display:inline-block; margin-top:10px; padding:4px 12px; background:rgba(201,168,76,.9); border-radius:50px; font-size:11px; color:var(--navy); font-weight:700; }
+        .examTitle { font-size:12px; color:rgba(255,255,255,.55); margin-top:4px; line-height:1.4; }
+        .examPurpose { display:inline-block; margin-top:10px; padding:4px 12px; background:rgba(201,168,76,.9); border-radius:50px; font-size:12px; color:var(--navy); font-weight:700; }
         /* Round badge on exam card */
         .examRoundBadge { position:absolute; top:12px; right:12px; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; background:rgba(255,255,255,.15); backdrop-filter:blur(8px); }
         .examBody { padding:18px 20px 22px; }
-        .examSkill { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:13px; color:rgba(255,255,255,.65); }
+        .examSkill { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:14px; color:rgba(255,255,255,.65); }
         .examSkill:last-child { border-bottom:none; }
         .sdot  { width:6px; height:6px; border-radius:50%; background:var(--green); flex-shrink:0; }
         .sdotG { background:var(--gold); }
@@ -1075,11 +1075,11 @@ export default function LandingPage() {
         .aiWaveLine:nth-child(4){animation-delay:.3s}
         .aiWaveLine:nth-child(5){animation-delay:.4s}
         .aiChat { padding:20px; display:flex; flex-direction:column; gap:14px; }
-        .bubble { max-width:84%; padding:13px 17px; border-radius:18px; font-size:13px; line-height:1.58; }
+        .bubble { max-width:84%; padding:13px 17px; border-radius:18px; font-size:14px; line-height:1.58; }
         .bUser { background:var(--gold); color:var(--navy); font-weight:500; align-self:flex-end; border-bottom-right-radius:4px; }
         .bAi   { background:rgba(255,255,255,.08); color:rgba(255,255,255,.8); align-self:flex-start; border-bottom-left-radius:4px; border:1px solid rgba(255,255,255,.09); }
         .bAi strong { color:var(--gold); }
-        .cLabel  { font-size:11px; color:rgba(255,255,255,.24); font-weight:600; letter-spacing:.5px; text-transform:uppercase; margin-bottom:-8px; }
+        .cLabel  { font-size:12px; color:rgba(255,255,255,.24); font-weight:600; letter-spacing:.5px; text-transform:uppercase; margin-bottom:-8px; }
         .cLabelR { text-align:right; }
         .aiDashSnap { margin:0 16px 16px; border-radius:var(--r-sm); overflow:hidden; }
         .aiDashSnap img { width:100%; display:block; height:130px; object-fit:cover; }
@@ -1090,8 +1090,8 @@ export default function LandingPage() {
         .aiFeatIcon svg { width:18px; height:18px; stroke:var(--navy); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
         .aiFeatRow:hover .aiFeatIcon { background:var(--navy); border-color:var(--navy); }
         .aiFeatRow:hover .aiFeatIcon svg { stroke:var(--gold); }
-        .aiFeatText h4 { font-size:14px; font-weight:700; color:var(--navy); margin-bottom:3px; }
-        .aiFeatText p  { font-size:13px; color:var(--text-mid); line-height:1.55; }
+        .aiFeatText h4 { font-size:16px; font-weight:700; color:var(--navy); margin-bottom:3px; }
+        .aiFeatText p  { font-size:14px; color:var(--text-mid); line-height:1.55; }
 
         /* ── GALLERY ── */
         .galleryHeadRow { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:32px; flex-wrap:wrap; gap:16px; }
@@ -1227,7 +1227,7 @@ export default function LandingPage() {
 }
 
 .stepperTitle {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   color: var(--navy);
   line-height: 1.35;
@@ -1257,7 +1257,7 @@ export default function LandingPage() {
         .testiBlob { position:absolute; top:-20px; right:-20px; width:80px; height:80px; border-radius:50%; opacity:.12; pointer-events:none; filter:blur(18px); }
         .testiCard:hover { transform:translateY(-8px); box-shadow:var(--sh-xl); border-color:rgba(201,168,76,.35); }
         .stars { color:#F5C518; font-size:24px; margin-bottom:16px; display:flex; gap:4px; }
-        .quoteText { font-size:16px; color:var(--text-mid); line-height:1.8; margin-bottom:22px; font-style:italic; }
+        .quoteText { font-size:14px; color:var(--text-mid); line-height:1.8; margin-bottom:22px; font-style:italic; }
         .testiAuthor { display:flex; align-items:center; gap:12px; }
         .avatar { width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0; }
         .avatarGold  { background:rgba(201,168,76,.15); color:var(--gold); border:2px solid rgba(201,168,76,.3); }
@@ -1277,7 +1277,7 @@ export default function LandingPage() {
         .faqQ { display:flex; justify-content:space-between; align-items:center; gap:12px; }
         .faqQ span:first-child { font-size:14px; font-weight:600; color:var(--navy); line-height:1.45; }
         .faqIcon { font-size:20px; color:var(--gold); font-weight:700; flex-shrink:0; line-height:1; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--gold-pale); }
-        .faqA { margin-top:12px; font-size:13.5px; color:var(--text-mid); line-height:1.75; padding-top:12px; border-top:1px solid #f0ead8; }
+        .faqA { margin-top:12px; font-size:14px; color:var(--text-mid); line-height:1.75; padding-top:12px; border-top:1px solid #f0ead8; }
         .faqContact { background:var(--navy); border-radius:var(--r-lg); padding:40px 36px; display:flex; flex-direction:column; gap:22px; position:relative; overflow:hidden; }
         .faqContactBlob { position:absolute; top:-60px; right:-60px; width:200px; height:200px; background:rgba(201,168,76,.08); border-radius:60% 40% 30% 70% / 60% 30% 70% 40%; animation:blobMorph 10s ease-in-out infinite; pointer-events:none; }
         .faqContact h3 { font-family:'Playfair Display',serif; font-size:28px; font-weight:800; color:#fff; line-height:1.25; position:relative; }
