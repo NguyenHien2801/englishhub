@@ -67,8 +67,7 @@ async function callGeminiDirect(
         body.systemInstruction = { parts: [{ text: systemInstruction }] }
       }
       const response = await fetch(
-        // Sửa trong client.ts:
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
       )
       if (response.status === 429) {
@@ -112,8 +111,7 @@ async function callGroqDirect(
           model: 'llama-3.1-8b-instant',
           messages,
           max_tokens: 2048,
-          temperature: 0.7,
-          response_format: { type: 'json_object' }, 
+          temperature: 0.7, 
         })
       })
       if (response.status === 429) {
