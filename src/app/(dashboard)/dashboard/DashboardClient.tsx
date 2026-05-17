@@ -360,10 +360,10 @@ function PersonalRoadmap({ profile, totalMastered, avgScore, grammarDoneCount, t
 }
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 function KpiCard({
-  icon: Icon, label, value, sub, color, bg, trend, suffix,
+  icon: Icon, label, value, sub, color, bg, trend, suffix, isSmall = false,
 }: {
   icon: LucideIcon; label: string; value: string | number; sub?: string
-  color: string; bg: string; trend?: number; suffix?: string
+  color: string; bg: string; trend?: number; suffix?: string; isSmall?: boolean
 }) {
   const TIcon = trend === undefined ? null : trend > 0 ? ArrowUpRight : trend < 0 ? ArrowDownRight : Minus
   const tc = trend === undefined ? '' : trend > 0 ? C.green : trend < 0 ? C.rose : C.textLt
@@ -371,7 +371,7 @@ function KpiCard({
   <div style={{
     background: C.white, borderRadius: 20,
     border: `1px solid rgba(201,168,76,.18)`,
-    padding: '24px 26px',
+    padding: isSmall ? '16px 18px' : '24px 26px',
     display: 'flex', flexDirection: 'column', gap: 12,
     boxShadow: '0 2px 12px rgba(15,28,53,.07)',
     transition: 'box-shadow .25s',
@@ -431,11 +431,18 @@ return (
 
 // ─── Panel ────────────────────────────────────────────────────────────────────
 function Panel({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
+  const [isSmall, setIsSmall] = useState(false)
+  useEffect(() => {
+    const handle = () => setIsSmall(window.innerWidth < 480)
+    handle()
+    window.addEventListener('resize', handle)
+    return () => window.removeEventListener('resize', handle)
+  }, [])
   return (
     <div className={`dash-panel${className ? ` ${className}` : ''}`} style={{
       background: C.white, borderRadius: 20,
       border: `1px solid rgba(201,168,76,.18)`,
-      padding: '28px 30px',
+      padding: isSmall ? '18px 16px' : '28px 30px',
       boxShadow: '0 2px 12px rgba(15,28,53,.07)',
       ...style,
     }}>
@@ -654,10 +661,15 @@ export default function DashboardClient({
   grammarDoneCount, chatHistory,
 }: Props) {
   const [range, setRange] = useState('month')
-  const [isMobile, setIsMobile] = useState(false)
+ const [isMobile, setIsMobile] = useState(false)
+ const [isSmall, setIsSmall] = useState(false)
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
+    const check = () => {
+      const w = window.innerWidth
+      setIsMobile(w < 768)
+      setIsSmall(w < 480)
+    }
     check(); window.addEventListener('resize', check); return () => window.removeEventListener('resize', check)
   }, [])
 
@@ -745,10 +757,10 @@ export default function DashboardClient({
 
   const streak    = profile?.streak_hien_tai ?? 0
   const streakMax = profile?.streak_cao_nhat ?? 0
-
-  const col2 = isMobile ? '1fr' : '1fr 1fr'
-  const col3 = isMobile ? '1fr' : '1fr 1fr 1fr'
-  const col4 = isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr'
+  
+  const col2 = isSmall ? '1fr' : (isMobile ? '1fr' : '1fr 1fr')
+  const col3 = isSmall ? '1fr' : (isMobile ? '1fr' : '1fr 1fr 1fr')
+  const col4 = isSmall ? '1fr' : (isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr')
 
   const axis = { fontSize: 14, fill: C.textMid, fontFamily: "'DM Sans', sans-serif" }
   const ttStyle = {
@@ -803,6 +815,18 @@ body, .dash-root { font-size: 16px; line-height: 1.7; }
   .dash-hide-mobile { display: none !important; }
   .dash-panel { padding: 18px 16px !important; }
 }
+  /* Bổ sung responsive cho mobile */
+@media (max-width: 768px) {
+  .dash-panel { padding: 18px 16px !important; }
+  .dash-card { animation-delay: 0ms !important; }
+  .recharts-default-tooltip { font-size: 11px !important; padding: 6px 10px !important; }
+  .recharts-text { font-size: 11px !important; }
+}
+@media (max-width: 480px) {
+  .dash-range-sel button { padding: 4px 10px !important; font-size: 11px !important; }
+  table, td, th { font-size: 11px !important; }
+  .recharts-wrapper { margin-left: -8px; }
+}
 @media (max-width: 480px) {
   .dash-grid-4  { grid-template-columns: 1fr !important; }
   .dash-header-row { flex-direction: column !important; align-items: flex-start !important; }
@@ -832,6 +856,7 @@ body, .dash-root { font-size: 16px; line-height: 1.7; }
       <div className="dash-range-sel" style={{
         display: 'flex', gap: 3, background: C.white,
         borderRadius: 50, padding: 4,
+        flexWrap: 'wrap',
         border: `1px solid rgba(201,168,76,.22)`,
         boxShadow: '0 2px 12px rgba(15,28,53,.07)',
         }}>
@@ -950,7 +975,7 @@ body, .dash-root { font-size: 16px; line-height: 1.7; }
             {examChartData.length === 0
               ? <EmptyChart label="Chưa có phiên thi nào trong kỳ này" href="/exam" />
               : (
-                <ResponsiveContainer width="100%" height={210}>
+                <ResponsiveContainer width="100%" height={isMobile ? 160 : 210}>
                   <ComposedChart data={examChartData} margin={{ top: 5, right: 8, bottom: 0, left: -20 }}>
                     <defs>
                       <linearGradient id="gExam" x1="0" y1="0" x2="0" y2="1">
