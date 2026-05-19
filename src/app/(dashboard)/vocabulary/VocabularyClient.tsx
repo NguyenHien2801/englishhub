@@ -27,12 +27,24 @@ export default function VocabularyClient({ sets, dueWords, userId }: Props) {
 
 async function loadSetWords(set: Record<string, unknown>) {
   setLoadingSet(set.id as string)
+  
   const { data: wordsRaw } = await supabase
     .from('TuVung')
-    .select('*, TuVungCache(*), TienDoHocTuVung!left(*, nguoi_dung_id=eq.' + userId + ')')
+    .select(`
+      *,
+      TuVungCache(*),
+      TienDoHocTuVung(*)
+    `)
     .eq('bo_du_vung_id', set.id)
     .order('thu_tu_hien_thi')
-  const words = (wordsRaw || []) as unknown as Record<string, unknown>[]
+
+  // Filter TienDoHocTuVung phía client
+  const words = (wordsRaw || []).map(word => ({
+    ...word,
+    TienDoHocTuVung: ((word.TienDoHocTuVung as Record<string, unknown>[]) || [])
+      .filter(td => td.nguoi_dung_id === userId)
+  }))
+
   setSelectedSet(set)
   setSetWords(words)
   setMode('flashcard')

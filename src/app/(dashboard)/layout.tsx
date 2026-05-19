@@ -7,6 +7,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // 👇 Gọi cập nhật streak mỗi khi vào dashboard
+  await supabase.rpc('cap_nhat_streak', { p_user_id: user.id })
+
   const { data: profile } = await supabase
     .from('NguoiDung')
     .select('*')
