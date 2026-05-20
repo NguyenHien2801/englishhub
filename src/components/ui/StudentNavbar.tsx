@@ -14,12 +14,10 @@ import {
   Flame, Trophy,
 } from 'lucide-react'
 
-// ── Types ──────────────────────────────────────────────
 interface NavChild  { href: string; label: string; icon: LucideIcon }
 interface NavItem   { href: string; label: string; icon: LucideIcon }
 interface NavGroup  { label: string; icon: LucideIcon; children: NavChild[] }
 
-// ── Data ───────────────────────────────────────────────
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard',  label: 'Tổng quan',   icon: LayoutDashboard },
   { href: '/vocabulary', label: 'Từ vựng SRS',  icon: Layers },
@@ -48,7 +46,6 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
-// ── CSS ────────────────────────────────────────────────
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
@@ -114,7 +111,29 @@ const CSS = `
   .eh-mobile-topright{display:none!important;}
 }
 `
-// ── DesktopDropdown ────────────────────────────────────
+
+// ── Avatar component dùng lại ở cả desktop + mobile ──
+function NavAvatar({ avatarUrl, hoTen, size = 34, radius = 9 }: {
+  avatarUrl: string | null; hoTen: string; size?: number; radius?: number
+}) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: radius,
+      background: '#fff',
+      border: '2px solid rgba(201,168,76,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      overflow: 'hidden', flexShrink: 0,
+    }}>
+      {avatarUrl
+        ? <img src={avatarUrl} alt={hoTen} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : <span style={{ fontFamily: "'Playfair Display',serif", fontSize: size * 0.41, fontWeight: 800, color: '#0F1C35' }}>
+            {hoTen.charAt(0)}
+          </span>
+      }
+    </div>
+  )
+}
+
 function DesktopDropdown({ items, visible }: { items: NavChild[]; visible: boolean }) {
   return (
     <div style={{
@@ -149,23 +168,22 @@ function DesktopDropdown({ items, visible }: { items: NavChild[]; visible: boole
   )
 }
 
-// ── Props ──────────────────────────────────────────────
 interface StudentNavbarProps {
   open?: boolean
   profile?: Record<string, unknown> | null
 }
 
-// ── Component ──────────────────────────────────────────
 export default function StudentNavbar({ profile }: StudentNavbarProps) {
   const pathname = usePathname()
   const router   = useRouter()
   const supabase = createClient()
 
-  const hoTen   = (profile?.ho_ten as string)         || 'Sinh viên'
-  const mssv    = (profile?.ma_sinh_vien as string)    || ''
-  const mucTieu = (profile?.muc_tieu_hoc as string)    || 'VSTEP'
-  const streak  = (profile?.streak_hien_tai as number) || 0
-  const isAdmin = profile?.vai_tro === 'admin'
+  const hoTen    = (profile?.ho_ten as string)         || 'Sinh viên'
+  const mssv     = (profile?.ma_sinh_vien as string)    || ''
+  const mucTieu  = (profile?.muc_tieu_hoc as string)    || 'VSTEP'
+  const streak   = (profile?.streak_hien_tai as number) || 0
+  const avatarUrl = (profile?.avatar_url as string)     || null  // 👈 thêm
+  const isAdmin  = profile?.vai_tro === 'admin'
 
   const [openNav,        setOpenNav]        = useState<string | null>(null)
   const [userMenuOpen,   setUserMenuOpen]   = useState(false)
@@ -290,13 +308,8 @@ export default function StudentNavbar({ profile }: StudentNavbarProps) {
               onMouseEnter={e => { if (!userMenuOpen) { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)' } }}
               onMouseLeave={e => { if (!userMenuOpen) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' } }}
             >
-              <div style={{
-                width: 34, height: 34, borderRadius: 9, background: '#fff',
-                border: '2px solid rgba(201,168,76,0.5)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: "'Playfair Display',serif", fontSize: 14, fontWeight: 800,
-                color: '#0F1C35', flexShrink: 0,
-              }}>{hoTen.charAt(0)}</div>
+              {/* 👇 Dùng NavAvatar thay vì chữ cái */}
+              <NavAvatar avatarUrl={avatarUrl} hoTen={hoTen} size={34} radius={9} />
               <span style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.88)', whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>
                 {hoTen}
               </span>
@@ -315,8 +328,14 @@ export default function StudentNavbar({ profile }: StudentNavbarProps) {
                 overflow: 'hidden', zIndex: 9999,
               }}>
                 <div style={{ padding: '14px 18px', background: 'linear-gradient(135deg,#0F1C35 0%,#1E2F50 100%)', borderBottom: '1px solid rgba(201,168,76,0.15)' }}>
-                  <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13.5, fontWeight: 700, color: '#fff', marginBottom: 2 }}>{hoTen}</div>
-                  <div style={{ fontSize: 13, color: 'rgba(201,168,76,0.7)', fontFamily: 'monospace' }}>{mssv || mucTieu}</div>
+                  {/* 👇 Avatar trong dropdown header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <NavAvatar avatarUrl={avatarUrl} hoTen={hoTen} size={40} radius={10} />
+                    <div>
+                      <div style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13.5, fontWeight: 700, color: '#fff' }}>{hoTen}</div>
+                      <div style={{ fontSize: 13, color: 'rgba(201,168,76,0.7)', fontFamily: 'monospace' }}>{mssv || mucTieu}</div>
+                    </div>
+                  </div>
                 </div>
                 <div style={{ padding: '8px 8px 4px' }}>
                   {userMenuLinks.map(({ href, Icon, label }) => (
@@ -400,13 +419,8 @@ export default function StudentNavbar({ profile }: StudentNavbarProps) {
         {/* Mobile footer: user info */}
         <div className="eh-mobile-footer">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 10, background: '#fff',
-              border: '2px solid rgba(201,168,76,0.5)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: "'Playfair Display',serif", fontSize: 16, fontWeight: 800,
-              color: '#0F1C35', flexShrink: 0,
-            }}>{hoTen.charAt(0)}</div>
+            {/* 👇 Avatar mobile */}
+            <NavAvatar avatarUrl={avatarUrl} hoTen={hoTen} size={40} radius={10} />
             <div>
               <div style={{ fontSize: 15, fontWeight: 500, color: '#fff', fontFamily: "'DM Sans',sans-serif" }}>{hoTen}</div>
               <div style={{ fontSize: 13, color: 'rgba(201,168,76,0.7)', fontFamily: 'monospace' }}>{mssv || mucTieu}</div>
