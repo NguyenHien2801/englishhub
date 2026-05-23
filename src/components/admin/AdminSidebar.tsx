@@ -20,7 +20,7 @@ interface AdminSidebarProps {
 // ─── Icons (inline SVG) ────────────────────────────────────
 const Icons = {
   dashboard: (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <rect x="3" y="3" width="7" height="7" rx="1.5"/>
       <rect x="14" y="3" width="7" height="7" rx="1.5"/>
       <rect x="3" y="14" width="7" height="7" rx="1.5"/>
@@ -28,7 +28,7 @@ const Icons = {
     </svg>
   ),
   users: (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <circle cx="9" cy="7" r="4"/>
       <path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
       <path d="M16 3.13a4 4 0 010 7.75"/>
@@ -36,35 +36,35 @@ const Icons = {
     </svg>
   ),
   content: (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
     </svg>
   ),
   exam: (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
     </svg>
   ),
   stats: (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16"/>
     </svg>
   ),
   settings: (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
       <circle cx="12" cy="12" r="3"/>
     </svg>
   ),
   skills: (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path d="M12 18.5a6.5 6.5 0 100-13 6.5 6.5 0 000 13z"/>
       <path d="M12 14a2 2 0 100-4 2 2 0 000 4z"/>
       <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
     </svg>
   ),
   chatbot: (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.06L2 22l4.94-1.38A9.953 9.953 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/>
       <path d="M8 10h.01M12 10h.01M16 10h.01" strokeLinecap="round" strokeWidth={2.5}/>
     </svg>
@@ -239,10 +239,7 @@ const CSS = `
   background:rgba(255,255,255,0.05);
 }
 
-.as-item-icon{flex-shrink:0;display:flex;color:rgba(255,255,255,0.75);transition:color 0.15s;}
-.as-item.active .as-item-icon{color:#C9A84C;}
-.as-item:hover .as-item-icon{color:rgba(255,255,255,0.95);}
-.as-item.group-open .as-item-icon{color:rgba(255,255,255,0.95);}
+.as-item-icon{flex-shrink:0;display:flex;}
 .as-item-label{flex:1;}
 
 .as-chevron{flex-shrink:0;transition:transform 0.2s;display:flex;opacity:0.5;}
@@ -298,9 +295,9 @@ const CSS = `
   font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;
   text-decoration:none;background:none;border:1px solid rgba(255,255,255,0.07);
   cursor:pointer;transition:all 0.15s;white-space:nowrap;overflow:hidden;
-  color:rgba(255,255,255,0.45);margin-bottom:4px;letter-spacing:0;
+  color:rgba(255,255,255,0.7);margin-bottom:4px;letter-spacing:0;
 }
-.as-foot-btn:hover{color:rgba(255,255,255,0.75);border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);}
+.as-foot-btn:hover{color:rgba(255,255,255,0.95);border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);}
 .as-foot-btn.danger:hover{color:#fc8181;border-color:rgba(252,129,129,0.2);background:rgba(252,129,129,0.05);}
 `
 
