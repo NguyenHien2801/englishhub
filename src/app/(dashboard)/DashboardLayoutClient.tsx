@@ -16,7 +16,7 @@ export default function DashboardLayoutClient({
   return (
     <div className="flex min-h-screen" style={{ background: '#F8F5EE' }}>
 
-      <Sidebar open={sidebarOpen} isAdmin={isAdmin} profile={profile} />
+      <Sidebar open={sidebarOpen} profile={profile} />
 
       <div
         className="flex-1 flex flex-col"
