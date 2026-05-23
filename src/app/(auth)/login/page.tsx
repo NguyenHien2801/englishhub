@@ -18,26 +18,37 @@ export default function LoginPage() {
   const [loading,  setLoading]  = useState(false)
   const router   = useRouter()
   const supabase = createClient()
-
+  
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') router.replace('/dashboard')
-    })
-    return () => subscription.unsubscribe()
-  }, [])
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {})
+  return () => subscription.unsubscribe()
+}, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim() || !password) return
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
-    if (error) {
-      toast.error('Email hoặc mật khẩu không đúng')
-      setLoading(false)
-      return
-    }
-    toast.success('Đăng nhập thành công!')
-    window.location.href = '/dashboard'
+if (error) {
+  toast.error('Email hoặc mật khẩu không đúng')
+  setLoading(false)
+  return
+}
+
+const { data: { user } } = await supabase.auth.getUser()
+const { data: profile } = await supabase
+  .from('NguoiDung')
+  .select('vai_tro')
+  .eq('id', user!.id)
+  .single()
+
+toast.success('Đăng nhập thành công!')
+
+if (profile?.vai_tro === 'admin') {
+  window.location.href = '/admin/dashboard'
+} else {
+  window.location.href = '/dashboard'
+}
   }
 
   const features = [
