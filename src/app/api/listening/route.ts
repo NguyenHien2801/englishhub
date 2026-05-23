@@ -24,14 +24,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ sessions: data || [] })
   }
 
-  // Lấy danh sách bài nghe + câu hỏi
+  // Lấy danh sách bài nghe + câu hỏi (thêm loai_cau_hoi và du_lieu_them)
   let query = supabase
     .from('BaiNghe')
     .select(`
       *,
       BaiNgheCauHoi (
-        id, so_thu_tu, noi_dung,
-        cac_lua_chon, dap_an_dung, giai_thich
+        id,
+        so_thu_tu,
+        noi_dung,
+        cac_lua_chon,
+        dap_an_dung,
+        giai_thich,
+        loai_cau_hoi,
+        du_lieu_them
       )
     `)
     .eq('da_kiem_duyet', true)
@@ -43,12 +49,21 @@ export async function GET(request: Request) {
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-  // Sort câu hỏi theo thứ tự
+  // Sort câu hỏi theo thứ tự + normalize dap_an_dung cho true_false
   const baiNghe = (data || []).map(bai => ({
     ...bai,
-    BaiNgheCauHoi: (bai.BaiNgheCauHoi || []).sort(
-      (a: any, b: any) => a.so_thu_tu - b.so_thu_tu
-    )
+    BaiNgheCauHoi: (bai.BaiNgheCauHoi || [])
+      .sort((a: any, b: any) => a.so_thu_tu - b.so_thu_tu)
+      .map((ch: any) => ({
+        ...ch,
+        // Normalize đáp án true_false về dạng chuẩn: TRUE / FALSE / NOT_GIVEN
+        dap_an_dung: ch.loai_cau_hoi === 'true_false'
+          ? ch.dap_an_dung
+              .trim()
+              .toUpperCase()
+              .replace(/\s+/g, '_')
+          : ch.dap_an_dung,
+      })),
   }))
 
   // Lấy lịch sử để biết bài nào đã làm
@@ -57,6 +72,7 @@ export async function GET(request: Request) {
     .select('cau_tra_loi_json, diem_so, tong_so_cau, created_at')
     .eq('nguoi_dung_id', user.id)
     .eq('ky_nang', 'NGHE')
+    .order('created_at', { ascending: false })
 
   // Map baiId → kết quả gần nhất
   const daLamMap: Record<string, { diem: number; tong: number; ngay: string }> = {}
@@ -64,8 +80,8 @@ export async function GET(request: Request) {
     const baiId = (s.cau_tra_loi_json as any)?.baiId
     if (baiId && !daLamMap[baiId]) {
       daLamMap[baiId] = {
-        diem: s.diem_so,
-        tong: s.tong_so_cau,
+        diem: s.diem_so    ?? 0,
+        tong: s.tong_so_cau ?? 0,
         ngay: s.created_at,
       }
     }

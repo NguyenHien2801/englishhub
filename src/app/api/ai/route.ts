@@ -15,13 +15,13 @@ export async function POST(request: Request) {
     role: m.vai_tro === 'user' ? 'user' : 'model',
     parts: [{ text: m.noi_dung }]
   }))
-
+  
   let systemPrompt = SYSTEM_PROMPTS.chatbot
   if (type === 'grammar') systemPrompt = SYSTEM_PROMPTS.grammar
-  if (type === 'writing') systemPrompt = SYSTEM_PROMPTS.writing
+  if (type === 'writing') systemPrompt = 'Return only valid JSON. No markdown, no explanation, no text outside JSON.'
   if (type === 'vocabulary') systemPrompt = SYSTEM_PROMPTS.vocabulary
 
-  const aiResponse = await callGemini(message, systemPrompt, geminiHistory)
+const aiResponse = await callGemini(message, systemPrompt, geminiHistory)
 
   // Save to chat history
   const phienId = sessionId || `session_${Date.now()}`

@@ -344,7 +344,13 @@ function SuccessToast({ score, total }: { score: number; total: number }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function GrammarPage() {
+interface GrammarClientProps {
+  lessons: any[];
+  completedIds: Set<any>;
+  userId: string;
+}
+
+export default function GrammarClient({ lessons, completedIds, userId }: GrammarClientProps) {
   const [view, setView] = useState("home");
   const [CHAPTERS, setCHAPTERS] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);

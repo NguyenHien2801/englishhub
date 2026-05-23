@@ -1,53 +1,44 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+// app/api/writing/route.ts — lưu kết quả vào PhienLuyenThi (bảng có sẵn)
+import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
-// POST: Save writing submission + AI feedback
-export async function POST(request: Request) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function POST(req: NextRequest) {
+  const body = await req.json()
 
-  const body = await request.json()
-  const {
-    taskId, taskTitle, cert, level,
-    writingText, wordCount,
-    tongDiem, nhanXet, diemManh, canCaiThien, chiTiet,
-  } = body
+  const cookieStore = cookies()
+  const supabaseUser = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  )
+  const { data: { user } } = await supabaseUser.auth.getUser()
 
-  const { data, error } = await supabase.from('PhienLuyenThi').insert({
-    nguoi_dung_id: user.id,
-    loai_chung_chi: cert,
-    ky_nang: 'VIET',
-    diem_so: Math.round(tongDiem / 4), // convert /40 to /10
-    tong_so_cau: 40,
-    so_cau_dung: tongDiem,
-    thoi_gian_lam_bai: 0,
-    cau_tra_loi_json: {
-      taskId, taskTitle, level,
-      writingText, wordCount,
-      feedback: { tongDiem, nhanXet, diemManh, canCaiThien, chiTiet },
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { error } = await supabase.from('PhienLuyenThi').insert({
+    nguoi_dung_id:    user?.id ?? null,
+    loai_chung_chi:   body.chungChi,       // 'VSTEP' | 'TOEIC' | 'APTIS'
+    ky_nang:          'VIET',
+    la_de_day_du:     false,
+    diem_so:          body.tongDiem,        // 0-40
+    diem_quy_doi:     body.tongDiem / 40 * 10, // quy về 10
+    tong_so_cau:      1,
+    so_cau_dung:      null,
+    thoi_gian_lam_bai: body.thoiGianGiay ?? null,
+    cau_tra_loi_json: {                     // lưu bài viết + metadata
+      bai_luyen_viet_id: body.baiLuyenVietId,
+      tieu_de:           body.tieuDe,
+      noi_dung_bai_viet: body.noiDungBaiViet,
+      so_tu:             body.soTu,
     },
-    phan_tich_ai: nhanXet,
-  }).select().single()
+    phan_tich_ai: JSON.stringify(body.ketQuaAi), // toàn bộ feedback AI
+  })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-
-  return NextResponse.json({ session: data })
-}
-
-// GET: Get writing history
-export async function GET() {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data } = await supabase
-    .from('PhienLuyenThi')
-    .select('*')
-    .eq('nguoi_dung_id', user.id)
-    .eq('ky_nang', 'VIET')
-    .order('created_at', { ascending: false })
-    .limit(20)
-
-  return NextResponse.json({ sessions: data || [] })
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
 }
