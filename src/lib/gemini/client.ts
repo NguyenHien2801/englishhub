@@ -1,5 +1,5 @@
 // AI Client - Gemini + Groq với tự động fallback
-// Thứ tự ưu tiên: Gemini (tất cả key) → Groq (tất cả key) → throw error
+// Thứ tự ưu tiên: Gemini (random key) → Groq (random key) → throw error
 
 // ── Gemini Keys ───────────────────────────────────────────────────────────────
 const GEMINI_KEYS = [
@@ -22,19 +22,13 @@ const GROQ_KEYS = [
   process.env.GROQ_API_KEY_6,
 ].filter(Boolean) as string[]
 
-let geminiKeyIndex = 0
-let groqKeyIndex = 0
-
-function getNextGeminiKey(): string {
-  const key = GEMINI_KEYS[geminiKeyIndex]
-  geminiKeyIndex = (geminiKeyIndex + 1) % GEMINI_KEYS.length
-  return key
+// ── FIX: Dùng random thay vì module-level index (an toàn với serverless) ──────
+function getRandomGeminiKey(): string {
+  return GEMINI_KEYS[Math.floor(Math.random() * GEMINI_KEYS.length)]
 }
 
-function getNextGroqKey(): string {
-  const key = GROQ_KEYS[groqKeyIndex]
-  groqKeyIndex = (groqKeyIndex + 1) % GROQ_KEYS.length
-  return key
+function getRandomGroqKey(): string {
+  return GROQ_KEYS[Math.floor(Math.random() * GROQ_KEYS.length)]
 }
 
 export interface GeminiMessage {
@@ -46,10 +40,14 @@ export interface GeminiMessage {
 async function callGeminiDirect(
   prompt: string,
   systemInstruction?: string,
-  history?: GeminiMessage[]
+  history?: GeminiMessage[],
+  maxTokens = 2048
 ): Promise<string> {
-  for (let attempt = 0; attempt < GEMINI_KEYS.length; attempt++) {
-    const apiKey = getNextGeminiKey()
+  // Shuffle keys để tránh luôn thử cùng 1 key khi retry
+  const shuffledKeys = [...GEMINI_KEYS].sort(() => Math.random() - 0.5)
+
+  for (let attempt = 0; attempt < shuffledKeys.length; attempt++) {
+    const apiKey = shuffledKeys[attempt]
     try {
       const body: Record<string, unknown> = {
         contents: [
@@ -60,38 +58,54 @@ async function callGeminiDirect(
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 2048,
+          maxOutputTokens: maxTokens,
         },
       }
       if (systemInstruction) {
         body.systemInstruction = { parts: [{ text: systemInstruction }] }
       }
+
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
       )
+
+      // FIX: Chỉ rotate key khi 429, các lỗi khác throw luôn
       if (response.status === 429) {
-        console.log(`Gemini key ${attempt + 1} rate limited, rotating...`)
+        console.log(`Gemini key ${attempt + 1}/${shuffledKeys.length} rate limited, rotating...`)
         continue
       }
-      if (!response.ok) throw new Error(`Gemini API error: ${response.status}`)
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.status} ${response.statusText}`)
+      }
+
       const data = await response.json()
       return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Không có phản hồi.'
+
     } catch (error) {
-      if (attempt === GEMINI_KEYS.length - 1) throw error
+      // Nếu là lỗi do chúng ta throw (không phải 429) → re-throw ngay
+      if (error instanceof Error && error.message.startsWith('Gemini API error:')) {
+        throw error
+      }
+      // Lỗi network → thử key tiếp theo nếu còn
+      if (attempt === shuffledKeys.length - 1) throw error
+      console.log(`Gemini key ${attempt + 1} network error, trying next...`)
     }
   }
-  throw new Error('All Gemini keys exhausted')
+  throw new Error('All Gemini keys rate limited')
 }
 
 // ── Gọi Groq ──────────────────────────────────────────────────────────────────
 async function callGroqDirect(
   prompt: string,
   systemInstruction?: string,
-  history?: GeminiMessage[]
+  history?: GeminiMessage[],
+  maxTokens = 2048
 ): Promise<string> {
-  for (let attempt = 0; attempt < GROQ_KEYS.length; attempt++) {
-    const apiKey = getNextGroqKey()
+  const shuffledKeys = [...GROQ_KEYS].sort(() => Math.random() - 0.5)
+
+  for (let attempt = 0; attempt < shuffledKeys.length; attempt++) {
+    const apiKey = shuffledKeys[attempt]
     try {
       const messages = [
         ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
@@ -101,6 +115,7 @@ async function callGroqDirect(
         })),
         { role: 'user', content: prompt }
       ]
+
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -108,36 +123,49 @@ async function callGroqDirect(
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
+          // FIX: Dùng model 70b cho JSON phức tạp, 8b dễ sai format
+          model: 'llama-3.3-70b-versatile',
           messages,
-          max_tokens: 2048,
-          temperature: 0.7, 
+          max_tokens: maxTokens,
+          temperature: 0.7,
         })
       })
+
+      // FIX: Chỉ rotate key khi 429
       if (response.status === 429) {
-        console.log(`Groq key ${attempt + 1} rate limited, rotating...`)
+        console.log(`Groq key ${attempt + 1}/${shuffledKeys.length} rate limited, rotating...`)
         continue
       }
-      if (!response.ok) throw new Error(`Groq API error: ${response.status}`)
+      if (!response.ok) {
+        throw new Error(`Groq API error: ${response.status} ${response.statusText}`)
+      }
+
       const data = await response.json()
       return data.choices?.[0]?.message?.content || 'Không có phản hồi.'
+
     } catch (error) {
-      if (attempt === GROQ_KEYS.length - 1) throw error
+      if (error instanceof Error && error.message.startsWith('Groq API error:')) {
+        throw error
+      }
+      if (attempt === shuffledKeys.length - 1) throw error
+      console.log(`Groq key ${attempt + 1} network error, trying next...`)
     }
   }
-  throw new Error('All Groq keys exhausted')
+  throw new Error('All Groq keys rate limited')
 }
 
 // ── Main callGemini - tự động fallback Gemini → Groq ─────────────────────────
+// FIX: Thêm param maxTokens để caller tự điều chỉnh (generate cần nhiều hơn)
 export async function callGemini(
   prompt: string,
   systemInstruction?: string,
-  history?: GeminiMessage[]
+  history?: GeminiMessage[],
+  maxTokens = 2048
 ): Promise<string> {
   // Thử Gemini trước
   if (GEMINI_KEYS.length > 0) {
     try {
-      return await callGeminiDirect(prompt, systemInstruction, history)
+      return await callGeminiDirect(prompt, systemInstruction, history, maxTokens)
     } catch (error) {
       console.warn('All Gemini keys failed, switching to Groq...', error)
     }
@@ -146,13 +174,14 @@ export async function callGemini(
   // Fallback sang Groq
   if (GROQ_KEYS.length > 0) {
     try {
-      return await callGroqDirect(prompt, systemInstruction, history)
+      return await callGroqDirect(prompt, systemInstruction, history, maxTokens)
     } catch (error) {
       console.warn('All Groq keys failed too...', error)
+      throw error
     }
   }
 
-  throw new Error('All AI providers exhausted')
+  throw new Error('No AI providers configured')
 }
 
 // ── System Prompts ────────────────────────────────────────────────────────────
@@ -180,20 +209,31 @@ Nhiệm vụ: Giúp học viên học tiếng Anh hiệu quả, chuẩn bị VST
 Luôn thân thiện, khuyến khích, giải thích bằng tiếng Việt khi cần.
 Có thể luyện hội thoại, giải thích ngữ pháp, từ vựng, và chấm writing.`,
 
+  // FIX: Thêm chỉ dẫn ngôn ngữ rõ ràng
   levelTest: `Phân tích kết quả Level Test và tạo lộ trình học cá nhân.
-Trả về JSON với format:
+Viết toàn bộ nội dung (nhan_xet, diem_manh, diem_yeu, lo_trinh) bằng tiếng Việt.
+Trả về JSON THUẦN TÚY — không markdown, không backtick, không giải thích ngoài JSON.
+Format bắt buộc:
 {
   "trinh_do": "B1",
-  "nhan_xet": "...",
-  "diem_manh": ["..."],
-  "diem_yeu": ["..."],
+  "nhan_xet": "Nhận xét tổng thể 2-3 câu bằng tiếng Việt",
+  "diem_manh": ["Điểm mạnh 1 bằng tiếng Việt", "Điểm mạnh 2"],
+  "diem_yeu": ["Điểm yếu 1 bằng tiếng Việt", "Điểm yếu 2"],
   "lo_trinh": {
     "muc_tieu": "VSTEP B1",
     "thoi_gian": "3 tháng",
-    "tuan_1_2": "...",
-    "tuan_3_4": "...",
-    "tuan_5_8": "...",
-    "tuan_9_12": "..."
+    "tuan_1_2": "Nội dung tuần 1-2 bằng tiếng Việt",
+    "tuan_3_4": "Nội dung tuần 3-4 bằng tiếng Việt",
+    "tuan_5_8": "Nội dung tuần 5-8 bằng tiếng Việt",
+    "tuan_9_12": "Nội dung tuần 9-12 bằng tiếng Việt"
   }
-}`
+}`,
+
+  generate: `Bạn là chuyên gia thiết kế đề thi tiếng Anh theo chuẩn VSTEP, TOEIC và APTIS.
+Nhiệm vụ: Tạo đề thi hoàn chỉnh gồm 5 phần theo đúng format JSON được yêu cầu.
+Quy tắc bắt buộc:
+- Trả về JSON THUẦN TÚY — không markdown, không backtick, không giải thích ngoài JSON.
+- Toàn bộ nội dung đề thi (câu hỏi, đáp án, đoạn văn, script, prompt) PHẢI bằng tiếng Anh.
+- Đảm bảo đủ số lượng câu hỏi: Listening 5, Reading 5, Grammar 10.
+- Đáp án "correct" phải là chữ cái đầu tiên của option đúng (A, B, C hoặc D).`,
 }

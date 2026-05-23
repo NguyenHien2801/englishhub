@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { callGemini } from '@/lib/gemini/client'
+import { callGemini, SYSTEM_PROMPTS } from '@/lib/gemini/client'
 
 const GENERATE_PROMPT = (usedTopics: string[]) => `
 You are an expert English language test designer specialising in VSTEP, TOEIC, and APTIS formats.
@@ -83,18 +83,27 @@ export async function POST(request: Request) {
       .map((r: { chu_de?: string }) => r.chu_de)
       .filter(Boolean) as string[]
 
-    const raw = await callGemini(GENERATE_PROMPT(usedTopics), undefined, undefined)
+    // FIX: Truyền system prompt + tăng maxTokens lên 4096 cho đề thi đầy đủ
+    const raw = await callGemini(
+      GENERATE_PROMPT(usedTopics),
+      SYSTEM_PROMPTS.generate,
+      undefined,
+      4096
+    )
     const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const parsed = JSON.parse(cleaned)
 
+    // Validate cấu trúc bắt buộc
     if (!parsed.listening || !parsed.speaking || !parsed.reading || !parsed.writing || !parsed.grammar_vocab) {
       throw new Error('Incomplete exam structure in AI response')
     }
 
-    // Validate question counts
-    if (parsed.listening.questions.length < 3) throw new Error('Listening: insufficient questions')
-    if (parsed.reading.questions.length < 4)   throw new Error('Reading: insufficient questions')
+    // FIX: Validate đủ cả 5 section (trước chỉ check 3)
+    if (parsed.listening.questions.length < 3)    throw new Error('Listening: insufficient questions')
+    if (parsed.reading.questions.length < 4)      throw new Error('Reading: insufficient questions')
     if (parsed.grammar_vocab.questions.length < 10) throw new Error('Grammar: insufficient questions')
+    if (!parsed.speaking.prompt?.trim())           throw new Error('Speaking: missing prompt')
+    if (!parsed.writing.prompt?.trim())            throw new Error('Writing: missing prompt')
 
     return NextResponse.json({ exam: parsed })
   } catch (error) {
