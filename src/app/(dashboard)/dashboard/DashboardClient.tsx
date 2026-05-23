@@ -120,41 +120,48 @@ function filterByDays<R extends { created_at?: string }>(rows: R[], days: number
   return rows.filter(r => r.created_at && new Date(r.created_at) >= c)
 }
 
+// THAY BẰNG:
 function groupExams(rows: ExamRow[], days: number) {
   const f = filterByDays(rows, days)
-  const m: Record<string, { label: string; soPhien: number; totalScore: number; thoiGian: number }> = {}
+    .sort((a, b) => new Date(a.created_at!).getTime() - new Date(b.created_at!).getTime())
+  const m: Record<string, { label: string; soPhien: number; totalScore: number; thoiGian: number; ts: number }> = {}
   f.forEach(r => {
     const d = new Date(r.created_at!)
     let k: string
-    if (days <= 7)       k = d.toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric' })
+    if (days <= 7)       k = d.toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'numeric' })
     else if (days <= 30) k = `${d.getDate()}/${d.getMonth() + 1}`
     else if (days <= 90) k = `T${d.getMonth() + 1} W${Math.ceil(d.getDate() / 7)}`
     else                 k = `Th${d.getMonth() + 1}`
-    if (!m[k]) m[k] = { label: k, soPhien: 0, totalScore: 0, thoiGian: 0 }
+    if (!m[k]) m[k] = { label: k, soPhien: 0, totalScore: 0, thoiGian: 0, ts: d.getTime() }
     m[k].soPhien++; m[k].totalScore += pct(r.so_cau_dung, r.tong_so_cau); m[k].thoiGian += r.thoi_gian_lam_bai ?? 0
   })
-  return Object.values(m).map(g => ({
-    label: g.label, soPhien: g.soPhien,
-    diemTB: g.soPhien ? Math.round(g.totalScore / g.soPhien) : 0,
-    thoiGian: Math.round(g.thoiGian / 60),
-  }))
+  return Object.values(m)
+    .sort((a, b) => a.ts - b.ts)
+    .map(g => ({
+      label: g.label, soPhien: g.soPhien,
+      diemTB: g.soPhien ? Math.round(g.totalScore / g.soPhien) : 0,
+      thoiGian: Math.round(g.thoiGian / 60),
+    }))
 }
 
 function groupVocabByDay(rows: VocabRow[], days: number) {
   const result: Record<string, { label: string; hoc: number; onTap: number; thuanThuc: number }> = {}
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days)
   rows.forEach(r => {
-    const rawDate = r.lan_cuoi_on ?? r.ngay_on_tiep_theo
+    const rawDate = r.lan_cuoi_on   // ← bỏ ?? r.ngay_on_tiep_theo
     if (!rawDate) return
     const d = new Date(String(rawDate))
     if (d < cutoff) return
     const k = String(rawDate).slice(0, 10)
     if (!result[k]) result[k] = { label: k.slice(5).replace('-', '/'), hoc: 0, onTap: 0, thuanThuc: 0 }
     if (r.trang_thai === 'moi' || r.trang_thai === 'dang_hoc') result[k].hoc++
-    else if (r.trang_thai === 'on_tap') result[k].onTap++
+    else if (r.trang_thai === 'on_tap')     result[k].onTap++
     else if (r.trang_thai === 'thuan_thuc') result[k].thuanThuc++
   })
-  return Object.values(result).slice(-30)
+   return Object.entries(result)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-30)
+    .map(([, v]) => v)
 }
 
 function weeklyHeatmap(s: Set<string>) {
@@ -746,14 +753,24 @@ export default function DashboardClient({
       const k = rangeDays <= 30 ? `${d.getDate()}/${d.getMonth() + 1}` : `T${d.getMonth() + 1}`
       m[k] = (m[k] ?? 0) + 1
     })
-    return Object.entries(m).map(([label, count]) => ({ label, count }))
+    return Object.entries(m)
+      .sort(([a], [b]) => {
+        const parse = (s: string) => {
+          if (s.startsWith('T')) return parseInt(s.slice(1)) * 100
+          const [d, mo] = s.split('/').map(Number)
+          return (mo ?? 0) * 100 + (d ?? 0)
+        }
+        return parse(a) - parse(b)
+      })
+      .map(([label, count]) => ({ label, count }))
   }, [chatHistory, rangeDays])
 
-  const hourDist = useMemo(() => {
-    const b = Array(24).fill(0).map((_, h) => ({ hour: `${h}h`, count: 0, h }))
-    recentExams.forEach(r => { if (r.created_at) b[new Date(r.created_at).getHours()].count++ })
-    return b.filter(b => b.h >= 5 && b.h <= 23)
-  }, [recentExams])
+// ✅ Dùng examInRange thay vì recentExams → cập nhật theo range
+const hourDist = useMemo(() => {
+  const b = Array(24).fill(0).map((_, h) => ({ hour: `${h}h`, count: 0, h }))
+  examInRange.forEach(r => { if (r.created_at) b[new Date(r.created_at).getHours()].count++ })
+  return b.filter(b => b.h >= 5 && b.h <= 23)
+}, [examInRange])  // ← dependency đổi từ recentExams → examInRange
 
   const streak    = profile?.streak_hien_tai ?? 0
   const streakMax = profile?.streak_cao_nhat ?? 0
