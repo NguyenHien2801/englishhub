@@ -47,9 +47,9 @@ export default function StudentsProgressClient({
     }
     const sessionsByUser = new Map<string, number>()
     for (const s of sessions) sessionsByUser.set(s.nguoi_dung_id, (sessionsByUser.get(s.nguoi_dung_id) || 0) + 1)
-
-    return students.map(s => ({
-      ...s,
+      
+      return students.map(s => ({
+      ...(s as Record<string, unknown>),
       _vocab: vocabByUser.get(s.id as string) || { total: 0, mastered: 0 },
       _grammar: grammarByUser.get(s.id as string) || { done: 0, avg: 0 },
       _sessions: sessionsByUser.get(s.id as string) || 0,
@@ -59,16 +59,17 @@ export default function StudentsProgressClient({
   const filtered = useMemo(() => {
     let list = studentStats.filter(s => {
       const q = search.toLowerCase()
-      return (!q || (s.ho_ten as string).toLowerCase().includes(q) || (s.ma_sinh_vien as string).toLowerCase().includes(q)) &&
-        (!filterLevel || s.trinh_do_hien_tai === filterLevel)
+     const u = s as Record<string, unknown>
+      return (!q || (u.ho_ten as string).toLowerCase().includes(q) || (u.ma_sinh_vien as string).toLowerCase().includes(q)) &&
+        (!filterLevel || u.trinh_do_hien_tai === filterLevel)
     })
     if (sortBy === 'tu_vung') list = list.sort((a, b) => (b._vocab.total) - (a._vocab.total))
-    else if (sortBy === 'streak') list = list.sort((a, b) => (b.streak_hien_tai as number) - (a.streak_hien_tai as number))
+    else if (sortBy === 'streak') list = list.sort((a, b) => ((a as Record<string, unknown>).streak_hien_tai as number) - ((b as Record<string, unknown>).streak_hien_tai as number) ? -1 : 1)
     else list = list.sort((a, b) => b._sessions - a._sessions)
     return list
   }, [studentStats, search, filterLevel, sortBy])
 
-  const selectedStats = selected ? studentStats.find(s => s.id === selected.id) : null
+const selectedStats = selected ? studentStats.find(s => (s as Record<string, unknown>).id === selected.id) : null
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -125,25 +126,26 @@ export default function StudentsProgressClient({
               </thead>
               <tbody>
                 {filtered.map(s => {
-                  const days = daysSince(s.ngay_hoc_cuoi as string | null)
-                  return (
-                    <tr key={s.id as string}
+                    const u = s as Record<string, unknown>
+                    const days = daysSince(u.ngay_hoc_cuoi as string | null)
+                    return (
+                    <tr key={u.id as string}
                       onClick={() => setSelected(s)}
-                      className={`border-b border-[#F8F7F2] cursor-pointer hover:bg-[#F8F7F2] transition-colors ${selected?.id === s.id ? 'bg-[#F0FFF8]' : ''}`}>
+                      className={`border-b border-[#F8F7F2] cursor-pointer hover:bg-[#F8F7F2] transition-colors ${selected?.id === u.id ? 'bg-[#F0FFF8]' : ''}`}>
                       <td className="px-4 py-3">
-                        <div className="text-sm font-medium text-[#0D0D0D] whitespace-nowrap">{s.ho_ten as string}</div>
-                        <div className="text-xs text-[#A0A090] font-mono">{s.ma_sinh_vien as string}</div>
+                        <div className="text-sm font-medium text-[#0D0D0D] whitespace-nowrap">{u.ho_ten as string}</div>
+                        <div className="text-xs text-[#A0A090] font-mono">{u.ma_sinh_vien as string}</div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${LEVEL_COLOR[s.trinh_do_hien_tai as string] || 'bg-[#F8F7F2] text-[#6B6B60]'}`}>
-                          {s.trinh_do_hien_tai as string}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${LEVEL_COLOR[u.trinh_do_hien_tai as string] || 'bg-[#F8F7F2] text-[#6B6B60]'}`}>
+                          {u.trinh_do_hien_tai as string}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-[#0D0D0D]">{s._vocab.total}</td>
                       <td className="px-4 py-3 text-sm text-[#0D0D0D]">{s._grammar.done}</td>
                       <td className="px-4 py-3">
-                        <span className={`text-sm font-semibold ${(s.streak_hien_tai as number) > 7 ? 'text-[#F5A623]' : 'text-[#6B6B60]'}`}>
-                          🔥 {s.streak_hien_tai as number}
+                        <span className={`text-sm font-semibold ${(u.streak_hien_tai as number) > 7 ? 'text-[#F5A623]' : 'text-[#6B6B60]'}`}>
+                          🔥 {u.streak_hien_tai as number}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-[#6B6B60]">{s._sessions}</td>
@@ -151,8 +153,8 @@ export default function StudentsProgressClient({
                         {days === null ? 'Chưa học' : days === 0 ? <span className="text-[#00A878] font-medium">Hôm nay</span> : `${days} ngày trước`}
                       </td>
                     </tr>
-                  )
-                })}
+                    )
+                  })}
               </tbody>
             </table>
           </div>
@@ -167,23 +169,23 @@ export default function StudentsProgressClient({
             <div className="bg-white rounded-2xl border border-[#E8E8E0] p-5 sticky top-4 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#F8F7F2] flex items-center justify-center font-bold text-[#0D0D0D]">
-                  {(selectedStats.ho_ten as string).charAt(0)}
+                  {((selectedStats as Record<string, unknown>).ho_ten as string).charAt(0)}
                 </div>
                 <div>
-                  <div className="font-semibold text-[#0D0D0D]">{selectedStats.ho_ten as string}</div>
-                  <div className="text-xs text-[#A0A090] font-mono">{selectedStats.ma_sinh_vien as string}</div>
+                 <div className="font-semibold text-[#0D0D0D]">{(selectedStats as Record<string, unknown>).ho_ten as string}</div>
+                  <div className="text-xs text-[#A0A090] font-mono">{(selectedStats as Record<string, unknown>).ma_sinh_vien as string}</div>
                 </div>
-                <span className={`ml-auto text-sm font-bold px-2.5 py-1 rounded-lg ${LEVEL_COLOR[selectedStats.trinh_do_hien_tai as string]}`}>
-                  {selectedStats.trinh_do_hien_tai as string}
+                <span className={`ml-auto text-sm font-bold px-2.5 py-1 rounded-lg ${LEVEL_COLOR[(selectedStats as Record<string, unknown>).trinh_do_hien_tai as string]}`}>
+                 {(selectedStats as Record<string, unknown>).trinh_do_hien_tai as string}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'Lớp', value: (selectedStats.lop as string) || '–' },
-                  { label: 'Khoa', value: (selectedStats.khoa as string) || '–' },
-                  { label: 'Mục tiêu', value: selectedStats.muc_tieu_hoc as string },
-                  { label: 'Streak cao nhất', value: `🔥 ${selectedStats.streak_cao_nhat as number}` },
+                  { label: 'Lớp', value: ((selectedStats as Record<string, unknown>).lop as string) || '–' },
+                  { label: 'Khoa', value: ((selectedStats as Record<string, unknown>).khoa as string) || '–' },
+                  { label: 'Mục tiêu', value: (selectedStats as Record<string, unknown>).muc_tieu_hoc as string },
+                  { label: 'Streak cao nhất', value: `🔥 ${(selectedStats as Record<string, unknown>).streak_cao_nhat as number}` },
                 ].map(s => (
                   <div key={s.label} className="p-2.5 bg-[#F8F7F2] rounded-xl">
                     <div className="text-xs text-[#A0A090]">{s.label}</div>
@@ -198,7 +200,7 @@ export default function StudentsProgressClient({
                   {[
                     { label: 'Đang học', value: selectedStats._vocab.total },
                     { label: 'Thuần thục', value: selectedStats._vocab.mastered },
-                    { label: 'Tổng SRS', value: (selectedStats.tong_so_tu_da_hoc as number) || 0 },
+                    { label: 'Tổng SRS', value: ((selectedStats as Record<string, unknown>).tong_so_tu_da_hoc as number) || 0 },
                   ].map(s => (
                     <div key={s.label} className="p-2.5 bg-[#F8F7F2] rounded-xl text-center">
                       <div className="font-bold text-[#0D0D0D]">{s.value}</div>
