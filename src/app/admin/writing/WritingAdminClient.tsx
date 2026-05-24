@@ -145,13 +145,13 @@ export default function WritingAdminClient({ lessons: init }: { lessons: Lesson[
                     {selected.de_bai as string}
                   </div>
                 </div>
-                {selected.thong_tin_ky_thi && (
+                {selected.thong_tin_ky_thi ? (
                   <div>
                     <h4 className="text-xs font-semibold text-[#6B6B60] uppercase tracking-wide mb-2">Thông tin kỳ thi</h4>
                     <div className="p-3 bg-[#FFF8EC] rounded-xl text-sm text-[#6B6B60]">{selected.thong_tin_ky_thi as string}</div>
-                  </div>
-                )}
-                {selected.rubric_json && (
+                    </div>
+                ) : null}
+                {selected.rubric_json ? (
                   <div>
                     <h4 className="text-xs font-semibold text-[#6B6B60] uppercase tracking-wide mb-2">Rubric chấm điểm</h4>
                     <div className="flex flex-wrap gap-2">
@@ -162,7 +162,7 @@ export default function WritingAdminClient({ lessons: init }: { lessons: Lesson[
                       ))}
                     </div>
                   </div>
-                )}
+                ) : null }
               </div>
             </div>
           ) : (
