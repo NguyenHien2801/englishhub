@@ -163,14 +163,14 @@ export default function ExamsAdminClient({ sessions }: { sessions: Session[] }) 
                     <div className="text-xs text-[#A0A090] text-center pt-1">
                       {fmtDate(selected.created_at as string)} · {selected.la_de_day_du ? 'Đề đầy đủ' : 'Luyện nhanh'}
                     </div>
-                    {selected.phan_tich_ai && (
+                    {selected.phan_tich_ai ? (
                       <div>
                         <div className="text-xs font-semibold text-[#A0A090] uppercase tracking-wide mb-1.5">Phân tích AI</div>
                         <div className="p-3 bg-[#F0F0FF] rounded-xl text-xs text-[#6B6B60] leading-relaxed">
                           {selected.phan_tich_ai as string}
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 )
               })()}
