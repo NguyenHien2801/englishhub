@@ -120,7 +120,7 @@ export default function ListeningAdminClient({ lessons: init }: { lessons: Recor
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="font-semibold text-[#0D0D0D] text-lg">{selected.tieu_de as string}</h3>
-                  {selected.mo_ta && <p className="text-sm text-[#6B6B60] mt-0.5">{selected.mo_ta as string}</p>}
+                  {selected.mo_ta ? <p className="text-sm text-[#6B6B60] mt-0.5">{selected.mo_ta as string}</p> : null}
                 </div>
                 <button
                   onClick={() => toggleKiemDuyet(selected.id as string, selected.da_kiem_duyet as boolean)}
@@ -128,14 +128,14 @@ export default function ListeningAdminClient({ lessons: init }: { lessons: Recor
                   {selected.da_kiem_duyet ? 'Bỏ duyệt' : 'Duyệt bài'}
                 </button>
               </div>
-
-              {selected.video_url && (
+              
+              {selected.video_url ? (
                 <div className="mb-4 p-3 bg-[#F8F7F2] rounded-xl text-sm">
                   <span className="text-[#6B6B60]">🎬 </span>
                   <a href={selected.video_url as string} target="_blank" rel="noreferrer"
-                    className="text-[#00A878] hover:underline break-all">{selected.video_url as string}</a>
-                </div>
-              )}
+                  className="text-[#00A878] hover:underline break-all">{selected.video_url as string}</a>
+                  </div>
+              ) : null}
 
               <div className="border-t border-[#F8F7F2] pt-4 mt-4">
                 <h4 className="font-semibold text-sm text-[#0D0D0D] mb-3">Câu hỏi ({questions.length})</h4>
@@ -198,7 +198,7 @@ export default function ListeningAdminClient({ lessons: init }: { lessons: Recor
                 ].map(f => (
                   <div key={f.key}>
                     <label className="block text-xs font-semibold text-[#6B6B60] mb-1">{f.label}</label>
-                    <select value={(form as Record<string, string>)[f.key]}
+                    <select value={(form as unknown as Record<string, string>)[f.key]}
                       onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                       className="w-full px-3 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-sm focus:outline-none focus:border-[#00A878] bg-white">
                       {f.opts.map(o => <option key={o} value={o}>{o}</option>)}
