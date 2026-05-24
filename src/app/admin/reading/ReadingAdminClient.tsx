@@ -99,8 +99,8 @@ export default function ReadingAdminClient() {
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${certColor[q.loai_chung_chi as string] || 'bg-[#F8F7F2] text-[#6B6B60]'}`}>
                   {q.loai_chung_chi as string}
                 </span>
-                {q.cap_do && <span className="text-xs px-2 py-0.5 rounded-full bg-[#F8F7F2] text-[#6B6B60]">{q.cap_do as string}</span>}
-                {q.so_phan && <span className="text-xs px-2 py-0.5 rounded-full bg-[#F8F7F2] text-[#6B6B60]">Phần {q.so_phan as number}</span>}
+                {q.cap_do ? <span className="text-xs px-2 py-0.5 rounded-full bg-[#F8F7F2] text-[#6B6B60]">{q.cap_do as string}</span> : null}
+                {q.so_phan ? <span className="text-xs px-2 py-0.5 rounded-full bg-[#F8F7F2] text-[#6B6B60]">Phần {q.so_phan as number}</span> : null}
               </div>
             </div>
           ))}
@@ -112,23 +112,23 @@ export default function ReadingAdminClient() {
             <div className="bg-white rounded-2xl border border-[#E8E8E0] p-6 sticky top-4">
               <div className="flex gap-2 mb-4 flex-wrap">
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${certColor[selected.loai_chung_chi as string]}`}>{selected.loai_chung_chi as string}</span>
-                {selected.cap_do && <span className="text-xs px-2 py-1 rounded-full bg-[#F8F7F2] text-[#6B6B60]">{selected.cap_do as string}</span>}
-                {selected.so_phan && <span className="text-xs px-2 py-1 rounded-full bg-[#F8F7F2] text-[#6B6B60]">Phần {selected.so_phan as number}</span>}
+                {selected.cap_do ? <span className="text-xs px-2 py-1 rounded-full bg-[#F8F7F2] text-[#6B6B60]">{selected.cap_do as string}</span> : null}
+                {selected.so_phan ? <span className="text-xs px-2 py-1 rounded-full bg-[#F8F7F2] text-[#6B6B60]">Phần {selected.so_phan as number}</span> : null}
               </div>
 
               <div className="mb-4">
                 <h4 className="text-xs font-semibold text-[#A0A090] uppercase tracking-wide mb-2">Câu hỏi</h4>
                 <p className="text-[#0D0D0D] leading-relaxed">{selected.noi_dung_cau_hoi as string}</p>
               </div>
-
-              {selected.hinh_anh_url && (
+              
+              {selected.hinh_anh_url ? (
                 <div className="mb-4">
                   <h4 className="text-xs font-semibold text-[#A0A090] uppercase tracking-wide mb-2">Hình ảnh</h4>
                   <img src={selected.hinh_anh_url as string} alt="question" className="rounded-xl max-h-48 object-cover border border-[#E8E8E0]" />
                 </div>
-              )}
+              ) : null}
 
-              {selected.cac_lua_chon && (
+              {selected.cac_lua_chon ? (
                 <div className="mb-4">
                   <h4 className="text-xs font-semibold text-[#A0A090] uppercase tracking-wide mb-2">Các lựa chọn</h4>
                   <div className="space-y-2">
@@ -141,14 +141,14 @@ export default function ReadingAdminClient() {
                     ))}
                   </div>
                 </div>
-              )}
-
-              {selected.giai_thich && (
+              ) : null}
+              
+              {selected.giai_thich ? (
                 <div>
                   <h4 className="text-xs font-semibold text-[#A0A090] uppercase tracking-wide mb-2">Giải thích</h4>
                   <div className="p-3 bg-[#FFF8EC] rounded-xl text-sm text-[#6B6B60] leading-relaxed">{selected.giai_thich as string}</div>
                 </div>
-              )}
+              ) : null}
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-[#E8E8E0] p-12 text-center text-[#A0A090]">
