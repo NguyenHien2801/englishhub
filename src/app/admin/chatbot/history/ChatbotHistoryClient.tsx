@@ -104,7 +104,7 @@ export default function ChatbotHistoryClient({ messages }: { messages: Msg[] }) 
                       <p className="whitespace-pre-wrap">{m.noi_dung as string}</p>
                       <div className={`text-xs mt-1 ${m.vai_tro === 'user' ? 'text-white/50' : 'text-[#A0A090]'}`}>
                         {fmtDate(m.created_at as string)}
-                        {m.loai_ngucan && ` · ${m.loai_ngucan as string}`}
+                        {m.loai_ngucan ? ` · ${String(m.loai_ngucan)}` : null}
                       </div>
                     </div>
                     {m.vai_tro === 'user' && (
