@@ -131,7 +131,7 @@ export default function LevelTestAdminClient({ results }: { results: Result[] })
                         <div key={s} className={`p-3 rounded-xl text-center ${LEVEL_COLOR[lvl] || 'bg-[#F8F7F2] text-[#6B6B60]'}`}>
                           <div className="text-lg font-bold">{lvl}</div>
                           <div className="text-xs font-medium">{SKILL_LABELS[s]}</div>
-                          {score !== undefined && <div className="text-xs opacity-70 mt-0.5">{score} đ</div>}
+                          {score !== undefined ? <div className="text-xs opacity-70 mt-0.5">{score} đ</div> : null}
                         </div>
                       )
                     })}
@@ -139,15 +139,15 @@ export default function LevelTestAdminClient({ results }: { results: Result[] })
                 </div>
 
                 {/* Score */}
-                {selected.diem_so && (
+                {selected.diem_so ? (
                   <div className="mb-5 p-3 bg-[#F8F7F2] rounded-xl flex items-center justify-between">
                     <span className="text-sm font-medium text-[#6B6B60]">Điểm tổng hợp</span>
                     <span className="text-xl font-bold text-[#0D0D0D]">{selected.diem_so as number}</span>
                   </div>
-                )}
+                ) : null}
 
                 {/* Lộ trình đề xuất */}
-                {lo_trinh && (
+                {lo_trinh ? (
                   <div>
                     <h4 className="text-xs font-semibold text-[#A0A090] uppercase tracking-wide mb-2">Lộ trình đề xuất</h4>
                     <div className="p-3 bg-[#E8FFF8] rounded-xl text-sm text-[#00A878]">
@@ -156,15 +156,15 @@ export default function LevelTestAdminClient({ results }: { results: Result[] })
                       </pre>
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 {/* Chủ đề */}
-                {selected.chu_de && (
+                {selected.chu_de ? (
                   <div className="mt-3">
                     <h4 className="text-xs font-semibold text-[#A0A090] uppercase tracking-wide mb-1.5">Chủ đề</h4>
                     <span className="text-sm px-3 py-1 bg-[#F8F7F2] rounded-full text-[#6B6B60]">{selected.chu_de as string}</span>
                   </div>
-                )}
+                ) : null}
               </div>
             )
           })() : (
