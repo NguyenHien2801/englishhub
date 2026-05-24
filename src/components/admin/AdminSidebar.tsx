@@ -97,9 +97,8 @@ const ADMIN_NAV: NavItem[] = [
     label: 'Sinh viên',
     icon: Icons.users,
     children: [
-      { href: '/admin/students',         label: 'Danh sách sinh viên' },
+      { href: '/admin/students',         label: 'Quản lý sinh viên' },
       { href: '/admin/students/progress', label: 'Tiến độ học tập' },
-      { href: '/admin/students/roles',    label: 'Phân quyền tài khoản' },
     ],
   },
   {
