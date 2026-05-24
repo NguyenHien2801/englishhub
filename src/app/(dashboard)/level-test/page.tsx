@@ -1,19 +1,106 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  Headphones, Mic, BookOpen, PenLine, FileText,
+  ChevronRight, Home, CheckCircle2, ArrowRight,
+  Target, Trophy, Clock, BarChart3, GraduationCap,
+  Play, Square, RotateCcw, Send, Flame, AlertCircle,
+} from 'lucide-react'
+
+// ─── Design tokens (đồng nhất với Writing page) ───────────────────────────────
+const C = {
+  bg:       '#F8F5EE',
+  white:    '#FFFFFF',
+  navy:     '#0F1C35',
+  navyMid:  '#1E2F50',
+  gold:     '#C9A84C',
+  goldLt:   '#E8C97A',
+  goldPale: '#FDF8EE',
+  green:    '#00A878',
+  greenLt:  '#4ECBA8',
+  blue:     '#2B6CB0',
+  violet:   '#6478F0',
+  rose:     '#F06464',
+  slate:    '#64748B',
+  border:   'rgba(201,168,76,0.18)',
+  borderMd: 'rgba(201,168,76,0.30)',
+  text:     '#1A1E2E',
+  textMid:  '#4A5568',
+  textLt:   '#94A3B8',
+}
+
+// ─── Skill accent colors (thay cho SECTION_META accent) ───────────────────────
+const SKILL_COLOR: Record<string, string> = {
+  listening: '#2B6CB0',
+  speaking:  '#6478F0',
+  reading:   '#00A878',
+  writing:   '#C9A84C',
+  grammar:   '#F06464',
+}
+
+const SKILL_ICON: Record<string, React.ElementType> = {
+  listening: Headphones,
+  speaking:  Mic,
+  reading:   BookOpen,
+  writing:   PenLine,
+  grammar:   FileText,
+}
+
+const SKILL_LABEL: Record<string, string> = {
+  listening: 'Listening',
+  speaking:  'Speaking',
+  reading:   'Reading',
+  writing:   'Writing',
+  grammar:   'Language Use',
+}
+
+const SKILL_PART: Record<string, string> = {
+  listening: 'Part 1 of 5',
+  speaking:  'Part 2 of 5',
+  reading:   'Part 3 of 5',
+  writing:   'Part 4 of 5',
+  grammar:   'Part 5 of 5',
+}
+
+const SKILL_INSTRUCTIONS: Record<string, string> = {
+  listening: 'You will hear an audio passage. You may listen TWICE only. Answer all questions based on what you hear. Questions will appear after the first play.',
+  speaking:  'Read the question carefully. You have 15 seconds to prepare, then record your spoken response. Speak clearly and for the full duration allocated.',
+  reading:   'Read the passage carefully. Answer all questions based only on the information given in the text. Do not use outside knowledge.',
+  writing:   'Write a well-structured response to the prompt. You will be assessed on task achievement, coherence, vocabulary range, and grammatical accuracy.',
+  grammar:   'Choose the best option (A, B, C, or D) to complete each sentence. Questions are ordered from A1 to C1 difficulty level.',
+}
+
+const CEFR_COLOR: Record<string, string> = {
+  A1: '#64748B', A2: '#0284C7', B1: '#059669',
+  B2: '#D97706', C1: '#7C3AED', C2: '#DB2777',
+}
+const CEFR_TITLE: Record<string, string> = {
+  A1: 'Beginner', A2: 'Elementary', B1: 'Intermediate',
+  B2: 'Upper-Intermediate', C1: 'Advanced', C2: 'Proficient',
+}
+const CEFR_DESC: Record<string, string> = {
+  A1: 'Can understand and use basic familiar expressions and simple phrases.',
+  A2: 'Can communicate in simple, routine tasks on familiar topics.',
+  B1: 'Can deal with most situations likely to arise while travelling in English.',
+  B2: 'Can interact with a degree of fluency and spontaneity with native speakers.',
+  C1: 'Can express ideas fluently and spontaneously without much searching for words.',
+  C2: 'Can understand virtually everything heard or read with ease.',
+}
+
+const LEVEL_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+const SKILL_STEPS = ['listening', 'speaking', 'reading', 'writing', 'grammar'] as const
+type SkillStep = typeof SKILL_STEPS[number]
+
+const SECTION_TIME: Record<SkillStep, number> = {
+  listening: 600, speaking: 120, reading: 900, writing: 1200, grammar: 600,
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MCQQuestion {
-  id: string
-  question: string
-  options: string[]
-  correct: string
-  difficulty: 'easy' | 'medium' | 'hard'
-  skill?: string
-  level?: string
-  explanation?: string
+  id: string; question: string; options: string[]; correct: string
+  difficulty: 'easy' | 'medium' | 'hard'; skill?: string; level?: string; explanation?: string
 }
-
 interface Exam {
   topic: string
   listening: { script: string; questions: MCQQuestion[] }
@@ -22,154 +109,118 @@ interface Exam {
   writing: { prompt: string; min_words: number; max_words: number; criteria: string[] }
   grammar_vocab: { questions: MCQQuestion[] }
 }
-
 interface SkillResult {
-  level: string
-  correct?: number
-  total?: number
-  overall?: number
-  feedback?: string
-  suggestions?: string[]
-  task?: number
-  coherence?: number
-  vocabulary?: number
-  grammar?: number
-  fluency?: number
-  content?: number
+  level: string; correct?: number; total?: number; overall?: number
+  feedback?: string; suggestions?: string[]
+  task?: number; coherence?: number; vocabulary?: number; grammar?: number
+  fluency?: number; content?: number
 }
-
+interface RoadmapPhase {
+  tieu_de: string
+  ky_nang_chinh: string
+  hoat_dong: string[]
+  muc_tieu: string
+}
 interface FinalResult {
   overall: string
-  skills: {
-    listening: SkillResult
-    reading: SkillResult
-    grammar: SkillResult
-    writing: SkillResult
-    speaking: SkillResult
-  }
+  skills: { listening: SkillResult; reading: SkillResult; grammar: SkillResult; writing: SkillResult; speaking: SkillResult }
   aiResult: {
-    trinh_do: string
-    nhan_xet: string
-    diem_manh: string[]
-    diem_yeu: string[]
+    trinh_do: string; nhan_xet: string; diem_manh: string[]; diem_yeu: string[]
     lo_trinh: {
-      muc_tieu: string
-      thoi_gian: string
-      tuan_1_2?: string
-      tuan_3_4?: string
-      tuan_5_8?: string
-      tuan_9_12?: string
+      muc_tieu: string; thoi_gian: string
+      phases?: RoadmapPhase[]
+      // fallback legacy
+      tuan_1_2?: string; tuan_3_4?: string; tuan_5_8?: string; tuan_9_12?: string
     }
   }
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const LEVEL_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
-const SKILL_STEPS = ['listening', 'speaking', 'reading', 'writing', 'grammar'] as const
-type SkillStep = typeof SKILL_STEPS[number]
+// ─── Global CSS (đồng nhất với Writing) ──────────────────────────────────────
+const GLOBAL_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700;1,800&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes blobMorph {
+    0%,100%{border-radius:60% 40% 30% 70% / 60% 30% 70% 40%}
+    50%{border-radius:30% 60% 70% 40% / 50% 60% 30% 60%}
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  .fade-in { animation: fadeUp .45s cubic-bezier(.16,1,.3,1) both; }
+  .mcq-opt { transition: all .22s cubic-bezier(.16,1,.3,1); }
+  .mcq-opt:hover { transform: translateY(-2px); }
+  .skill-tab { transition: all .25s cubic-bezier(.16,1,.3,1); }
+`
 
-const SECTION_TIME: Record<SkillStep, number> = {
-  listening: 600,
-  speaking: 120,
-  reading: 900,
-  writing: 1200,
-  grammar: 600,
-}
-
-const SECTION_META: Record<SkillStep, {
-  label: string
-  part: string
-  instructions: string
-  totalQuestions: number
-  maxScore: number
-  accent: string
-  accentDark: string
-  icon: string
-}> = {
-  listening: {
-    label: 'Listening',
-    part: 'Part 1 of 5',
-    instructions: 'You will hear an audio passage. You may listen TWICE only. Answer all questions based on what you hear. Questions will appear after the first play.',
-    totalQuestions: 5,
-    maxScore: 25,
-    accent: '#1D4ED8',
-    accentDark: '#1E3A8A',
-    icon: '🎧',
-  },
-  speaking: {
-    label: 'Speaking',
-    part: 'Part 2 of 5',
-    instructions: 'Read the question carefully. You have 15 seconds to prepare, then record your spoken response. Speak clearly and for the full duration allocated.',
-    totalQuestions: 1,
-    maxScore: 25,
-    accent: '#7C3AED',
-    accentDark: '#5B21B6',
-    icon: '🎤',
-  },
-  reading: {
-    label: 'Reading',
-    part: 'Part 3 of 5',
-    instructions: 'Read the passage carefully. Answer all questions based only on the information given in the text. Do not use outside knowledge.',
-    totalQuestions: 5,
-    maxScore: 25,
-    accent: '#065F46',
-    accentDark: '#064E3B',
-    icon: '📖',
-  },
-  writing: {
-    label: 'Writing',
-    part: 'Part 4 of 5',
-    instructions: 'Write a well-structured response to the prompt. You will be assessed on task achievement, coherence, vocabulary range, and grammatical accuracy.',
-    totalQuestions: 1,
-    maxScore: 25,
-    accent: '#92400E',
-    accentDark: '#78350F',
-    icon: '✏️',
-  },
-  grammar: {
-    label: 'Language Use',
-    part: 'Part 5 of 5',
-    instructions: 'Choose the best option (A, B, C, or D) to complete each sentence. Questions are ordered from A1 to C1 difficulty level.',
-    totalQuestions: 10,
-    maxScore: 25,
-    accent: '#9F1239',
-    accentDark: '#881337',
-    icon: '📝',
-  },
-}
-
-const CEFR_DESCRIPTORS: Record<string, { title: string; desc: string; color: string }> = {
-  A1: { title: 'Beginner',           desc: 'Can understand and use basic familiar expressions and simple phrases.',          color: '#64748B' },
-  A2: { title: 'Elementary',         desc: 'Can communicate in simple, routine tasks on familiar topics.',                   color: '#0284C7' },
-  B1: { title: 'Intermediate',       desc: 'Can deal with most situations likely to arise while travelling in English.',     color: '#059669' },
-  B2: { title: 'Upper-Intermediate', desc: 'Can interact with a degree of fluency and spontaneity with native speakers.',    color: '#D97706' },
-  C1: { title: 'Advanced',           desc: 'Can express ideas fluently and spontaneously without much searching for words.', color: '#7C3AED' },
-  C2: { title: 'Proficient',         desc: 'Can understand virtually everything heard or read with ease.',                   color: '#DB2777' },
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function CEFRBadge({ level }: { level: string }) {
-  const info = CEFR_DESCRIPTORS[level]
-  if (!info) return null
+// ─── Shared atoms ─────────────────────────────────────────────────────────────
+function Panel({ children, style, className }: { children: React.ReactNode; style?: React.CSSProperties; className?: string }) {
   return (
-    <span
-      className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold tracking-wider uppercase"
-      style={{ backgroundColor: info.color + '18', color: info.color, border: `1px solid ${info.color}40` }}
-    >
-      {level}
-    </span>
+    <div className={className} style={{
+      background: C.white, borderRadius: 24,
+      border: `1px solid ${C.border}`,
+      padding: '28px 32px',
+      boxShadow: '0 2px 16px rgba(15,28,53,.07)',
+      ...style,
+    }}>{children}</div>
   )
 }
 
-function SectionTimer({
-  seconds, onExpire, accent,
-}: { seconds: number; onExpire: () => void; accent: string }) {
+function SectionHeader({ icon: Icon, title, sub, color }: {
+  icon: React.ElementType; title: string; sub?: string; color: string
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+      <div style={{
+        width: 48, height: 48, borderRadius: 14,
+        background: `${color}15`, border: `1px solid ${color}28`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        <Icon size={22} color={color} strokeWidth={1.8} />
+      </div>
+      <div>
+        <div style={{ fontSize: 17, fontWeight: 700, color: C.navy, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.3 }}>{title}</div>
+        {sub && <div style={{ fontSize: 13, color: C.textMid, marginTop: 3 }}>{sub}</div>}
+      </div>
+    </div>
+  )
+}
+
+function CEFRBadge({ level }: { level: string }) {
+  const color = CEFR_COLOR[level] || C.slate
+  return (
+    <span style={{
+      padding: '3px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+      background: `${color}12`, color, border: `1px solid ${color}28`,
+      letterSpacing: '.04em', fontFamily: "'DM Sans', sans-serif",
+    }}>{level}</span>
+  )
+}
+
+function ScoreRing({ score, max }: { score: number; max: number }) {
+  const r = 44, cx = 52, cy = 52, circ = 2 * Math.PI * r
+  const pct = score / max
+  const barColor = pct >= 0.8 ? C.green : pct >= 0.6 ? C.gold : pct >= 0.4 ? C.blue : C.rose
+  return (
+    <svg width={108} height={108} viewBox="0 0 104 104">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={`${C.navy}10`} strokeWidth={8} />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={barColor} strokeWidth={8}
+        strokeDasharray={`${circ * pct} ${circ * (1 - pct)}`}
+        strokeDashoffset={circ * 0.25} strokeLinecap="round"
+        style={{ transition: 'stroke-dasharray 1s ease' }} />
+      <text x={cx} y={cy - 7} textAnchor="middle" fill={barColor} fontSize={24} fontWeight={800}
+        fontFamily="'Playfair Display', serif">{score}</text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fill={C.textLt} fontSize={13}
+        fontFamily="'DM Sans', sans-serif">/{max}</text>
+    </svg>
+  )
+}
+
+function SectionTimer({ seconds, onExpire, color }: { seconds: number; onExpire: () => void; color: string }) {
   const [remaining, setRemaining] = useState(seconds)
   const ref = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => { setRemaining(seconds) }, [seconds])
-
   useEffect(() => {
     ref.current = setInterval(() => {
       setRemaining(r => {
@@ -181,100 +232,160 @@ function SectionTimer({
   }, [seconds, onExpire])
 
   const pct = remaining / seconds
+  const isLow = remaining < 60
   const mins = Math.floor(remaining / 60)
   const secs = remaining % 60
-  const isLow = remaining < 60
+  const r = 13, circ = 2 * Math.PI * r
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="relative w-8 h-8">
-        <svg className="w-8 h-8 -rotate-90" viewBox="0 0 32 32">
-          <circle cx="16" cy="16" r="13" fill="none" stroke="#E5E7EB" strokeWidth="2.5" />
-          <circle
-            cx="16" cy="16" r="13" fill="none"
-            stroke={isLow ? '#EF4444' : accent}
-            strokeWidth="2.5"
-            strokeDasharray={`${2 * Math.PI * 13}`}
-            strokeDashoffset={`${2 * Math.PI * 13 * (1 - pct)}`}
-            style={{ transition: 'stroke-dashoffset 1s linear' }}
-          />
-        </svg>
-      </div>
-      <span className={`font-mono text-sm font-bold tabular-nums ${isLow ? 'text-red-500' : 'text-gray-700'}`}>
-        {mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <svg width={32} height={32} viewBox="0 0 32 32" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={16} cy={16} r={r} fill="none" stroke={`${C.navy}12`} strokeWidth={2.5} />
+        <circle cx={16} cy={16} r={r} fill="none"
+          stroke={isLow ? C.rose : color} strokeWidth={2.5}
+          strokeDasharray={`${circ * pct} ${circ}`}
+          style={{ transition: 'stroke-dasharray 1s linear' }} />
+      </svg>
+      <span style={{
+        fontFamily: 'monospace', fontSize: 14, fontWeight: 700,
+        color: isLow ? C.rose : C.navy, letterSpacing: '0.05em',
+      }}>
+        {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
       </span>
     </div>
   )
 }
 
-function AnswerProgress({ current, total, accent }: { current: number; total: number; accent: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${(current / total) * 100}%`, backgroundColor: accent }}
-        />
-      </div>
-      <span className="text-xs font-semibold text-gray-400 tabular-nums">{current}/{total}</span>
-    </div>
-  )
-}
-
-function ScoreGauge({ value, max = 10 }: { value: number; max?: number }) {
-  const pct = value / max
-  const color = pct >= 0.8 ? '#059669' : pct >= 0.6 ? '#D97706' : pct >= 0.4 ? '#0284C7' : '#EF4444'
-  return (
-    <div className="flex items-center gap-2 mt-1">
-      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct * 100}%`, backgroundColor: color }} />
-      </div>
-      <span className="text-xs font-bold tabular-nums" style={{ color }}>{value.toFixed(1)}</span>
-    </div>
-  )
-}
-
-function QuestionCard({
-  question, index, selected, onSelect, accent,
-}: {
-  question: MCQQuestion; index: number; selected?: string; onSelect: (v: string) => void; accent: string
+function MCQCard({ question, index, selected, onSelect, color }: {
+  question: MCQQuestion; index: number; selected?: string; onSelect: (v: string) => void; color: string
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-      <p className="font-medium text-gray-900 mb-3 text-sm leading-relaxed">
-        <span className="font-black text-gray-400 mr-2 tabular-nums">{(index + 1).toString().padStart(2, '0')}.</span>
+    <Panel style={{ padding: '22px 26px' }}>
+      <p style={{ fontSize: 15, fontWeight: 600, color: C.navy, marginBottom: 16, lineHeight: 1.65, fontFamily: "'DM Sans', sans-serif" }}>
+        <span style={{ fontWeight: 900, color: C.textLt, marginRight: 8, fontFamily: 'monospace' }}>
+          {String(index + 1).padStart(2, '0')}.
+        </span>
         {question.question}
       </p>
-      <div className="grid grid-cols-2 gap-2">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {question.options.map(opt => {
           const letter = opt.charAt(0)
-          const isSelected = selected === letter
+          const isSel = selected === letter
           return (
-            <button
-              key={opt}
+            <button key={opt} className="mcq-opt"
               onClick={() => onSelect(letter)}
-              className="text-left px-4 py-3 rounded-xl border-2 text-sm transition-all flex items-center gap-2.5"
-              style={
-                isSelected
-                  ? { borderColor: accent, backgroundColor: accent + '10', color: accent, fontWeight: 600 }
-                  : { borderColor: '#E5E7EB', color: '#374151' }
-              }
-            >
-              <span
-                className="w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-black shrink-0"
-                style={
-                  isSelected
-                    ? { borderColor: accent, backgroundColor: accent, color: 'white' }
-                    : { borderColor: '#D1D5DB', color: '#9CA3AF' }
-                }
-              >
-                {letter}
-              </span>
+              style={{
+                textAlign: 'left', padding: '12px 16px', borderRadius: 14,
+                border: `2px solid ${isSel ? color : C.border}`,
+                background: isSel ? `${color}0D` : C.white,
+                color: isSel ? color : C.text,
+                fontWeight: isSel ? 700 : 400, fontSize: 14,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                fontFamily: "'DM Sans', sans-serif",
+              }}>
+              <span style={{
+                width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                border: `2px solid ${isSel ? color : '#D1D5DB'}`,
+                background: isSel ? color : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 900, color: isSel ? '#fff' : C.textLt,
+              }}>{letter}</span>
               {opt.slice(2)}
             </button>
           )
         })}
       </div>
+    </Panel>
+  )
+}
+
+// ─── RoadmapCard — expandable, giống CriterionCard của Writing ───────────────
+function RoadmapCard({ phase, index }: {
+  phase: { label: string; week: string; color: string; title: string; ky_nang: string; hoat_dong: string[]; muc_tieu: string }
+  index: number
+}) {
+  const [open, setOpen] = useState(index === 0) // Phase 1 mở sẵn
+  const { color, label, week, title, ky_nang, hoat_dong, muc_tieu } = phase
+  const hasDetail = hoat_dong.length > 0 || !!muc_tieu
+
+  return (
+    <div style={{
+      border: `1.5px solid ${open ? color + '50' : C.border}`,
+      borderRadius: 18, overflow: 'hidden', background: C.white,
+      transition: 'border-color .2s, box-shadow .2s',
+      boxShadow: open ? `0 4px 20px rgba(15,28,53,.08)` : 'none',
+    }}>
+      <button
+        onClick={() => hasDetail && setOpen(o => !o)}
+        style={{
+          width: '100%', padding: '18px 22px',
+          display: 'flex', alignItems: 'center', gap: 16,
+          background: 'transparent', border: 'none',
+          cursor: hasDetail ? 'pointer' : 'default',
+          textAlign: 'left', fontFamily: "'DM Sans', sans-serif",
+        }}
+      >
+        {/* Phase number box — giống score box của CriterionCard */}
+        <div style={{
+          flexShrink: 0, width: 54, height: 54, borderRadius: 14,
+          background: `${color}12`, border: `1px solid ${color}28`,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color, letterSpacing: '.04em', textTransform: 'uppercase' }}>{label}</span>
+          <span style={{ fontSize: 10, color: C.textLt, marginTop: 2 }}>{week}</span>
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Skill badge + title */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: ky_nang ? 6 : 0 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}>
+              {title}
+            </span>
+            {ky_nang && (
+              <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 8, background: `${color}12`, color, border: `1px solid ${color}22` }}>
+                {ky_nang}
+              </span>
+            )}
+          </div>
+          {/* Progress bar — decorative, 100% per phase */}
+          <div style={{ height: 4, background: `${C.navy}08`, borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${(index + 1) * 25}%`, background: color, borderRadius: 2, transition: 'width .6s cubic-bezier(.16,1,.3,1)' }} />
+          </div>
+        </div>
+
+        {hasDetail && (
+          <span style={{ color: C.textLt, fontSize: 13, flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
+        )}
+      </button>
+
+      {/* Expanded detail */}
+      {open && hasDetail && (
+        <div style={{ padding: '0 22px 22px', borderTop: `1px solid ${C.border}` }}>
+          {/* Activities list */}
+          {hoat_dong.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+                Hoạt động cụ thể
+              </div>
+              {hoat_dong.map((act, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 8, fontSize: 14, color: C.textMid, lineHeight: 1.65 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: `${color}15`, border: `1px solid ${color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color, flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                  {act}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Mục tiêu đo lường */}
+          {muc_tieu && (
+            <div style={{ marginTop: 14, padding: '12px 16px', background: `${color}08`, borderLeft: `3px solid ${color}`, borderRadius: '0 12px 12px 0' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 4 }}>🎯 Mục tiêu cuối phase</div>
+              <div style={{ fontSize: 14, color: C.textMid, lineHeight: 1.65 }}>{muc_tieu}</div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -282,34 +393,27 @@ function QuestionCard({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function LevelTestPage() {
   const router = useRouter()
-
   const [phase, setPhase] = useState<'intro' | 'loading' | 'test' | 'submitting' | 'result'>('intro')
   const [currentSkill, setCurrentSkill] = useState<SkillStep>('listening')
   const [exam, setExam] = useState<Exam | null>(null)
   const [error, setError] = useState('')
-
   const [mcqAnswers, setMcqAnswers] = useState<Record<string, string>>({})
   const [writingText, setWritingText] = useState('')
   const [speakingTranscript, setSpeakingTranscript] = useState('')
-
-  // TTS
   const [isPlaying, setIsPlaying] = useState(false)
   const [hasPlayed, setHasPlayed] = useState(false)
   const [playCount, setPlayCount] = useState(0)
-
-  // STT
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [recordingDone, setRecordingDone] = useState(false)
   const [prepTime, setPrepTime] = useState(15)
   const [prepStarted, setPrepStarted] = useState(false)
   const [prepDone, setPrepDone] = useState(false)
+  const [sectionTimeUp, setSectionTimeUp] = useState(false)
+  const [result, setResult] = useState<FinalResult | null>(null)
   const recognitionRef = useRef<any>(null)
   const recTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const prepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  const [sectionTimeUp, setSectionTimeUp] = useState(false)
-  const [result, setResult] = useState<FinalResult | null>(null)
 
   const wordCount = writingText.trim() === '' ? 0 : writingText.trim().split(/\s+/).length
 
@@ -320,86 +424,47 @@ export default function LevelTestPage() {
     recognitionRef.current?.stop()
   }, [])
 
-  // ── Generate test ───────────────────────────────────────────────────────────
   async function startTest() {
-    setPhase('loading')
-    setError('')
+    setPhase('loading'); setError('')
     try {
       const res = await fetch('/api/level-test/generate', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setExam(data.exam)
-      setCurrentSkill('listening')
-      setMcqAnswers({})
-      setWritingText('')
-      setSpeakingTranscript('')
-      setHasPlayed(false)
-      setPlayCount(0)
-      setIsPlaying(false)
-      setRecordingDone(false)
-      setPrepDone(false)
-      setPrepStarted(false)
-      setPrepTime(15)
-      setSectionTimeUp(false)
-      setPhase('test')
+      setExam(data.exam); setCurrentSkill('listening')
+      setMcqAnswers({}); setWritingText(''); setSpeakingTranscript('')
+      setHasPlayed(false); setPlayCount(0); setIsPlaying(false)
+      setRecordingDone(false); setPrepDone(false); setPrepStarted(false)
+      setPrepTime(15); setSectionTimeUp(false); setPhase('test')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate test. Please try again.')
       setPhase('intro')
     }
   }
 
-  // ── TTS ─────────────────────────────────────────────────────────────────────
   function playScript() {
     if (!exam || playCount >= 2) return
     window.speechSynthesis.cancel()
     const utter = new SpeechSynthesisUtterance(exam.listening.script)
-    utter.lang = 'en-US'
-    utter.rate = 0.88
+    utter.lang = 'en-US'; utter.rate = 0.88
     utter.onstart = () => setIsPlaying(true)
-    utter.onend = () => {
-      setIsPlaying(false)
-      setHasPlayed(true)
-      setPlayCount(p => p + 1)
-    }
+    utter.onend = () => { setIsPlaying(false); setHasPlayed(true); setPlayCount(p => p + 1) }
     window.speechSynthesis.speak(utter)
   }
-
   function stopScript() {
-    window.speechSynthesis.cancel()
-    setIsPlaying(false)
-    setHasPlayed(true)
-    setPlayCount(p => p + 1)
+    window.speechSynthesis.cancel(); setIsPlaying(false); setHasPlayed(true); setPlayCount(p => p + 1)
   }
-
-  // ── Prep timer ───────────────────────────────────────────────────────────────
   function startPrepTimer() {
-    if (prepStarted) return
-    setPrepStarted(true)
+    if (prepStarted) return; setPrepStarted(true)
     prepTimerRef.current = setInterval(() => {
-      setPrepTime(t => {
-        if (t <= 1) {
-          clearInterval(prepTimerRef.current!)
-          setPrepDone(true)
-          return 0
-        }
-        return t - 1
-      })
+      setPrepTime(t => { if (t <= 1) { clearInterval(prepTimerRef.current!); setPrepDone(true); return 0 } return t - 1 })
     }, 1000)
   }
+  function skipPrep() { if (prepTimerRef.current) clearInterval(prepTimerRef.current); setPrepDone(true) }
 
-  function skipPrep() {
-    if (prepTimerRef.current) clearInterval(prepTimerRef.current)
-    setPrepDone(true)
-  }
-
-  // ── STT ─────────────────────────────────────────────────────────────────────
   function startRecording() {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SR) { setError('Speech recognition not supported. Please use Chrome.'); return }
-    const rec: any = new SR()
-    rec.lang = 'en-US'
-    rec.continuous = true
-    rec.interimResults = true
+    const rec: any = new SR(); rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true
     let final = ''
     rec.onresult = (e: any) => {
       let interim = ''
@@ -409,54 +474,27 @@ export default function LevelTestPage() {
       }
       setSpeakingTranscript(final + interim)
     }
-    rec.onend = () => {
-      setIsRecording(false)
-      setRecordingDone(true)
-      if (recTimerRef.current) clearInterval(recTimerRef.current)
-    }
-    recognitionRef.current = rec
-    rec.start()
-    setIsRecording(true)
-    setRecordingTime(0)
+    rec.onend = () => { setIsRecording(false); setRecordingDone(true); if (recTimerRef.current) clearInterval(recTimerRef.current) }
+    recognitionRef.current = rec; rec.start(); setIsRecording(true); setRecordingTime(0)
     recTimerRef.current = setInterval(() => {
-      setRecordingTime(t => {
-        if (t >= (exam?.speaking.time_seconds ?? 90) - 1) { stopRecording(); return t }
-        return t + 1
-      })
+      setRecordingTime(t => { if (t >= (exam?.speaking.time_seconds ?? 90) - 1) { stopRecording(); return t } return t + 1 })
     }, 1000)
   }
-
   function stopRecording() {
-    recognitionRef.current?.stop()
-    if (recTimerRef.current) clearInterval(recTimerRef.current)
-    setIsRecording(false)
-    setRecordingDone(true)
+    recognitionRef.current?.stop(); if (recTimerRef.current) clearInterval(recTimerRef.current)
+    setIsRecording(false); setRecordingDone(true)
   }
 
-  // ── Navigation ───────────────────────────────────────────────────────────────
   const handleSectionExpire = useCallback(() => setSectionTimeUp(true), [])
 
   function goToSkill(skill: SkillStep) {
-    setSectionTimeUp(false)
-    setPrepDone(false)
-    setPrepStarted(false)
-    setPrepTime(15)
-    setCurrentSkill(skill)
+    setSectionTimeUp(false); setPrepDone(false); setPrepStarted(false); setPrepTime(15); setCurrentSkill(skill)
   }
-
-  function nextSkill() {
-    const idx = SKILL_STEPS.indexOf(currentSkill)
-    if (idx < SKILL_STEPS.length - 1) goToSkill(SKILL_STEPS[idx + 1])
-  }
-
-  function prevSkill() {
-    const idx = SKILL_STEPS.indexOf(currentSkill)
-    if (idx > 0) goToSkill(SKILL_STEPS[idx - 1])
-  }
+  function nextSkill() { const i = SKILL_STEPS.indexOf(currentSkill); if (i < SKILL_STEPS.length - 1) goToSkill(SKILL_STEPS[i + 1]) }
+  function prevSkill() { const i = SKILL_STEPS.indexOf(currentSkill); if (i > 0) goToSkill(SKILL_STEPS[i - 1]) }
 
   function canProceed(): boolean {
-    if (!exam) return false
-    if (sectionTimeUp) return true
+    if (!exam) return false; if (sectionTimeUp) return true
     switch (currentSkill) {
       case 'listening': return hasPlayed && exam.listening.questions.every(q => mcqAnswers[q.id])
       case 'speaking':  return recordingDone && speakingTranscript.trim().length > 5
@@ -466,734 +504,588 @@ export default function LevelTestPage() {
     }
   }
 
-  // ── Submit ───────────────────────────────────────────────────────────────────
   async function handleSubmit() {
     setPhase('submitting')
     try {
       const res = await fetch('/api/level-test/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ exam, answers: mcqAnswers, writingText, speakingTranscript, topic: exam?.topic }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setResult(data)
-      setPhase('result')
+      setResult(data); setPhase('result')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Analysis failed. Please try again.')
-      setPhase('test')
-      setCurrentSkill('grammar')
+      setPhase('test'); setCurrentSkill('grammar')
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // INTRO
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   if (phase === 'intro') return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <div className="border-b border-white/8 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-sm">E</div>
-          <span className="font-bold text-sm tracking-widest uppercase text-gray-200">English Proficiency Test</span>
-        </div>
-        <span className="text-xs text-gray-600 font-mono">CEFR · VSTEP · APTIS Aligned</span>
-      </div>
+    <div style={{ maxWidth: 900, margin: '0 auto', paddingTop: 36, paddingBottom: 80, fontFamily: "'DM Sans', sans-serif" }}>
+      <style suppressHydrationWarning>{GLOBAL_CSS}</style>
 
-      <div className="max-w-3xl mx-auto px-6 py-16">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold tracking-widest uppercase mb-6">
-          Official Assessment Format
+      {/* Hero */}
+      <div style={{
+        background: C.navy, borderRadius: 28,
+        padding: 'clamp(32px,4vw,52px) clamp(28px,4vw,52px)',
+        marginBottom: 40, position: 'relative', overflow: 'hidden',
+        boxShadow: '0 20px 60px rgba(15,28,53,.25)',
+      }}>
+        <div style={{ position: 'absolute', top: -70, right: -70, width: 320, height: 320, background: 'rgba(201,168,76,.07)', borderRadius: '60% 40% 30% 70%', animation: 'blobMorph 10s ease-in-out infinite', pointerEvents: 'none', filter: 'blur(24px)' }} />
+        <div style={{ position: 'absolute', bottom: -50, left: -50, width: 200, height: 200, background: 'rgba(100,120,240,.06)', borderRadius: '40% 60%', pointerEvents: 'none', filter: 'blur(28px)' }} />
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 16px', background: 'rgba(201,168,76,.12)', border: '1px solid rgba(201,168,76,.28)', borderRadius: 50, fontSize: 11, fontWeight: 700, color: C.gold, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 20 }}>
+          <GraduationCap size={11} strokeWidth={2.5} /> Official Assessment Format
         </div>
-        <h1 className="text-5xl font-black tracking-tight mb-4 leading-[1.05]">
-          English<br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">Level Test</span>
+        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(32px,4.5vw,52px)', fontWeight: 900, color: '#fff', marginBottom: 16, lineHeight: 1.1, letterSpacing: '-0.5px' }}>
+          English <em style={{ fontStyle: 'italic', color: C.gold }}>Level Test</em>
         </h1>
-        <p className="text-gray-400 text-lg max-w-xl leading-relaxed mb-12">
-          A comprehensive 5-section assessment aligned with CEFR, VSTEP and APTIS frameworks. 
-          Receive an AI-generated score report with personalised study roadmap.
+        <p style={{ fontSize: 17, color: 'rgba(255,255,255,.52)', maxWidth: 520, lineHeight: 1.78, marginBottom: 32 }}>
+          A comprehensive 5-section assessment aligned with CEFR, VSTEP and APTIS frameworks. Receive an AI-generated score report with personalised study roadmap.
         </p>
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-3 mb-12">
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
           {[
-            { label: 'Duration', value: '~40 min', icon: '⏱' },
-            { label: 'Sections', value: '5 Parts', icon: '📋' },
-            { label: 'Questions', value: '22 items', icon: '❓' },
-            { label: 'Scale', value: 'A1 – C2', icon: '🎯' },
-          ].map(s => (
-            <div key={s.label} className="p-4 bg-white/[0.04] border border-white/8 rounded-2xl text-center">
-              <div className="text-2xl mb-2">{s.icon}</div>
-              <div className="text-white font-black text-lg">{s.value}</div>
-              <div className="text-gray-500 text-xs mt-0.5">{s.label}</div>
+            { label: 'Duration',   val: '~40 min', icon: <Clock size={18} strokeWidth={1.8} color={C.goldLt} /> },
+            { label: 'Sections',   val: '5 Parts', icon: <BarChart3 size={18} strokeWidth={1.8} color={C.greenLt} /> },
+            { label: 'Questions',  val: '22 items', icon: <Target size={18} strokeWidth={1.8} color={C.violet} /> },
+            { label: 'Scale',      val: 'A1 – C2', icon: <Trophy size={18} strokeWidth={1.8} color={C.goldLt} /> },
+          ].map((s, i) => (
+            <div key={i} style={{ background: 'rgba(255,255,255,.07)', border: '1px solid rgba(201,168,76,.2)', borderRadius: 18, padding: '14px 22px', display: 'flex', alignItems: 'center', gap: 12, backdropFilter: 'blur(8px)' }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{s.icon}</div>
+              <div>
+                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{s.val}</div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,.4)', marginTop: 4, fontWeight: 500 }}>{s.label}</div>
+              </div>
             </div>
           ))}
         </div>
-
-        {/* Test structure */}
-        <div className="mb-12">
-          <h2 className="text-xs font-bold tracking-widest uppercase text-gray-600 mb-4">Test Structure</h2>
-          <div className="space-y-2">
-            {SKILL_STEPS.map((s, i) => {
-              const m = SECTION_META[s]
-              const mins = Math.floor(SECTION_TIME[s] / 60)
-              return (
-                <div key={s} className="flex items-center gap-4 px-5 py-4 bg-white/[0.03] border border-white/[0.06] rounded-xl hover:bg-white/[0.05] transition-colors">
-                  <span className="text-xs font-mono text-gray-700 w-5 shrink-0">{String(i + 1).padStart(2, '0')}</span>
-                  <span className="text-lg">{m.icon}</span>
-                  <div className="flex-1">
-                    <span className="font-bold text-white text-sm">{m.label}</span>
-                    <span className="text-gray-600 text-xs ml-2">{m.totalQuestions} {m.totalQuestions === 1 ? 'task' : 'questions'}</span>
-                  </div>
-                  <span className="text-xs text-gray-500">{mins} min</span>
-                  <span className="text-xs font-bold tabular-nums" style={{ color: m.accent }}>{m.maxScore} pts</span>
-                </div>
-              )
-            })}
-            <div className="flex items-center justify-between px-5 py-3.5 bg-white/[0.06] border border-white/10 rounded-xl">
-              <span className="text-xs font-black uppercase tracking-widest text-gray-400">Total</span>
-              <span className="font-black text-white tabular-nums">100 points</span>
-            </div>
-          </div>
-        </div>
-
-        {/* CEFR scale */}
-        <div className="mb-12">
-          <h2 className="text-xs font-bold tracking-widest uppercase text-gray-600 mb-4">CEFR Score Scale</h2>
-          <div className="grid grid-cols-6 gap-2">
-            {LEVEL_ORDER.map(l => {
-              const info = CEFR_DESCRIPTORS[l]
-              return (
-                <div key={l} className="p-3 rounded-xl border text-center" style={{ borderColor: info.color + '25', backgroundColor: info.color + '08' }}>
-                  <div className="font-black text-xl" style={{ color: info.color }}>{l}</div>
-                  <div className="text-gray-600 text-xs mt-0.5 leading-tight">{info.title}</div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Notice */}
-        <div className="p-5 bg-amber-500/6 border border-amber-500/18 rounded-2xl mb-8">
-          <h3 className="text-amber-400 font-bold text-sm mb-3">📋 Before You Begin</h3>
-          <ul className="space-y-2 text-sm text-gray-400">
-            {[
-              'Ensure you are in a quiet environment with a working microphone and speakers.',
-              'Do not refresh or close the browser during the test — progress cannot be recovered.',
-              'Each section has a time limit. When time expires, you must proceed to the next section.',
-              'Scores are generated by AI and reflect CEFR proficiency standards.',
-            ].map((t, i) => (
-              <li key={i} className="flex gap-2.5">
-                <span className="text-amber-500/70 shrink-0 font-bold">{i + 1}.</span>{t}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
-            ⚠ {error}
-          </div>
-        )}
-
-        <button
-          onClick={startTest}
-          className="w-full py-5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-black text-lg rounded-2xl transition-all duration-200 tracking-wide shadow-2xl shadow-blue-500/20 hover:shadow-blue-500/40 hover:-translate-y-0.5"
-        >
-          Begin Test →
-        </button>
-        <p className="text-center text-xs text-gray-700 mt-3">
-          By starting, you agree to complete the test honestly without external assistance.
-        </p>
       </div>
+
+      {/* Test structure */}
+      <Panel style={{ marginBottom: 24 }}>
+        <SectionHeader icon={BarChart3} title="Test Structure" sub="5 sections · 100 points total" color={C.gold} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {SKILL_STEPS.map((s, i) => {
+            const Icon = SKILL_ICON[s]; const color = SKILL_COLOR[s]
+            const mins = Math.floor(SECTION_TIME[s] / 60)
+            const qCount = s === 'grammar' ? 10 : s === 'listening' || s === 'reading' ? 5 : 1
+            return (
+              <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 18px', background: C.bg, borderRadius: 14, border: `1px solid ${C.border}` }}>
+                <div style={{ width: 38, height: 38, borderRadius: 11, background: `${color}15`, border: `1px solid ${color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon size={18} color={color} strokeWidth={1.8} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: C.navy }}>{SKILL_LABEL[s]}</span>
+                  <span style={{ fontSize: 13, color: C.textLt, marginLeft: 8 }}>{qCount} {qCount === 1 ? 'task' : 'questions'}</span>
+                </div>
+                <span style={{ fontSize: 13, color: C.textLt }}>{mins} min</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color, fontFamily: "'Playfair Display', serif" }}>25 pts</span>
+              </div>
+            )
+          })}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: `${C.navy}06`, borderRadius: 14, border: `1px solid ${C.border}`, marginTop: 4 }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '.06em' }}>Total</span>
+            <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 900, color: C.navy }}>100 pts</span>
+          </div>
+        </div>
+      </Panel>
+
+      {/* CEFR scale */}
+      <Panel style={{ marginBottom: 24 }}>
+        <SectionHeader icon={Trophy} title="CEFR Score Scale" color={C.gold} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 10 }}>
+          {LEVEL_ORDER.map(l => {
+            const color = CEFR_COLOR[l]
+            return (
+              <div key={l} style={{ padding: '12px 8px', borderRadius: 14, border: `1px solid ${color}25`, background: `${color}08`, textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 900, color }}>{l}</div>
+                <div style={{ fontSize: 11, color: C.textLt, marginTop: 4, lineHeight: 1.3 }}>{CEFR_TITLE[l]}</div>
+              </div>
+            )
+          })}
+        </div>
+      </Panel>
+
+      {/* Before you begin */}
+      <div style={{ padding: '22px 28px', background: C.goldPale, border: `1px solid ${C.borderMd}`, borderRadius: 20, marginBottom: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <Flame size={18} color={C.gold} strokeWidth={2} />
+          <span style={{ fontSize: 15, fontWeight: 700, color: '#7a5c00' }}>Before You Begin</span>
+        </div>
+        {[
+          'Ensure you are in a quiet environment with a working microphone and speakers.',
+          'Do not refresh or close the browser during the test — progress cannot be recovered.',
+          'Each section has a time limit. When time expires, you must proceed to the next section.',
+          'Scores are generated by AI and reflect CEFR proficiency standards.',
+        ].map((t, i) => (
+          <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 8, fontSize: 14, color: '#7a5c00', lineHeight: 1.65 }}>
+            <span style={{ fontWeight: 800, flexShrink: 0 }}>{i + 1}.</span>{t}
+          </div>
+        ))}
+      </div>
+
+      {error && (
+        <div style={{ padding: '14px 20px', background: '#FEF2F2', border: '1px solid rgba(240,100,100,.3)', borderRadius: 14, color: '#A32D2D', fontSize: 14, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <AlertCircle size={16} strokeWidth={2} /> {error}
+        </div>
+      )}
+
+      <button
+        onClick={startTest}
+        style={{
+          width: '100%', padding: '18px 0',
+          background: C.gold, color: C.navy,
+          fontWeight: 700, fontSize: 17, border: 'none', borderRadius: 50,
+          cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+          boxShadow: '0 8px 28px rgba(201,168,76,.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          transition: 'all .32s cubic-bezier(.34,1.56,.64,1)',
+        }}
+        onMouseOver={e => (e.currentTarget.style.transform = 'translateY(-3px) scale(1.01)')}
+        onMouseOut={e => (e.currentTarget.style.transform = '')}
+      >
+        <Send size={17} strokeWidth={2.2} /> Begin Test
+      </button>
+      <p style={{ textAlign: 'center', fontSize: 12, color: C.textLt, marginTop: 12 }}>
+        By starting, you agree to complete the test honestly without external assistance.
+      </p>
     </div>
   )
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // LOADING / SUBMITTING
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   if (phase === 'loading' || phase === 'submitting') return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center text-white px-4">
-      <div className="mb-8 relative w-20 h-20">
-        <div className="w-20 h-20 rounded-full border-2 border-white/8 flex items-center justify-center">
-          <span className="text-4xl animate-pulse">{phase === 'loading' ? '🤖' : '📊'}</span>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: C.navy, fontFamily: "'DM Sans', sans-serif" }}>
+      <style suppressHydrationWarning>{GLOBAL_CSS}</style>
+      <div style={{ position: 'relative', width: 80, height: 80, marginBottom: 32 }}>
+        <div style={{ width: 80, height: 80, borderRadius: '50%', border: `2px solid rgba(255,255,255,.08)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, animation: 'pulse 2s ease-in-out infinite' }}>
+          {phase === 'loading' ? '🤖' : '📊'}
         </div>
-        <div className="absolute inset-0 rounded-full border-t-2 border-blue-500 animate-spin" />
+        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `2px solid transparent`, borderTop: `2px solid ${C.gold}`, animation: 'spin 1s linear infinite' }} />
       </div>
-      <h2 className="text-2xl font-black mb-2 text-center">
+      <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 900, color: '#fff', marginBottom: 10, textAlign: 'center' }}>
         {phase === 'loading' ? 'Generating Your Test Paper...' : 'Analysing Your Responses...'}
       </h2>
-      <p className="text-gray-500 text-sm text-center max-w-sm leading-relaxed">
+      <p style={{ fontSize: 15, color: 'rgba(255,255,255,.4)', textAlign: 'center', maxWidth: 360, lineHeight: 1.7 }}>
         {phase === 'loading'
-          ? 'AI is creating a unique 5-section test aligned with CEFR standards. This may take 10–15 seconds.'
-          : 'AI is scoring all 5 sections and generating your personalised feedback report. Please wait.'}
+          ? 'AI is creating a unique 5-section test aligned with CEFR standards.'
+          : 'AI is scoring all 5 sections and generating your personalised feedback report.'}
       </p>
-      <div className="flex gap-1.5 mt-8">
+      <div style={{ display: 'flex', gap: 6, marginTop: 28 }}>
         {[0, 1, 2, 3].map(i => (
-          <div key={i} className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.12}s` }} />
+          <div key={i} style={{ width: 8, height: 8, background: C.gold, borderRadius: '50%', animation: `bounce 1.2s ease-in-out ${i * 0.15}s infinite` }} />
         ))}
       </div>
     </div>
   )
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // TEST
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   if (phase === 'test' && exam) {
     const skillIdx = SKILL_STEPS.indexOf(currentSkill)
     const isLast = currentSkill === 'grammar'
-    const meta = SECTION_META[currentSkill]
+    const color = SKILL_COLOR[currentSkill]
+    const Icon = SKILL_ICON[currentSkill]
 
     const answeredCount =
       currentSkill === 'listening' ? exam.listening.questions.filter(q => mcqAnswers[q.id]).length :
       currentSkill === 'reading'   ? exam.reading.questions.filter(q => mcqAnswers[q.id]).length :
       currentSkill === 'grammar'   ? exam.grammar_vocab.questions.filter(q => mcqAnswers[q.id]).length :
-      meta.totalQuestions
+      1
+
+    const totalQs =
+      currentSkill === 'grammar' ? 10 :
+      currentSkill === 'listening' || currentSkill === 'reading' ? 5 : 1
+
+    const writingMin = exam.writing?.min_words ?? 80
+    const wordStatus = wordCount < writingMin ? 'low' : 'ok'
 
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'DM Sans', sans-serif" }}>
+        <style suppressHydrationWarning>{GLOBAL_CSS}</style>
 
-        {/* ── Top bar ───────────────────────────────────────── */}
-        <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
-          <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-            {/* Section label */}
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-black shrink-0"
-                style={{ backgroundColor: meta.accent }}
-              >
-                {skillIdx + 1}
+        {/* Top bar */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'rgba(248,245,238,.95)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${C.border}`, boxShadow: '0 2px 16px rgba(15,28,53,.06)' }}>
+          <div style={{ maxWidth: 860, margin: '0 auto', padding: '0 20px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: `${color}15`, border: `1px solid ${color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon size={16} color={color} strokeWidth={1.8} />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-gray-900 text-sm">{meta.label}</span>
-                  <span className="text-xs text-gray-400 hidden sm:inline">{meta.part}</span>
-                </div>
-                <div className="text-xs text-gray-400 truncate hidden sm:block">Topic: {exam.topic}</div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.navy }}>{SKILL_LABEL[currentSkill]}</div>
+                <div style={{ fontSize: 12, color: C.textLt }}>{SKILL_PART[currentSkill]} · {exam.topic}</div>
               </div>
             </div>
 
-            {/* Section steps (desktop) */}
-            <div className="hidden md:flex items-center gap-1.5">
+            {/* Progress dots */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {SKILL_STEPS.map((s, i) => (
-                <div
-                  key={s}
-                  className="h-1.5 rounded-full transition-all duration-300"
-                  style={{
-                    width: i === skillIdx ? '32px' : '16px',
-                    backgroundColor:
-                      i < skillIdx ? '#10B981' :
-                      i === skillIdx ? meta.accent : '#E5E7EB',
-                  }}
-                />
+                <div key={s} style={{
+                  height: 6, borderRadius: 3, transition: 'all .3s',
+                  width: i === skillIdx ? 28 : 14,
+                  background: i < skillIdx ? C.green : i === skillIdx ? color : `${C.navy}15`,
+                }} />
               ))}
             </div>
 
-            {/* Right: score + timer */}
-            <div className="flex items-center gap-4 shrink-0">
-              <div className="text-right hidden sm:block">
-                <div className="text-xs text-gray-400">Section Score</div>
-                <div className="text-sm font-black text-gray-700" style={{ color: meta.accent }}>{meta.maxScore} pts</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, color: C.textLt }}>Section Score</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color, fontFamily: "'Playfair Display', serif" }}>25 pts</div>
               </div>
-              <SectionTimer
-                key={currentSkill}
-                seconds={SECTION_TIME[currentSkill]}
-                onExpire={handleSectionExpire}
-                accent={meta.accent}
-              />
+              <SectionTimer key={currentSkill} seconds={SECTION_TIME[currentSkill]} onExpire={handleSectionExpire} color={color} />
             </div>
           </div>
 
-          {/* Answer progress strip */}
+          {/* Progress bar for MCQ */}
           {['listening', 'reading', 'grammar'].includes(currentSkill) && (
-            <div className="max-w-3xl mx-auto px-4 pb-2.5">
-              <AnswerProgress current={answeredCount} total={meta.totalQuestions} accent={meta.accent} />
+            <div style={{ maxWidth: 860, margin: '0 auto', padding: '0 20px 10px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, height: 4, background: `${C.navy}08`, borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 2, background: color, width: `${(answeredCount / totalQs) * 100}%`, transition: 'width .4s' }} />
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.textLt, fontFamily: 'monospace' }}>{answeredCount}/{totalQs}</span>
             </div>
           )}
         </div>
 
-        {/* Time-up banner */}
+        {/* Time up banner */}
         {sectionTimeUp && (
-          <div className="max-w-3xl mx-auto px-4 pt-4">
-            <div className="flex items-center gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
-              <span className="text-lg">⏰</span>
-              <div>
-                <strong>Time's up for this section.</strong> Unanswered questions score 0. 
-                You may now proceed to the next section.
-              </div>
+          <div style={{ maxWidth: 860, margin: '0 auto', padding: '16px 20px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', background: C.goldPale, border: `1px solid ${C.borderMd}`, borderRadius: 14, fontSize: 14, color: '#7a5c00' }}>
+              <Clock size={16} color={C.gold} strokeWidth={2} />
+              <strong>Time's up for this section.</strong>&nbsp; Unanswered questions score 0. You may now proceed.
             </div>
           </div>
         )}
 
-        <div className="max-w-3xl mx-auto px-4 py-6 pb-32">
+        <div style={{ maxWidth: 860, margin: '0 auto', padding: '24px 20px 120px' }}>
 
-          {/* Instructions banner */}
-          <div
-            className="flex items-start gap-3 p-4 rounded-xl mb-6 border"
-            style={{ backgroundColor: meta.accent + '07', borderColor: meta.accent + '22' }}
-          >
-            <span className="text-xl shrink-0 mt-0.5">{meta.icon}</span>
+          {/* Instructions */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '16px 20px', background: `${color}07`, border: `1px solid ${color}20`, borderRadius: 16, marginBottom: 24 }}>
+            <Icon size={20} color={color} strokeWidth={1.8} style={{ flexShrink: 0, marginTop: 2 }} />
             <div>
-              <div className="font-bold text-sm mb-0.5" style={{ color: meta.accent }}>
-                Instructions — {meta.label} ({meta.part})
+              <div style={{ fontSize: 13, fontWeight: 700, color, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                Instructions — {SKILL_LABEL[currentSkill]} ({SKILL_PART[currentSkill]})
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed">{meta.instructions}</p>
+              <p style={{ fontSize: 14, color: C.textMid, lineHeight: 1.7, margin: 0 }}>{SKILL_INSTRUCTIONS[currentSkill]}</p>
             </div>
           </div>
 
           {error && (
-            <div className="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">⚠ {error}</div>
+            <div style={{ padding: '12px 18px', background: '#FEF2F2', border: '1px solid rgba(240,100,100,.3)', borderRadius: 12, color: '#A32D2D', fontSize: 14, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertCircle size={15} strokeWidth={2} /> {error}
+            </div>
           )}
 
-          {/* ════════════ LISTENING ════════════ */}
+          {/* ── LISTENING ── */}
           {currentSkill === 'listening' && (
-            <div className="space-y-5">
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-5 border-b border-gray-100">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-bold text-gray-900">Audio Passage</h3>
-                    <div className="flex items-center gap-1.5">
-                      {[1, 2].map(n => (
-                        <div
-                          key={n}
-                          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all"
-                          style={
-                            playCount >= n
-                              ? { backgroundColor: meta.accent, borderColor: meta.accent, color: 'white' }
-                              : { backgroundColor: 'white', borderColor: '#E5E7EB', color: '#9CA3AF' }
-                          }
-                        >
-                          {n}
-                        </div>
-                      ))}
-                      <span className="text-xs text-gray-400 ml-1">/ 2 plays</span>
-                    </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <Panel>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <SectionHeader icon={Headphones} title="Audio Passage" color={color} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {[1, 2].map(n => (
+                      <div key={n} style={{ width: 28, height: 28, borderRadius: '50%', border: `2px solid ${playCount >= n ? color : C.border}`, background: playCount >= n ? color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: playCount >= n ? '#fff' : C.textLt }}>{n}</div>
+                    ))}
+                    <span style={{ fontSize: 12, color: C.textLt }}> / 2 plays</span>
                   </div>
-                  <p className="text-xs text-gray-400">Play the recording to reveal the questions. Maximum 2 plays allowed.</p>
                 </div>
 
                 {/* Waveform */}
-                <div className="px-6 py-4 bg-gray-50 flex items-center gap-0.5 h-16">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 52, padding: '0 4px', background: C.bg, borderRadius: 12, marginBottom: 16 }}>
                   {Array.from({ length: 48 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="flex-1 rounded-full transition-all"
-                      style={{
-                        backgroundColor: isPlaying ? meta.accent : (hasPlayed ? meta.accent + '50' : '#E5E7EB'),
-                        height: isPlaying
-                          ? `${12 + Math.abs(Math.sin(i * 0.4)) * 22}px`
-                          : hasPlayed ? `${6 + Math.abs(Math.sin(i * 0.4)) * 12}px` : '4px',
-                        animation: isPlaying ? `bounce ${0.25 + (i % 7) * 0.06}s ease-in-out infinite alternate` : 'none',
-                      }}
-                    />
+                    <div key={i} style={{
+                      flex: 1, borderRadius: 2,
+                      background: isPlaying ? color : hasPlayed ? `${color}50` : `${C.navy}12`,
+                      height: isPlaying ? `${14 + Math.abs(Math.sin(i * 0.4)) * 24}px` : hasPlayed ? `${8 + Math.abs(Math.sin(i * 0.4)) * 14}px` : '4px',
+                      transition: 'height .1s',
+                      animation: isPlaying ? `bounce ${0.25 + (i % 7) * 0.06}s ease-in-out infinite alternate` : 'none',
+                    }} />
                   ))}
                 </div>
 
-                <div className="px-6 py-4 flex items-center gap-4">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <button
                     onClick={isPlaying ? stopScript : playScript}
                     disabled={playCount >= 2}
-                    className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={
-                      playCount >= 2 ? { backgroundColor: '#F3F4F6', color: '#9CA3AF' } :
-                      isPlaying ? { backgroundColor: '#FEF2F2', color: '#DC2626', border: '1.5px solid #FCA5A5' } :
-                      { backgroundColor: meta.accent, color: 'white' }
-                    }
-                  >
-                    {isPlaying ? '⏹ Stop' : playCount === 0 ? '▶ Play Audio' : '▶ Play Again (2nd & final)'}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8, padding: '10px 22px',
+                      borderRadius: 50, fontWeight: 700, fontSize: 14, border: 'none', cursor: playCount >= 2 ? 'not-allowed' : 'pointer',
+                      fontFamily: "'DM Sans', sans-serif",
+                      background: playCount >= 2 ? `${C.navy}08` : isPlaying ? '#FEF2F2' : color,
+                      color: playCount >= 2 ? C.textLt : isPlaying ? C.rose : '#fff',
+                      opacity: playCount >= 2 ? 0.5 : 1,
+                      boxShadow: playCount >= 2 || isPlaying ? 'none' : `0 6px 18px ${color}40`,
+                    }}>
+                    {isPlaying ? <><Square size={14} strokeWidth={2.5} /> Stop</> : <><Play size={14} strokeWidth={2.5} fill="currentColor" /> {playCount === 0 ? 'Play Audio' : 'Play Again (final)'}</>}
                   </button>
-                  {playCount === 2 && (
-                    <span className="text-xs text-gray-400 italic">Maximum plays reached</span>
-                  )}
+                  {playCount >= 2 && <span style={{ fontSize: 13, color: C.textLt, fontStyle: 'italic' }}>Maximum plays reached</span>}
                 </div>
-              </div>
+              </Panel>
 
               {hasPlayed ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-gray-400">
-                    <div className="h-px flex-1 bg-gray-200" />
-                    Comprehension Questions ({exam.listening.questions.length} items · {meta.maxScore} pts)
-                    <div className="h-px flex-1 bg-gray-200" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ flex: 1, height: 1, background: C.border }} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                      Comprehension Questions · {exam.listening.questions.length} items · 25 pts
+                    </span>
+                    <div style={{ flex: 1, height: 1, background: C.border }} />
                   </div>
                   {exam.listening.questions.map((q, i) => (
-                    <QuestionCard
-                      key={q.id} question={q} index={i}
-                      selected={mcqAnswers[q.id]}
-                      onSelect={v => setMcqAnswers(p => ({ ...p, [q.id]: v }))}
-                      accent={meta.accent}
-                    />
+                    <MCQCard key={q.id} question={q} index={i} selected={mcqAnswers[q.id]}
+                      onSelect={v => setMcqAnswers(p => ({ ...p, [q.id]: v }))} color={color} />
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-16 text-gray-400">
-                  <div className="text-5xl mb-3">🔊</div>
-                  <p className="text-sm font-medium">Play the audio to reveal the questions.</p>
-                  <p className="text-xs mt-1">Questions will appear after the recording ends.</p>
+                <div style={{ textAlign: 'center', padding: '60px 0', color: C.textLt }}>
+                  <div style={{ fontSize: 52, marginBottom: 12 }}>🔊</div>
+                  <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Play the audio to reveal the questions.</p>
+                  <p style={{ fontSize: 13, marginTop: 6 }}>Questions will appear after the recording ends.</p>
                 </div>
               )}
             </div>
           )}
 
-          {/* ════════════ SPEAKING ════════════ */}
+          {/* ── SPEAKING ── */}
           {currentSkill === 'speaking' && (
-            <div className="space-y-4">
-              {/* Task card */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div>
-                    <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: meta.accent }}>
-                      Speaking Task · Part 2 of 5
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      Target level: <strong>{exam.speaking.level_target}</strong> · 
-                      Response time: <strong>{exam.speaking.time_seconds}s</strong> · 
-                      Score: <strong>25 pts</strong>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-lg font-bold text-gray-900 leading-relaxed mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <Panel>
+                <SectionHeader icon={Mic} title="Speaking Task" sub={`Target: ${exam.speaking.level_target} · ${exam.speaking.time_seconds}s · 25 pts`} color={color} />
+                <div style={{ padding: '18px 20px', background: `${color}07`, border: `1px solid ${color}20`, borderRadius: 14, fontSize: 15, fontWeight: 600, color: C.navy, lineHeight: 1.7, marginBottom: 18 }}>
                   {exam.speaking.prompt}
-                </p>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { label: 'Fluency & Coherence', pct: 25 },
-                    { label: 'Lexical Resource', pct: 25 },
-                    { label: 'Grammatical Range', pct: 25 },
-                    { label: 'Task Response', pct: 25 },
-                  ].map(c => (
-                    <div key={c.label} className="p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-center">
-                      <div className="text-xs font-bold text-gray-700 leading-tight">{c.label}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">{c.pct}%</div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+                  {['Fluency & Coherence', 'Lexical Resource', 'Grammatical Range', 'Task Response'].map(c => (
+                    <div key={c} style={{ padding: '10px 12px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, textAlign: 'center' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, lineHeight: 1.3 }}>{c}</div>
+                      <div style={{ fontSize: 11, color: C.textLt, marginTop: 4 }}>25%</div>
                     </div>
                   ))}
                 </div>
-              </div>
+              </Panel>
 
-              {/* Preparation phase */}
+              {/* Prep */}
               {!prepDone && !isRecording && !recordingDone && (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 text-center">
-                  <div className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Preparation Time</div>
-                  <div
-                    className="text-6xl font-black font-mono mb-2 tabular-nums"
-                    style={{ color: prepTime <= 5 ? '#EF4444' : meta.accent }}
-                  >
-                    {prepTime}s
-                  </div>
-                  <p className="text-sm text-gray-400 mb-6">Use this time to organise your thoughts and key points.</p>
-                  <div className="flex gap-3 justify-center">
-                    <button
-                      onClick={skipPrep}
-                      className="px-6 py-3 text-white font-bold text-sm rounded-xl transition-all"
-                      style={{ backgroundColor: meta.accent }}
-                    >
-                      Skip Prep — Record Now
+                <Panel style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>Preparation Time</div>
+                  <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 64, fontWeight: 900, color: prepTime <= 5 ? C.rose : color, marginBottom: 8, lineHeight: 1 }}>{prepTime}s</div>
+                  <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24 }}>Use this time to organise your thoughts and key points.</p>
+                  <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                    <button onClick={skipPrep} style={{ padding: '11px 26px', background: color, color: '#fff', border: 'none', borderRadius: 50, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", boxShadow: `0 6px 18px ${color}40` }}>
+                      Skip — Record Now
                     </button>
                     {!prepStarted && (
-                      <button
-                        onClick={startPrepTimer}
-                        className="px-6 py-3 border-2 border-gray-200 text-gray-700 font-bold text-sm rounded-xl hover:border-gray-400 transition-colors"
-                      >
-                        ▶ Start Countdown
+                      <button onClick={startPrepTimer} style={{ padding: '11px 26px', background: C.bg, border: `2px solid ${C.border}`, color: C.textMid, borderRadius: 50, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                        <Play size={13} strokeWidth={2.5} style={{ display: 'inline', marginRight: 6 }} />Start Countdown
                       </button>
                     )}
                   </div>
-                </div>
+                </Panel>
               )}
 
-              {/* Recording phase */}
+              {/* Recording */}
               {(prepDone || isRecording || recordingDone) && (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                  <div className="flex items-center justify-between mb-5">
-                    <h3 className="font-bold text-gray-900">Your Response</h3>
+                <Panel>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                    <SectionHeader icon={Mic} title="Your Response" color={color} />
                     {isRecording && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg">
-                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                        <span className="font-mono text-sm font-bold text-red-600 tabular-nums">
-                          {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:
-                          {(recordingTime % 60).toString().padStart(2, '0')}
-                          <span className="text-gray-400 font-normal text-xs">
-                            /{Math.floor(exam.speaking.time_seconds / 60).toString().padStart(2, '0')}:
-                            {(exam.speaking.time_seconds % 60).toString().padStart(2, '0')}
-                          </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: '#FEF2F2', border: '1px solid rgba(240,100,100,.3)', borderRadius: 50 }}>
+                        <div style={{ width: 8, height: 8, background: C.rose, borderRadius: '50%', animation: 'pulse 1s infinite' }} />
+                        <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: C.rose }}>
+                          {String(Math.floor(recordingTime / 60)).padStart(2, '0')}:{String(recordingTime % 60).padStart(2, '0')}
+                          <span style={{ color: C.textLt, fontWeight: 400, fontSize: 12 }}>/{String(Math.floor(exam.speaking.time_seconds / 60)).padStart(2, '0')}:{String(exam.speaking.time_seconds % 60).padStart(2, '0')}</span>
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Recording progress bar */}
                   {isRecording && (
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-4">
-                      <div
-                        className="h-full bg-red-400 rounded-full transition-all"
-                        style={{ width: `${(recordingTime / exam.speaking.time_seconds) * 100}%` }}
-                      />
+                    <div style={{ height: 4, background: `${C.navy}08`, borderRadius: 2, overflow: 'hidden', marginBottom: 16 }}>
+                      <div style={{ height: '100%', background: C.rose, borderRadius: 2, width: `${(recordingTime / exam.speaking.time_seconds) * 100}%`, transition: 'width 1s linear' }} />
                     </div>
                   )}
 
-                  <div className="flex gap-3 mb-4">
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
                     {!isRecording && !recordingDone && (
-                      <button onClick={startRecording}
-                        className="flex items-center gap-2 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold text-sm transition-colors">
-                        ● Start Recording
+                      <button onClick={startRecording} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 24px', background: C.rose, color: '#fff', border: 'none', borderRadius: 50, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", boxShadow: `0 6px 18px ${C.rose}40` }}>
+                        <div style={{ width: 8, height: 8, background: '#fff', borderRadius: '50%' }} /> Start Recording
                       </button>
                     )}
                     {isRecording && (
-                      <button onClick={stopRecording}
-                        className="flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-gray-700 text-white rounded-xl font-bold text-sm transition-colors">
-                        ■ Stop Recording
+                      <button onClick={stopRecording} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 24px', background: C.navy, color: '#fff', border: 'none', borderRadius: 50, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                        <Square size={13} strokeWidth={2.5} fill="currentColor" /> Stop Recording
                       </button>
                     )}
                     {recordingDone && (
-                      <button
-                        onClick={() => { setSpeakingTranscript(''); setRecordingDone(false); setRecordingTime(0) }}
-                        className="flex items-center gap-2 px-5 py-2.5 border-2 border-gray-200 hover:border-gray-400 text-gray-700 rounded-xl text-sm font-bold transition-colors">
-                        ↺ Re-record
+                      <button onClick={() => { setSpeakingTranscript(''); setRecordingDone(false); setRecordingTime(0) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 22px', background: C.bg, border: `2px solid ${C.border}`, color: C.textMid, borderRadius: 50, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                        <RotateCcw size={13} strokeWidth={2.5} /> Re-record
                       </button>
                     )}
                   </div>
 
-                  {isRecording && (
-                    <div className="flex items-center gap-2.5 text-sm text-red-500 font-medium mb-4 p-3 bg-red-50 rounded-xl">
-                      <div className="flex gap-0.5 items-end h-5 shrink-0">
-                        {[3, 5, 7, 5, 3, 6, 4, 5, 7].map((h, i) => (
-                          <div key={i} className="w-0.5 bg-red-400 rounded-full animate-bounce" style={{ height: `${h * 2.5}px`, animationDelay: `${i * 0.07}s` }} />
-                        ))}
-                      </div>
-                      Recording in progress — speak clearly in English
-                    </div>
-                  )}
-
                   {speakingTranscript && (
-                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Live Transcript</span>
-                        <span className="text-xs text-gray-400 tabular-nums">
-                          ~{speakingTranscript.trim().split(/\s+/).length} words
-                        </span>
+                    <div style={{ padding: '16px 18px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.06em' }}>Live Transcript</span>
+                        <span style={{ fontSize: 12, color: C.textLt }}>~{speakingTranscript.trim().split(/\s+/).length} words</span>
                       </div>
-                      <p className="text-sm text-gray-700 leading-relaxed">{speakingTranscript}</p>
+                      <p style={{ fontSize: 14, color: C.text, lineHeight: 1.7, margin: 0 }}>{speakingTranscript}</p>
                     </div>
                   )}
 
                   {recordingDone && !speakingTranscript && (
-                    <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm">
-                      ⚠ No speech detected. Please check your microphone settings and try again.
+                    <div style={{ padding: '12px 16px', background: C.goldPale, border: `1px solid ${C.borderMd}`, borderRadius: 12, fontSize: 14, color: '#7a5c00', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <AlertCircle size={15} strokeWidth={2} /> No speech detected. Please check your microphone and try again.
                     </div>
                   )}
-
                   {recordingDone && speakingTranscript && (
-                    <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-sm flex items-center gap-2">
-                      <span className="text-base">✓</span>
-                      Response recorded successfully. You may re-record if you wish.
+                    <div style={{ marginTop: 12, padding: '12px 16px', background: '#E1F5EE', border: '1px solid rgba(0,168,120,.22)', borderRadius: 12, fontSize: 14, color: '#0F6E56', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <CheckCircle2 size={15} strokeWidth={2} /> Response recorded successfully. You may re-record if you wish.
                     </div>
                   )}
-                </div>
+                </Panel>
               )}
             </div>
           )}
 
-          {/* ════════════ READING ════════════ */}
+          {/* ── READING ── */}
           {currentSkill === 'reading' && (
-            <div className="space-y-5">
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <div className="text-xs font-bold uppercase tracking-widest" style={{ color: meta.accent }}>Reading Passage</div>
-                  <span className="text-xs text-gray-400 tabular-nums">
-                    ~{exam.reading.passage.split(/\s+/).length} words
-                  </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <Panel>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <SectionHeader icon={BookOpen} title="Reading Passage" color={color} />
+                  <span style={{ fontSize: 12, color: C.textLt }}>~{exam.reading.passage.split(/\s+/).length} words</span>
                 </div>
-                <div className="px-6 py-5">
-                  <p className="text-sm text-gray-700 leading-[1.9] font-serif">{exam.reading.passage}</p>
+                <div style={{ padding: '18px 20px', background: C.bg, borderRadius: 14, border: `1px solid ${C.border}` }}>
+                  <p style={{ fontSize: 15, color: C.text, lineHeight: 1.95, margin: 0, fontFamily: "'DM Sans', sans-serif" }}>{exam.reading.passage}</p>
                 </div>
+              </Panel>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1, height: 1, background: C.border }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                  Comprehension Questions · {exam.reading.questions.length} items · 25 pts
+                </span>
+                <div style={{ flex: 1, height: 1, background: C.border }} />
               </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-gray-400">
-                  <div className="h-px flex-1 bg-gray-200" />
-                  Comprehension Questions ({exam.reading.questions.length} items · {meta.maxScore} pts)
-                  <div className="h-px flex-1 bg-gray-200" />
-                </div>
-                {exam.reading.questions.map((q, i) => (
-                  <QuestionCard
-                    key={q.id} question={q} index={i}
-                    selected={mcqAnswers[q.id]}
-                    onSelect={v => setMcqAnswers(p => ({ ...p, [q.id]: v }))}
-                    accent={meta.accent}
-                  />
-                ))}
-              </div>
+              {exam.reading.questions.map((q, i) => (
+                <MCQCard key={q.id} question={q} index={i} selected={mcqAnswers[q.id]}
+                  onSelect={v => setMcqAnswers(p => ({ ...p, [q.id]: v }))} color={color} />
+              ))}
             </div>
           )}
 
-          {/* ════════════ WRITING ════════════ */}
+          {/* ── WRITING ── */}
           {currentSkill === 'writing' && (
-            <div className="space-y-4">
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div className="text-xs font-bold uppercase tracking-widest" style={{ color: meta.accent }}>Writing Task · Part 4 of 5</div>
-                  <div
-                    className="px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap"
-                    style={{ backgroundColor: meta.accent + '12', color: meta.accent }}
-                  >
-                    {exam.writing.min_words}–{exam.writing.max_words} words
-                  </div>
-                </div>
-                <p className="font-bold text-gray-900 leading-relaxed text-base mb-5 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <Panel>
+                <SectionHeader icon={PenLine} title="Writing Task" sub={`${exam.writing.min_words}–${exam.writing.max_words} words · 25 pts`} color={color} />
+                <div style={{ padding: '16px 20px', background: C.goldPale, border: `1px solid ${C.borderMd}`, borderRadius: 14, fontSize: 15, fontWeight: 600, color: '#5a4000', lineHeight: 1.75, marginBottom: 18 }}>
                   {exam.writing.prompt}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {exam.writing.criteria.map((c, i) => (
-                    <div key={c} className="flex items-center gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-xl">
-                      <div
-                        className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-black shrink-0"
-                        style={{ backgroundColor: meta.accent + '15', color: meta.accent }}
-                      >
-                        {i + 1}
-                      </div>
-                      <span className="text-xs font-medium text-gray-700">{c}</span>
+                    <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12 }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: `${color}15`, border: `1px solid ${color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color, flexShrink: 0 }}>{i + 1}</div>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: C.textMid }}>{c}</span>
                     </div>
                   ))}
                 </div>
-              </div>
+              </Panel>
 
-              <div className="bg-white rounded-2xl border-2 border-gray-200 focus-within:border-amber-400 transition-colors overflow-hidden shadow-sm">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Your Response</span>
-                  <span
-                    className="text-xs font-mono font-bold tabular-nums"
-                    style={{ color: wordCount >= exam.writing.min_words ? '#059669' : '#9CA3AF' }}
-                  >
-                    {wordCount} words
-                  </span>
+              <div style={{ background: C.white, borderRadius: 24, border: `2px solid ${wordStatus === 'ok' ? C.green : C.border}`, overflow: 'hidden', boxShadow: '0 2px 16px rgba(15,28,53,.07)', transition: 'border-color .3s' }}>
+                <div style={{ padding: '12px 20px', background: C.bg, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.textMid, textTransform: 'uppercase', letterSpacing: '.06em' }}>Your Response</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: wordStatus === 'ok' ? C.green : C.textLt }}>{wordCount} words</span>
                 </div>
                 <textarea
-                  value={writingText}
-                  onChange={e => setWritingText(e.target.value)}
+                  value={writingText} onChange={e => setWritingText(e.target.value)}
                   placeholder="Begin writing your response here. Use paragraphs and clear structure..."
                   rows={13}
-                  className="w-full px-6 py-5 text-sm text-gray-800 leading-relaxed resize-none outline-none font-serif"
+                  style={{ width: '100%', padding: '22px 24px', fontSize: 16, color: C.text, lineHeight: 1.85, background: 'transparent', border: 'none', resize: 'vertical', outline: 'none', fontFamily: "'DM Sans', sans-serif" }}
                 />
-                <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center gap-3">
-                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{
-                        width: `${Math.min((wordCount / exam.writing.min_words) * 100, 100)}%`,
-                        backgroundColor: wordCount >= exam.writing.min_words ? '#059669' : '#D97706',
-                      }}
-                    />
+                <div style={{ padding: '12px 20px', background: C.bg, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ flex: 1, height: 6, background: `${C.navy}08`, borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 3, width: `${Math.min((wordCount / writingMin) * 100, 100)}%`, background: wordStatus === 'ok' ? C.green : C.gold, transition: 'width .3s' }} />
                   </div>
-                  {wordCount >= exam.writing.min_words
-                    ? <span className="text-xs font-bold text-emerald-600 whitespace-nowrap">✓ Minimum word count met</span>
-                    : <span className="text-xs text-amber-600 whitespace-nowrap">{exam.writing.min_words - wordCount} more words required</span>
+                  {wordStatus === 'ok'
+                    ? <span style={{ fontSize: 13, fontWeight: 700, color: C.green, whiteSpace: 'nowrap' }}>✓ Minimum word count met</span>
+                    : <span style={{ fontSize: 13, color: C.gold, whiteSpace: 'nowrap' }}>{writingMin - wordCount} more words required</span>
                   }
                 </div>
               </div>
             </div>
           )}
 
-          {/* ════════════ LANGUAGE USE (GRAMMAR) ════════════ */}
+          {/* ── GRAMMAR ── */}
           {currentSkill === 'grammar' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest text-gray-400">
-                <div className="h-px flex-1 bg-gray-200" />
-                Language Use · {exam.grammar_vocab.questions.length} Questions · {meta.maxScore} pts · Mixed Grammar &amp; Vocabulary
-                <div className="h-px flex-1 bg-gray-200" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1, height: 1, background: C.border }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                  Language Use · {exam.grammar_vocab.questions.length} Questions · 25 pts · Grammar & Vocabulary
+                </span>
+                <div style={{ flex: 1, height: 1, background: C.border }} />
               </div>
-              {exam.grammar_vocab.questions.map((q, i) => {
-                const isSelected = !!mcqAnswers[q.id]
-                return (
-                  <div
-                    key={q.id}
-                    className="bg-white rounded-2xl border-2 shadow-sm p-5 transition-colors"
-                    style={{ borderColor: isSelected ? meta.accent + '40' : '#E5E7EB' }}
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <p className="font-medium text-gray-900 flex-1 text-sm leading-relaxed">
-                        <span className="font-black text-gray-400 mr-2 tabular-nums">{String(i + 1).padStart(2, '0')}.</span>
-                        {q.question}
-                      </p>
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        <CEFRBadge level={q.level ?? 'A2'} />
-                        <span className="text-xs text-gray-400">{q.skill === 'grammar' ? 'Grammar' : 'Vocabulary'}</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {q.options.map(opt => {
-                        const letter = opt.charAt(0)
-                        const sel = mcqAnswers[q.id] === letter
-                        return (
-                          <button
-                            key={opt}
-                            onClick={() => setMcqAnswers(p => ({ ...p, [q.id]: letter }))}
-                            className="text-left px-4 py-3 rounded-xl border-2 text-sm transition-all flex items-center gap-2.5"
-                            style={
-                              sel
-                                ? { borderColor: meta.accent, backgroundColor: meta.accent + '10', color: meta.accentDark, fontWeight: 600 }
-                                : { borderColor: '#E5E7EB', color: '#374151' }
-                            }
-                          >
-                            <span
-                              className="w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-black shrink-0"
-                              style={
-                                sel
-                                  ? { borderColor: meta.accent, backgroundColor: meta.accent, color: 'white' }
-                                  : { borderColor: '#D1D5DB', color: '#9CA3AF' }
-                              }
-                            >
-                              {letter}
-                            </span>
-                            {opt.slice(2)}
-                          </button>
-                        )
-                      })}
+              {exam.grammar_vocab.questions.map((q, i) => (
+                <Panel key={q.id} style={{ padding: '20px 24px', border: `2px solid ${mcqAnswers[q.id] ? `${color}35` : C.border}`, transition: 'border-color .2s' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+                    <p style={{ fontSize: 15, fontWeight: 600, color: C.navy, flex: 1, lineHeight: 1.65, margin: 0 }}>
+                      <span style={{ fontWeight: 900, color: C.textLt, marginRight: 8, fontFamily: 'monospace' }}>{String(i + 1).padStart(2, '0')}.</span>
+                      {q.question}
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                      <CEFRBadge level={q.level ?? 'A2'} />
+                      <span style={{ fontSize: 11, color: C.textLt }}>{q.skill === 'grammar' ? 'Grammar' : 'Vocabulary'}</span>
                     </div>
                   </div>
-                )
-              })}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {q.options.map(opt => {
+                      const letter = opt.charAt(0); const sel = mcqAnswers[q.id] === letter
+                      return (
+                        <button key={opt} className="mcq-opt"
+                          onClick={() => setMcqAnswers(p => ({ ...p, [q.id]: letter }))}
+                          style={{ textAlign: 'left', padding: '12px 16px', borderRadius: 14, border: `2px solid ${sel ? color : C.border}`, background: sel ? `${color}0D` : C.bg, color: sel ? color : C.text, fontWeight: sel ? 700 : 400, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontFamily: "'DM Sans', sans-serif" }}>
+                          <span style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, border: `2px solid ${sel ? color : '#D1D5DB'}`, background: sel ? color : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: sel ? '#fff' : C.textLt }}>{letter}</span>
+                          {opt.slice(2)}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </Panel>
+              ))}
             </div>
           )}
         </div>
 
-        {/* ── Bottom navigation ──────────────────────────────── */}
-        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur border-t border-gray-200 px-4 py-3 shadow-lg">
-          <div className="max-w-3xl mx-auto flex items-center gap-3">
+        {/* Bottom nav */}
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 20, background: 'rgba(248,245,238,.96)', backdropFilter: 'blur(12px)', borderTop: `1px solid ${C.border}`, padding: '12px 20px', boxShadow: '0 -4px 24px rgba(15,28,53,.08)' }}>
+          <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
             {skillIdx > 0 && (
-              <button
-                onClick={prevSkill}
-                className="px-5 py-3 border-2 border-gray-200 hover:border-gray-400 rounded-xl font-bold text-sm text-gray-600 hover:text-gray-900 transition-all shrink-0"
-              >
+              <button onClick={prevSkill} style={{ padding: '11px 20px', background: C.bg, border: `2px solid ${C.border}`, color: C.textMid, borderRadius: 50, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif', flexShrink: 0" }}>
                 ← Back
               </button>
             )}
-
-            {/* Status chip */}
-            <div className="flex-1 flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2 border border-gray-200 min-w-0">
-              <span className="text-xs text-gray-400 shrink-0">Section {skillIdx + 1}/{SKILL_STEPS.length}</span>
-              <span className="text-xs font-bold truncate ml-2" style={{ color: meta.accent }}>
-                {currentSkill === 'listening' || currentSkill === 'reading' || currentSkill === 'grammar'
-                  ? `${answeredCount}/${meta.totalQuestions} answered`
-                  : currentSkill === 'writing'
-                    ? `${wordCount} / ${exam.writing.min_words} words`
-                    : recordingDone ? '✓ Recorded' : 'Not recorded yet'
-                }
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.bg, borderRadius: 50, padding: '10px 18px', border: `1px solid ${C.border}` }}>
+              <span style={{ fontSize: 12, color: C.textLt }}>Section {skillIdx + 1}/{SKILL_STEPS.length}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color }}>
+                {currentSkill === 'writing' ? `${wordCount} / ${writingMin} words`
+                  : currentSkill === 'speaking' ? (recordingDone ? '✓ Recorded' : 'Not recorded yet')
+                  : `${answeredCount}/${totalQs} answered`}
               </span>
             </div>
-
             {!isLast ? (
-              <button
-                onClick={nextSkill}
-                disabled={!canProceed()}
-                className="px-6 py-3 text-white font-black text-sm rounded-xl transition-all disabled:opacity-35 disabled:cursor-not-allowed shrink-0 shadow-lg"
-                style={{ backgroundColor: canProceed() ? meta.accent : '#9CA3AF' }}
-              >
+              <button onClick={nextSkill} disabled={!canProceed()} style={{ padding: '11px 26px', background: canProceed() ? color : `${C.navy}18`, color: canProceed() ? '#fff' : C.textLt, border: 'none', borderRadius: 50, fontWeight: 700, fontSize: 14, cursor: canProceed() ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans', sans-serif", flexShrink: 0, boxShadow: canProceed() ? `0 6px 18px ${color}40` : 'none' }}>
                 Next →
               </button>
             ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={!canProceed()}
-                className="px-6 py-3 bg-gray-900 hover:bg-gray-700 text-white font-black text-sm rounded-xl transition-all disabled:opacity-35 disabled:cursor-not-allowed shrink-0 shadow-lg"
-              >
-                Submit Test →
+              <button onClick={handleSubmit} disabled={!canProceed()} style={{ padding: '11px 26px', background: canProceed() ? C.navy : `${C.navy}18`, color: canProceed() ? '#fff' : C.textLt, border: 'none', borderRadius: 50, fontWeight: 700, fontSize: 14, cursor: canProceed() ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans', sans-serif", flexShrink: 0, boxShadow: canProceed() ? '0 6px 18px rgba(15,28,53,.35)' : 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Send size={14} strokeWidth={2.2} /> Submit Test
               </button>
             )}
           </div>
@@ -1202,294 +1094,266 @@ export default function LevelTestPage() {
     )
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // RESULT
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   if (phase === 'result' && result) {
     const { overall, skills, aiResult } = result
-    const levelInfo = CEFR_DESCRIPTORS[overall] ?? CEFR_DESCRIPTORS['A1']
+    const levelColor = CEFR_COLOR[overall] ?? C.slate
     const levelIdx = LEVEL_ORDER.indexOf(overall)
     const vstepGap = LEVEL_ORDER.indexOf('B1') - levelIdx
 
     const listeningScore = skills.listening.correct != null ? Math.round((skills.listening.correct / (skills.listening.total ?? 5)) * 25) : 0
-    const readingScore   = skills.reading.correct != null   ? Math.round((skills.reading.correct / (skills.reading.total ?? 5)) * 25)     : 0
-    const grammarScore   = skills.grammar.correct != null   ? Math.round((skills.grammar.correct / (skills.grammar.total ?? 10)) * 25)    : 0
-    const writingScore   = skills.writing.overall != null   ? Math.round(skills.writing.overall * 2.5)  : 0
+    const readingScore   = skills.reading.correct != null   ? Math.round((skills.reading.correct   / (skills.reading.total   ?? 5)) * 25) : 0
+    const grammarScore   = skills.grammar.correct != null   ? Math.round((skills.grammar.correct   / (skills.grammar.total   ?? 10)) * 25) : 0
+    const writingScore   = skills.writing.overall  != null  ? Math.round(skills.writing.overall  * 2.5) : 0
     const speakingScore  = skills.speaking.overall != null  ? Math.round(skills.speaking.overall * 2.5) : 0
     const totalScore     = listeningScore + readingScore + grammarScore + writingScore + speakingScore
 
+    const sectionScores = [
+      { key: 'listening', label: 'Listening',    icon: Headphones, score: listeningScore, raw: skills.listening },
+      { key: 'reading',   label: 'Reading',      icon: BookOpen,   score: readingScore,   raw: skills.reading   },
+      { key: 'writing',   label: 'Writing',      icon: PenLine,    score: writingScore,   raw: skills.writing   },
+      { key: 'speaking',  label: 'Speaking',     icon: Mic,        score: speakingScore,  raw: skills.speaking  },
+      { key: 'grammar',   label: 'Language Use', icon: FileText,   score: grammarScore,   raw: skills.grammar   },
+    ] as const
+
+    // Roadmap phases — dùng rich format nếu có, fallback về legacy
+    const PHASE_COLORS = [C.blue, C.green, C.gold, C.violet]
+    const PHASE_LABELS = ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4']
+    const PHASE_WEEKS  = ['Tuần 1–2', 'Tuần 3–4', 'Tuần 5–8', 'Tuần 9–12']
+    const LEGACY_KEYS  = ['tuan_1_2', 'tuan_3_4', 'tuan_5_8', 'tuan_9_12'] as const
+
+    const roadmapPhases: Array<{ label: string; week: string; color: string; title: string; ky_nang: string; hoat_dong: string[]; muc_tieu: string }> =
+      aiResult.lo_trinh.phases?.map((p, i) => ({
+        label:    PHASE_LABELS[i] ?? `Phase ${i + 1}`,
+        week:     PHASE_WEEKS[i]  ?? '',
+        color:    PHASE_COLORS[i] ?? C.slate,
+        title:    p.tieu_de,
+        ky_nang:  p.ky_nang_chinh,
+        hoat_dong: p.hoat_dong,
+        muc_tieu: p.muc_tieu,
+      })) ??
+      LEGACY_KEYS
+        .map((k, i) => ({ k, i, content: aiResult.lo_trinh[k] }))
+        .filter(({ content }) => !!content)
+        .map(({ content, i }) => ({
+          label: PHASE_LABELS[i], week: PHASE_WEEKS[i], color: PHASE_COLORS[i],
+          title: content as string, ky_nang: '', hoat_dong: [], muc_tieu: '',
+        }))
+
     return (
-      <div className="min-h-screen bg-gray-950 text-white">
-        {/* Report header */}
-        <div className="border-b border-white/8 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-sm">E</div>
-            <span className="font-bold text-sm tracking-widest uppercase">English Proficiency Test</span>
-          </div>
-          <span className="text-xs text-gray-600 font-mono uppercase tracking-widest">Official Score Report</span>
-        </div>
+      <div style={{ maxWidth: 1100, margin: '0 auto', paddingTop: 36, paddingBottom: 80, fontFamily: "'DM Sans', sans-serif" }}>
+        <style suppressHydrationWarning>{GLOBAL_CSS}</style>
 
-        <div className="max-w-3xl mx-auto px-4 py-8 space-y-5">
-
-          {/* ── Overall result card ──────────────────────────── */}
-          <div
-            className="rounded-2xl p-8 text-center border relative overflow-hidden"
-            style={{ backgroundColor: levelInfo.color + '10', borderColor: levelInfo.color + '28' }}
-          >
-            <div className="text-xs font-black uppercase tracking-widest mb-4 text-gray-400">CEFR Proficiency Level</div>
-            <div className="text-9xl font-black mb-2 leading-none" style={{ color: levelInfo.color }}>{overall}</div>
-            <div className="text-2xl font-black text-white mb-2">{levelInfo.title}</div>
-            <p className="text-gray-400 text-sm max-w-sm mx-auto mb-6 leading-relaxed">{levelInfo.desc}</p>
-
-            {/* Level rail */}
-            <div className="flex items-end justify-center gap-1.5 mb-6">
+        {/* ── Score header ── */}
+        <div className="fade-in" style={{ background: C.navy, borderRadius: 28, padding: '36px 40px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 36, position: 'relative', overflow: 'hidden', flexWrap: 'wrap', boxShadow: '0 20px 56px rgba(15,28,53,.22)' }}>
+          <div style={{ position: 'absolute', top: -50, right: -50, width: 260, height: 260, background: `${levelColor}10`, borderRadius: '60% 40% 30% 70%', pointerEvents: 'none', filter: 'blur(24px)' }} />
+          <ScoreRing score={totalScore} max={100} />
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 14px', background: `${levelColor}20`, border: `1px solid ${levelColor}35`, borderRadius: 50, marginBottom: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: levelColor, letterSpacing: '.05em' }}>CEFR {overall}</span>
+            </div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(26px,3.5vw,40px)', fontWeight: 900, color: '#fff', marginBottom: 6 }}>{CEFR_TITLE[overall] ?? overall}</div>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,.42)', lineHeight: 1.6, margin: 0 }}>{CEFR_DESC[overall]}</p>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, marginTop: 18 }}>
               {LEVEL_ORDER.map((l, i) => (
-                <div key={l} className="flex flex-col items-center gap-1.5">
-                  <div
-                    className="w-10 rounded-full transition-all"
-                    style={{
-                      height: i === levelIdx ? '12px' : '6px',
-                      backgroundColor: i === levelIdx ? levelInfo.color : i < levelIdx ? levelInfo.color + '45' : '#374151',
-                    }}
-                  />
-                  <span
-                    className="text-xs font-black"
-                    style={{ color: i === levelIdx ? levelInfo.color : '#6B7280' }}
-                  >
-                    {l}
-                  </span>
+                <div key={l} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 36, borderRadius: 3, height: i === levelIdx ? 12 : 6, background: i === levelIdx ? levelColor : i < levelIdx ? `${levelColor}45` : 'rgba(255,255,255,.12)' }} />
+                  <span style={{ fontSize: 11, fontWeight: 800, color: i === levelIdx ? levelColor : 'rgba(255,255,255,.3)' }}>{l}</span>
                 </div>
               ))}
             </div>
-
-            {/* Total score pill */}
-            <div
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-black mb-3"
-              style={{ backgroundColor: levelInfo.color + '20', color: levelInfo.color, border: `1px solid ${levelInfo.color}35` }}
-            >
-              Total Score: {totalScore} / 100
-            </div>
-
-            <div className="text-xs">
-              {vstepGap > 0 && <span className="text-gray-500">{vstepGap} level{vstepGap > 1 ? 's' : ''} below VSTEP B1 standard</span>}
-              {vstepGap === 0 && <span className="text-emerald-400 font-bold">✓ VSTEP B1 Standard achieved</span>}
-              {vstepGap < 0 && <span className="text-purple-400 font-bold">✓ Above VSTEP B1 Standard ({Math.abs(vstepGap)} level{Math.abs(vstepGap) > 1 ? 's' : ''})</span>}
-            </div>
           </div>
-
-          {/* ── Section Breakdown ────────────────────────────── */}
-          <div className="bg-white/[0.04] border border-white/8 rounded-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
-              <h3 className="font-black text-white text-sm uppercase tracking-wider">Section Score Breakdown</h3>
-              <span className="text-xs text-gray-600 tabular-nums">Max 25 pts per section</span>
-            </div>
-            <div className="divide-y divide-white/[0.05]">
-              {[
-                { key: 'listening' as const, label: 'Listening',    icon: '🎧', score: listeningScore, raw: skills.listening },
-                { key: 'reading'   as const, label: 'Reading',      icon: '📖', score: readingScore,   raw: skills.reading   },
-                { key: 'writing'   as const, label: 'Writing',      icon: '✏️', score: writingScore,   raw: skills.writing   },
-                { key: 'speaking'  as const, label: 'Speaking',     icon: '🎤', score: speakingScore,  raw: skills.speaking  },
-                { key: 'grammar'   as const, label: 'Language Use', icon: '📝', score: grammarScore,   raw: skills.grammar   },
-              ].map(({ key, label, icon, score, raw }) => {
-                const pct = score / 25
-                const barColor = pct >= 0.8 ? '#34D399' : pct >= 0.6 ? '#FCD34D' : pct >= 0.4 ? '#60A5FA' : '#F87171'
-                return (
-                  <div key={key} className="px-6 py-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span>{icon}</span>
-                      <span className="font-bold text-sm text-white flex-1">{label}</span>
-                      <CEFRBadge level={raw.level} />
-                      <span className="font-black tabular-nums text-sm" style={{ color: barColor }}>
-                        {score}<span className="text-gray-600 font-normal text-xs">/25</span>
-                      </span>
-                    </div>
-                    <div className="h-2 bg-white/8 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct * 100}%`, backgroundColor: barColor }} />
-                    </div>
-                    {'correct' in raw && raw.correct != null && (
-                      <div className="text-xs text-gray-600 mt-1.5 tabular-nums">{raw.correct}/{raw.total} correct answers</div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-            <div className="px-6 py-4 bg-white/[0.04] border-t border-white/8 flex items-center justify-between">
-              <span className="font-black uppercase tracking-widest text-xs text-gray-400">Total Score</span>
-              <span className="font-black text-3xl text-white tabular-nums">
-                {totalScore}<span className="text-gray-600 text-lg font-normal">/100</span>
-              </span>
-            </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button onClick={() => { setPhase('intro'); setResult(null) }} style={{ padding: '11px 22px', background: 'rgba(255,255,255,.08)', border: '1.5px solid rgba(255,255,255,.18)', color: 'rgba(255,255,255,.85)', borderRadius: 50, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', gap: 7 }}>
+              <RotateCcw size={14} strokeWidth={2} /> Làm lại
+            </button>
+            <button onClick={() => router.push('/dashboard')} style={{ padding: '11px 22px', background: C.gold, border: 'none', color: C.navy, borderRadius: 50, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", boxShadow: '0 6px 20px rgba(201,168,76,.45)', display: 'flex', alignItems: 'center', gap: 7 }}>
+              <ArrowRight size={14} strokeWidth={2.2} /> Bắt đầu học
+            </button>
           </div>
+          <div style={{ width: '100%', paddingTop: 16, borderTop: '1px solid rgba(255,255,255,.08)', fontSize: 13 }}>
+            {vstepGap > 0 && <span style={{ color: 'rgba(255,255,255,.4)' }}>Còn {vstepGap} bậc so với chuẩn VSTEP B1</span>}
+            {vstepGap === 0 && <span style={{ color: C.greenLt, fontWeight: 700 }}>✓ Đạt chuẩn VSTEP B1</span>}
+            {vstepGap < 0 && <span style={{ color: '#C084FC', fontWeight: 700 }}>✓ Vượt chuẩn VSTEP B1 — {Math.abs(vstepGap)} bậc</span>}
+          </div>
+        </div>
 
-          {/* ── Writing detailed feedback ─────────────────────── */}
-          {skills.writing.feedback && (
-            <div className="bg-white/[0.04] border border-white/8 rounded-2xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/8 flex items-center gap-2.5">
-                <span>✏️</span>
-                <h3 className="font-black text-white text-sm uppercase tracking-wider">Writing — Detailed Assessment</h3>
-                <div className="ml-auto"><CEFRBadge level={skills.writing.level} /></div>
+        {/* ── 2-column layout (giống Writing feedback view) ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, alignItems: 'start' }}>
+
+          {/* ── LEFT COLUMN ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* Nhận xét tổng thể */}
+            <Panel className="fade-in">
+              <SectionHeader icon={Target} title="Nhận xét tổng thể" color={C.gold} />
+              <div style={{ padding: '18px 20px', background: C.goldPale, borderRadius: 14, border: `1px solid ${C.borderMd}`, fontSize: 15, color: '#5a4000', lineHeight: 1.85 }}>
+                {aiResult.nhan_xet}
               </div>
-              <div className="p-6 space-y-5">
-                <p className="text-sm text-gray-300 leading-relaxed">{skills.writing.feedback}</p>
-                <div className="grid grid-cols-4 gap-3">
+            </Panel>
+
+            {/* Writing detail */}
+            {skills.writing.feedback && (
+              <Panel>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <SectionHeader icon={PenLine} title="Writing — Chi tiết" color={SKILL_COLOR.writing} />
+                  <CEFRBadge level={skills.writing.level} />
+                </div>
+                <div style={{ padding: '14px 18px', background: C.goldPale, border: `1px solid ${C.borderMd}`, borderRadius: 14, fontSize: 14, color: '#5a4000', lineHeight: 1.8, marginBottom: 18 }}>
+                  {skills.writing.feedback}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 18 }}>
                   {[
-                    { label: 'Task Achievement',       val: skills.writing.task },
-                    { label: 'Coherence & Cohesion',   val: skills.writing.coherence },
-                    { label: 'Lexical Resource',        val: skills.writing.vocabulary },
-                    { label: 'Grammatical Range',       val: skills.writing.grammar },
-                  ].map(({ label, val }) => (
-                    <div key={label} className="p-3.5 bg-white/[0.04] border border-white/8 rounded-xl">
-                      <div className="text-xs text-gray-500 mb-2 leading-tight">{label}</div>
-                      <div className="font-black text-2xl text-white tabular-nums">
-                        {val ?? '–'}<span className="text-gray-600 text-sm font-normal">/10</span>
+                    { label: 'Task',       val: skills.writing.task },
+                    { label: 'Coherence', val: skills.writing.coherence },
+                    { label: 'Vocabulary', val: skills.writing.vocabulary },
+                    { label: 'Grammar',   val: skills.writing.grammar },
+                  ].map(({ label, val }) => {
+                    const pct = (val ?? 0) / 10
+                    const c = pct >= 0.8 ? C.green : pct >= 0.6 ? C.gold : pct >= 0.4 ? C.blue : C.rose
+                    return (
+                      <div key={label} style={{ padding: '14px 12px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14 }}>
+                        <div style={{ fontSize: 11, color: C.textLt, marginBottom: 6, lineHeight: 1.3 }}>{label}</div>
+                        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 900, color: c, lineHeight: 1 }}>
+                          {val ?? '–'}<span style={{ fontSize: 12, color: C.textLt, fontFamily: "'DM Sans', sans-serif", fontWeight: 400 }}>/10</span>
+                        </div>
+                        {val != null && (
+                          <div style={{ height: 4, background: `${C.navy}08`, borderRadius: 2, overflow: 'hidden', marginTop: 8 }}>
+                            <div style={{ height: '100%', borderRadius: 2, width: `${pct * 100}%`, background: c, transition: 'width .7s' }} />
+                          </div>
+                        )}
                       </div>
-                      {val != null && <ScoreGauge value={val} />}
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
                 {skills.writing.suggestions && skills.writing.suggestions.length > 0 && (
-                  <div>
-                    <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-2.5">Improvement Suggestions</div>
-                    <div className="space-y-2">
-                      {skills.writing.suggestions.map((s, i) => (
-                        <div key={i} className="flex gap-2.5 text-sm text-gray-300 p-3 bg-blue-500/6 border border-blue-500/15 rounded-xl">
-                          <span className="text-blue-400 font-bold shrink-0">→</span>{s}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Speaking detailed feedback ────────────────────── */}
-          {skills.speaking.feedback && (
-            <div className="bg-white/[0.04] border border-white/8 rounded-2xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/8 flex items-center gap-2.5">
-                <span>🎤</span>
-                <h3 className="font-black text-white text-sm uppercase tracking-wider">Speaking — Detailed Assessment</h3>
-                <div className="ml-auto"><CEFRBadge level={skills.speaking.level} /></div>
-              </div>
-              <div className="p-6 space-y-5">
-                <p className="text-sm text-gray-300 leading-relaxed">{skills.speaking.feedback}</p>
-                <div className="grid grid-cols-4 gap-3">
-                  {[
-                    { label: 'Fluency & Coherence', val: skills.speaking.fluency },
-                    { label: 'Lexical Resource',     val: skills.speaking.vocabulary },
-                    { label: 'Grammatical Range',    val: skills.speaking.grammar },
-                    { label: 'Task Response',         val: skills.speaking.content },
-                  ].map(({ label, val }) => (
-                    <div key={label} className="p-3.5 bg-white/[0.04] border border-white/8 rounded-xl">
-                      <div className="text-xs text-gray-500 mb-2 leading-tight">{label}</div>
-                      <div className="font-black text-2xl text-white tabular-nums">
-                        {val ?? '–'}<span className="text-gray-600 text-sm font-normal">/10</span>
+                  <>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Gợi ý cải thiện</div>
+                    {skills.writing.suggestions.map((s, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 10, fontSize: 14, color: C.textMid, padding: '10px 14px', background: `${C.blue}07`, border: `1px solid ${C.blue}18`, borderRadius: 12, marginBottom: 8, lineHeight: 1.65 }}>
+                        <ArrowRight size={14} color={C.blue} strokeWidth={2} style={{ flexShrink: 0, marginTop: 2 }} />{s}
                       </div>
-                      {val != null && <ScoreGauge value={val} />}
-                    </div>
+                    ))}
+                  </>
+                )}
+              </Panel>
+            )}
+
+            {/* Speaking detail */}
+            {skills.speaking.feedback && (
+              <Panel>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <SectionHeader icon={Mic} title="Speaking — Chi tiết" color={SKILL_COLOR.speaking} />
+                  <CEFRBadge level={skills.speaking.level} />
+                </div>
+                <div style={{ padding: '14px 18px', background: `${SKILL_COLOR.speaking}07`, border: `1px solid ${SKILL_COLOR.speaking}20`, borderRadius: 14, fontSize: 14, color: C.textMid, lineHeight: 1.8, marginBottom: 18 }}>
+                  {skills.speaking.feedback}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+                  {[
+                    { label: 'Fluency',    val: skills.speaking.fluency },
+                    { label: 'Vocabulary', val: skills.speaking.vocabulary },
+                    { label: 'Grammar',    val: skills.speaking.grammar },
+                    { label: 'Content',    val: skills.speaking.content },
+                  ].map(({ label, val }) => {
+                    const pct = (val ?? 0) / 10
+                    const c = pct >= 0.8 ? C.green : pct >= 0.6 ? C.gold : pct >= 0.4 ? C.blue : C.rose
+                    return (
+                      <div key={label} style={{ padding: '14px 12px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14 }}>
+                        <div style={{ fontSize: 11, color: C.textLt, marginBottom: 6 }}>{label}</div>
+                        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 900, color: c, lineHeight: 1 }}>
+                          {val ?? '–'}<span style={{ fontSize: 12, color: C.textLt, fontFamily: "'DM Sans', sans-serif", fontWeight: 400 }}>/10</span>
+                        </div>
+                        {val != null && (
+                          <div style={{ height: 4, background: `${C.navy}08`, borderRadius: 2, overflow: 'hidden', marginTop: 8 }}>
+                            <div style={{ height: '100%', borderRadius: 2, width: `${pct * 100}%`, background: c, transition: 'width .7s' }} />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </Panel>
+            )}
+
+            {/* ── Roadmap — expandable cards (giống CriterionCard của Writing) ── */}
+            {roadmapPhases.length > 0 && (
+              <Panel>
+                <SectionHeader icon={Trophy} title="Lộ trình học cá nhân" sub={`${aiResult.lo_trinh.muc_tieu} · ${aiResult.lo_trinh.thoi_gian}`} color={C.gold} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {roadmapPhases.map((ph, i) => (
+                    <RoadmapCard key={i} phase={ph} index={i} />
                   ))}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── AI Analysis ───────────────────────────────────── */}
-          <div className="bg-white/[0.04] border border-white/8 rounded-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-white/8 flex items-center gap-2.5">
-              <span>🤖</span>
-              <h3 className="font-black text-white text-sm uppercase tracking-wider">AI Analysis</h3>
-            </div>
-            <div className="p-6 space-y-5">
-              <div>
-                <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-2">Overall Assessment</div>
-                <p className="text-sm text-gray-300 leading-relaxed">{aiResult.nhan_xet}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {aiResult.diem_manh?.length > 0 && (
-                  <div>
-                    <div className="text-xs font-black uppercase tracking-widest text-emerald-500 mb-2.5">✓ Strengths</div>
-                    <div className="space-y-2">
-                      {aiResult.diem_manh.map((s, i) => (
-                        <div key={i} className="flex gap-2.5 text-sm text-gray-300 p-2.5 bg-emerald-500/6 border border-emerald-500/14 rounded-xl">
-                          <span className="text-emerald-400 font-black shrink-0">{i + 1}.</span>{s}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {aiResult.diem_yeu?.length > 0 && (
-                  <div>
-                    <div className="text-xs font-black uppercase tracking-widest text-red-400 mb-2.5">✗ Areas to Improve</div>
-                    <div className="space-y-2">
-                      {aiResult.diem_yeu.map((s, i) => (
-                        <div key={i} className="flex gap-2.5 text-sm text-gray-300 p-2.5 bg-red-500/6 border border-red-500/14 rounded-xl">
-                          <span className="text-red-400 font-black shrink-0">{i + 1}.</span>{s}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+              </Panel>
+            )}
           </div>
 
-          {/* ── Study Roadmap ─────────────────────────────────── */}
-          {aiResult.lo_trinh && (
-            <div className="bg-white/[0.04] border border-white/8 rounded-2xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/8">
-                <h3 className="font-black text-white text-sm uppercase tracking-wider mb-0.5">🗺 Personalised Study Roadmap</h3>
-                <p className="text-xs text-gray-600">
-                  Goal: {aiResult.lo_trinh.muc_tieu} · Timeline: {aiResult.lo_trinh.thoi_gian}
-                </p>
-              </div>
-              <div className="p-6">
-                <div className="relative">
-                  {/* Vertical line */}
-                  <div className="absolute left-[5px] top-3 bottom-3 w-px bg-white/10" />
-                  <div className="space-y-6">
-                    {(['tuan_1_2', 'tuan_3_4', 'tuan_5_8', 'tuan_9_12'] as const).map((k, i) => {
-                      const content = aiResult.lo_trinh[k]
-                      if (!content) return null
-                      const phases = ['Phase 1 — Week 1–2', 'Phase 2 — Week 3–4', 'Phase 3 — Week 5–8', 'Phase 4 — Week 9–12']
-                      const colors = ['#60A5FA', '#34D399', '#FCD34D', '#C084FC']
-                      return (
-                        <div key={k} className="flex gap-5">
-                          <div className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ring-4 ring-gray-950 z-10" style={{ backgroundColor: colors[i] }} />
-                          <div>
-                            <div className="text-xs font-black mb-1.5 tracking-wide" style={{ color: colors[i] }}>
-                              {phases[i]}
-                            </div>
-                            <p className="text-sm text-gray-300 leading-relaxed">{content}</p>
-                          </div>
+          {/* ── RIGHT COLUMN (giống Writing sidebar) ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+            {/* Score breakdown */}
+            <Panel>
+              <SectionHeader icon={BarChart3} title="Bảng điểm" color={C.gold} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {sectionScores.map(({ key, label, icon: Icon, score, raw }) => {
+                  const pct = score / 25
+                  const barColor = pct >= 0.8 ? C.green : pct >= 0.6 ? C.gold : pct >= 0.4 ? C.blue : C.rose
+                  return (
+                    <div key={key}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 10, background: `${barColor}15`, border: `1px solid ${barColor}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Icon size={15} color={barColor} strokeWidth={1.8} />
                         </div>
-                      )
-                    })}
-                  </div>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: C.navy, flex: 1 }}>{label}</span>
+                        <CEFRBadge level={raw.level} />
+                        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 900, color: barColor }}>
+                          {score}<span style={{ fontSize: 12, color: C.textLt, fontFamily: "'DM Sans', sans-serif", fontWeight: 400 }}>/25</span>
+                        </span>
+                      </div>
+                      <div style={{ height: 5, background: `${C.navy}08`, borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', borderRadius: 3, width: `${pct * 100}%`, background: barColor, transition: 'width .7s cubic-bezier(.16,1,.3,1)' }} />
+                      </div>
+                      {'correct' in raw && raw.correct != null && (
+                        <div style={{ fontSize: 11, color: C.textLt, marginTop: 3 }}>{raw.correct}/{raw.total} câu đúng</div>
+                      )}
+                    </div>
+                  )
+                })}
+                <div style={{ paddingTop: 14, borderTop: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '.06em' }}>Tổng điểm</span>
+                  <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 900, color: C.navy }}>
+                    {totalScore}<span style={{ fontSize: 14, color: C.textLt, fontFamily: "'DM Sans', sans-serif", fontWeight: 400 }}>/100</span>
+                  </span>
                 </div>
               </div>
-            </div>
-          )}
+            </Panel>
 
-          {/* ── Actions ───────────────────────────────────────── */}
-          <div className="grid grid-cols-3 gap-3 pt-2">
-            <button
-              onClick={() => { setPhase('intro'); setResult(null) }}
-              className="py-4 border-2 border-white/12 hover:border-white/25 text-gray-400 hover:text-white rounded-xl font-bold text-sm transition-all"
-            >
-              ↺ Retake
-            </button>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="py-4 border-2 border-white/12 hover:border-white/25 text-gray-400 hover:text-white rounded-xl font-bold text-sm transition-all"
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => router.push('/vocabulary')}
-              className="py-4 bg-blue-600 hover:bg-blue-500 text-white font-black text-sm rounded-xl transition-all shadow-xl shadow-blue-500/20"
-            >
-              Start Learning →
-            </button>
+            {/* Điểm mạnh */}
+            {aiResult.diem_manh?.length > 0 && (
+              <Panel style={{ background: '#E1F5EE', border: '1px solid rgba(0,168,120,.22)' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0F6E56', marginBottom: 14 }}>✅ Điểm mạnh</div>
+                {aiResult.diem_manh.map((s, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, fontSize: 14, color: '#1a4a3a', lineHeight: 1.65 }}>
+                    <CheckCircle2 size={15} color={C.green} strokeWidth={2} style={{ flexShrink: 0, marginTop: 2 }} />{s}
+                  </div>
+                ))}
+              </Panel>
+            )}
+
+            {/* Cần cải thiện */}
+            {aiResult.diem_yeu?.length > 0 && (
+              <Panel style={{ background: '#FEF2F2', border: '1px solid rgba(240,100,100,.22)' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#A32D2D', marginBottom: 14 }}>📈 Cần cải thiện</div>
+                {aiResult.diem_yeu.map((s, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, fontSize: 14, color: '#5a1a1a', lineHeight: 1.65 }}>
+                    <ArrowRight size={15} color={C.rose} strokeWidth={2} style={{ flexShrink: 0, marginTop: 2 }} />{s}
+                  </div>
+                ))}
+              </Panel>
+            )}
           </div>
         </div>
       </div>

@@ -8,14 +8,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase
-    .from('NguoiDung').select('vai_tro, ho_ten, ma_sinh_vien').eq('id', user.id).single()
+    .from('NguoiDung')
+    .select('vai_tro, ho_ten, ma_sinh_vien')
+    .eq('id', user.id)
+    .single()
 
   if (!profile || profile.vai_tro !== 'admin') redirect('/dashboard')
 
   return (
     <div className="flex min-h-screen bg-[#F8F7F2]">
       <AdminSidebar user={profile} />
-      <main className="flex-1 ml-60 p-8 min-h-screen">{children}</main>
+      <main className="flex-1 ml-[236px] p-8 min-h-screen transition-all duration-250">
+        {children}
+      </main>
     </div>
   )
 }
