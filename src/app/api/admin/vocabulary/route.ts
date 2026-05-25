@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createClient as createAdmin } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 
 async function requireAdmin(supabase: ReturnType<typeof createClient>) {
@@ -9,13 +10,47 @@ async function requireAdmin(supabase: ReturnType<typeof createClient>) {
   return user
 }
 
-// GET all vocab sets
-export async function GET() {
+const supabaseAdmin = createAdmin(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+// GET — nếu có ?bo_du_vung_id thì trả từ, không thì trả danh sách bộ từ
+export async function GET(request: Request) {
   const supabase = createClient()
   const admin = await requireAdmin(supabase)
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { data } = await supabase.from('BoDuVung').select('*').order('thu_tu_hien_thi')
+  const { searchParams } = new URL(request.url)
+  const bo_du_vung_id = searchParams.get('bo_du_vung_id')
+
+  // Load từ trong bộ — query riêng rồi merge vì không có foreign key
+  if (bo_du_vung_id) {
+    const { data: tuVungList, error } = await supabaseAdmin
+      .from('TuVung')
+      .select('*')
+      .eq('bo_du_vung_id', bo_du_vung_id)
+      .order('thu_tu_hien_thi')
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    const words = tuVungList || []
+    if (words.length > 0) {
+      const { data: cacheList } = await supabaseAdmin
+        .from('TuVungCache')
+        .select('tu_tieng_anh, nghia_tieng_viet, phat_am_ipa')
+        .in('tu_tieng_anh', words.map(w => w.tu_tieng_anh))
+
+      const cacheMap = Object.fromEntries((cacheList || []).map(c => [c.tu_tieng_anh, c]))
+      const merged = words.map(w => ({ ...w, TuVungCache: cacheMap[w.tu_tieng_anh] || null }))
+      return NextResponse.json(merged)
+    }
+
+    return NextResponse.json([])
+  }
+
+  // Load danh sách bộ từ
+  const { data } = await supabase.from('BoDuVung').select('*').order('created_at')
   return NextResponse.json({ sets: data || [] })
 }
 
