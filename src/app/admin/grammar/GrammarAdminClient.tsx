@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 
 const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
-const CATEGORIES = ['Tenses', 'Conditionals', 'Passive', 'Modal verbs', 'Articles', 'Prepositions', 'Relative clauses', 'Reported speech', 'Tag questions', 'Khác']
+// CATEGORIES được lấy động từ data — xem useMemo bên dưới
 const PAGE_SIZE = 20
 
 const LEVEL_COLOR: Record<string, string> = {
@@ -269,7 +269,10 @@ function TabBaiTap({ data }: { data: BaiTapItem[] }) {
 }
 
 // ── Tab Chỉnh sửa ─────────────────────────────────────────
-function TabChinhSua({ lesson, onSave }: { lesson: Lesson; onSave: (updated: Lesson) => Promise<void> }) {
+function TabChinhSua({ lesson, onSave, categories }: { lesson: Lesson; onSave: (updated: Lesson) => Promise<void>; categories: string[] }) {
+  const inputCls = 'w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1e3a5f]/60 transition-colors bg-white'
+
+  // ── Thông tin cơ bản ──
   const [form, setForm] = useState({
     tieu_de: lesson.tieu_de as string || '',
     cap_do: lesson.cap_do as string || 'B1',
@@ -277,52 +280,271 @@ function TabChinhSua({ lesson, onSave }: { lesson: Lesson; onSave: (updated: Les
     thu_tu_hien_thi: lesson.thu_tu_hien_thi as number || 0,
     mo_ta: lesson.mo_ta as string || '',
   })
+
+  // ── Lý thuyết: raw JSON ──
+  const [jsonText, setJsonText] = useState(
+    JSON.stringify(lesson.noi_dung_json || {}, null, 2)
+  )
+  const [jsonError, setJsonError] = useState('')
+
+  function handleJsonChange(val: string) {
+    setJsonText(val)
+    try { JSON.parse(val); setJsonError('') }
+    catch { setJsonError('JSON không hợp lệ') }
+  }
+
+  function formatJson() {
+    try { setJsonText(JSON.stringify(JSON.parse(jsonText), null, 2)); setJsonError('') }
+    catch { setJsonError('JSON không hợp lệ, không thể format') }
+  }
+
+  // ── Bài tập: form UI ──
+  const [exercises, setExercises] = useState<BaiTapItem[]>(
+    (lesson.bai_tap_json as BaiTapItem[]) || []
+  )
+
+  function updateEx(i: number, patch: Partial<BaiTapItem>) {
+    setExercises(prev => prev.map((e, idx) => idx === i ? { ...e, ...patch } : e))
+  }
+
+  function addEx() {
+    setExercises(prev => [...prev, { q: '', type: 'mc', opts: ['', '', '', ''], ans: 0, exp: '' }])
+  }
+
+  function removeEx(i: number) {
+    setExercises(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  function moveEx(i: number, dir: -1 | 1) {
+    setExercises(prev => {
+      const arr = [...prev]
+      const j = i + dir
+      if (j < 0 || j >= arr.length) return arr
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
+      return arr
+    })
+  }
+
+  // ── section hiện tại ──
+  const [section, setSection] = useState<'info' | 'theory' | 'exercises'>('info')
   const [loading, setLoading] = useState(false)
 
-  const inputCls = 'w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1e3a5f]/60 transition-colors bg-white'
-
   async function handleSave() {
+    if (jsonError) { toast.error('Lý thuyết JSON không hợp lệ'); return }
+    let parsedJson: NoiDungJson
+    try { parsedJson = JSON.parse(jsonText) }
+    catch { toast.error('JSON lý thuyết lỗi'); return }
     setLoading(true)
-    await onSave({ ...lesson, ...form })
+    await onSave({
+      ...lesson,
+      ...form,
+      noi_dung_json: parsedJson,
+      bai_tap_json: exercises,
+      tong_bai_tap: exercises.length,
+    })
     setLoading(false)
   }
 
+  const sectionBtn = (key: typeof section, label: string) => (
+    <button onClick={() => setSection(key)}
+      className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+        section === key ? 'bg-[#1e3a5f] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+      }`}>
+      {label}
+    </button>
+  )
+
   return (
-    <div className="space-y-3 py-2">
-      <div>
-        <label className="text-xs font-semibold text-gray-500 mb-1 block">Tiêu đề</label>
-        <input className={inputCls} value={form.tieu_de} onChange={e => setForm(p => ({ ...p, tieu_de: e.target.value }))} />
+    <div className="py-2 space-y-4">
+      {/* Sub-nav */}
+      <div className="flex gap-2">
+        {sectionBtn('info', '📋 Thông tin')}
+        {sectionBtn('theory', '📖 Lý thuyết JSON')}
+        {sectionBtn('exercises', `✏️ Bài tập (${exercises.length})`)}
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1 block">Cấp độ</label>
-          <select className={inputCls} value={form.cap_do} onChange={e => setForm(p => ({ ...p, cap_do: e.target.value }))}>
-            {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
-          </select>
+
+      {/* ── Thông tin cơ bản ── */}
+      {section === 'info' && (
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Tiêu đề</label>
+            <input className={inputCls} value={form.tieu_de}
+              onChange={e => setForm(p => ({ ...p, tieu_de: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Cấp độ</label>
+              <select className={inputCls} value={form.cap_do}
+                onChange={e => setForm(p => ({ ...p, cap_do: e.target.value }))}>
+                {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Thứ tự</label>
+              <input type="number" className={inputCls} value={form.thu_tu_hien_thi}
+                onChange={e => setForm(p => ({ ...p, thu_tu_hien_thi: Number(e.target.value) }))} />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Danh mục</label>
+            <select className={inputCls} value={form.danh_muc}
+              onChange={e => setForm(p => ({ ...p, danh_muc: e.target.value }))}>
+              <option value="">-- Chọn --</option>
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Mô tả</label>
+            <textarea className={inputCls + ' resize-none'} rows={3} value={form.mo_ta}
+              onChange={e => setForm(p => ({ ...p, mo_ta: e.target.value }))} />
+          </div>
         </div>
-        <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1 block">Thứ tự hiển thị</label>
-          <input type="number" className={inputCls} value={form.thu_tu_hien_thi}
-            onChange={e => setForm(p => ({ ...p, thu_tu_hien_thi: Number(e.target.value) }))} />
+      )}
+
+      {/* ── Lý thuyết raw JSON ── */}
+      {section === 'theory' && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-gray-500">Cấu trúc: <code className="bg-gray-100 px-1 rounded">note, formula[], uses[], signalWords[]</code></div>
+            <button onClick={formatJson}
+              className="px-3 py-1 text-xs font-semibold rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors">
+              ✨ Format JSON
+            </button>
+          </div>
+          <textarea
+            value={jsonText}
+            onChange={e => handleJsonChange(e.target.value)}
+            rows={16}
+            spellCheck={false}
+            className={`w-full font-mono text-xs px-3 py-3 rounded-xl border-2 focus:outline-none transition-colors resize-none ${
+              jsonError ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-[#1e3a5f]/60 bg-gray-50'
+            }`}
+          />
+          {jsonError && (
+            <div className="text-xs text-red-600 font-semibold">⚠️ {jsonError}</div>
+          )}
         </div>
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-gray-500 mb-1 block">Danh mục</label>
-        <select className={inputCls} value={form.danh_muc} onChange={e => setForm(p => ({ ...p, danh_muc: e.target.value }))}>
-          <option value="">-- Chọn danh mục --</option>
-          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="text-xs font-semibold text-gray-500 mb-1 block">Mô tả</label>
-        <textarea className={inputCls + ' resize-none'} rows={3} value={form.mo_ta}
-          onChange={e => setForm(p => ({ ...p, mo_ta: e.target.value }))} />
-      </div>
-      <div className="pt-1">
-        <button onClick={handleSave} disabled={loading}
+      )}
+
+      {/* ── Bài tập form UI ── */}
+      {section === 'exercises' && (
+        <div className="space-y-3">
+          {exercises.map((ex, i) => (
+            <div key={i} className="border-2 border-gray-200 rounded-xl p-3 space-y-2 bg-gray-50">
+              {/* Header câu */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold bg-[#1e3a5f] text-white px-2 py-0.5 rounded-full">
+                  {i + 1}
+                </span>
+                <select value={ex.type}
+                  onChange={e => {
+                    const t = e.target.value as BaiTapItem['type']
+                    const patch: Partial<BaiTapItem> = { type: t }
+                    if (t === 'mc') patch.opts = ex.opts?.length ? ex.opts : ['', '', '', '']
+                    if (t === 'tf') { patch.ans = true; patch.opts = undefined }
+                    if (t === 'fill' || t === 'rewrite') { patch.ans = ''; patch.opts = undefined }
+                    updateEx(i, patch)
+                  }}
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none">
+                  <option value="mc">Trắc nghiệm</option>
+                  <option value="fill">Điền từ</option>
+                  <option value="tf">Đúng / Sai</option>
+                  <option value="rewrite">Viết lại</option>
+                </select>
+                <div className="flex gap-1 ml-auto">
+                  <button onClick={() => moveEx(i, -1)} disabled={i === 0}
+                    className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-30">↑</button>
+                  <button onClick={() => moveEx(i, 1)} disabled={i === exercises.length - 1}
+                    className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-30">↓</button>
+                  <button onClick={() => removeEx(i)}
+                    className="p-1 rounded text-red-400 hover:text-red-600">✕</button>
+                </div>
+              </div>
+
+              {/* Câu hỏi */}
+              <div>
+                <label className="text-[11px] font-semibold text-gray-400 mb-0.5 block">Câu hỏi</label>
+                <input value={ex.q} onChange={e => updateEx(i, { q: e.target.value })}
+                  placeholder={ex.type === 'fill' ? 'Dùng ___ cho chỗ trống' : 'Nội dung câu hỏi'}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-[#1e3a5f]/60" />
+              </div>
+
+              {/* Đáp án tuỳ loại */}
+              {ex.type === 'mc' && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-gray-400 block">Các lựa chọn (click radio = đáp án đúng)</label>
+                  {(ex.opts || ['', '', '', '']).map((opt, oi) => (
+                    <div key={oi} className="flex items-center gap-2">
+                      <input type="radio" name={`ans_${i}`} checked={ex.ans === oi}
+                        onChange={() => updateEx(i, { ans: oi })}
+                        className="accent-[#1e3a5f] w-4 h-4 flex-shrink-0" />
+                      <span className="text-xs font-bold text-gray-500 w-4">{String.fromCharCode(65 + oi)}.</span>
+                      <input value={opt}
+                        onChange={e => {
+                          const opts = [...(ex.opts || ['', '', '', ''])]
+                          opts[oi] = e.target.value
+                          updateEx(i, { opts })
+                        }}
+                        placeholder={`Lựa chọn ${String.fromCharCode(65 + oi)}`}
+                        className="flex-1 border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white focus:outline-none focus:border-[#1e3a5f]/60" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {ex.type === 'tf' && (
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-400 mb-1 block">Đáp án đúng</label>
+                  <div className="flex gap-3">
+                    {[true, false].map(v => (
+                      <label key={String(v)} className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" checked={ex.ans === v}
+                          onChange={() => updateEx(i, { ans: v })}
+                          className="accent-[#1e3a5f] w-4 h-4" />
+                        <span className={`text-sm font-semibold ${v ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {v ? '✓ Đúng' : '✗ Sai'}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(ex.type === 'fill' || ex.type === 'rewrite') && (
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-400 mb-0.5 block">
+                    {ex.type === 'fill' ? 'Đáp án (dùng / nếu nhiều đáp án)' : 'Câu viết lại hoàn chỉnh'}
+                  </label>
+                  <input value={String(ex.ans || '')}
+                    onChange={e => updateEx(i, { ans: e.target.value })}
+                    placeholder={ex.type === 'fill' ? 'VD: shall / will' : 'Câu đầy đủ...'}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-[#1e3a5f]/60" />
+                </div>
+              )}
+
+              {/* Giải thích */}
+              <div>
+                <label className="text-[11px] font-semibold text-gray-400 mb-0.5 block">Giải thích (tuỳ chọn)</label>
+                <input value={ex.exp || ''} onChange={e => updateEx(i, { exp: e.target.value })}
+                  placeholder="Giải thích đáp án..."
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-[#1e3a5f]/60" />
+              </div>
+            </div>
+          ))}
+
+          <button onClick={addEx}
+            className="w-full py-2.5 border-2 border-dashed border-[#1e3a5f]/30 rounded-xl text-sm font-semibold text-[#1e3a5f] hover:bg-blue-50 transition-colors">
+            + Thêm câu hỏi
+          </button>
+        </div>
+      )}
+
+      {/* Nút lưu luôn hiện */}
+      <div className="pt-1 border-t border-gray-100">
+        <button onClick={handleSave} disabled={loading || !!jsonError}
           className="w-full py-2.5 rounded-xl font-semibold text-white text-sm disabled:opacity-60"
           style={{ background: 'linear-gradient(135deg,#0f2847,#1e3a5f)' }}>
-          {loading ? 'Đang lưu...' : '💾 Lưu thay đổi'}
+          {loading ? 'Đang lưu...' : `💾 Lưu tất cả thay đổi`}
         </button>
       </div>
     </div>
@@ -330,11 +552,12 @@ function TabChinhSua({ lesson, onSave }: { lesson: Lesson; onSave: (updated: Les
 }
 
 // ── Detail Modal ──────────────────────────────────────────
-function LessonModal({ lesson, onClose, onSave, onDelete }: {
+function LessonModal({ lesson, onClose, onSave, onDelete, categories }: {
   lesson: Lesson
   onClose: () => void
   onSave: (updated: Lesson) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  categories: string[]
 }) {
   const [tab, setTab] = useState<'theory' | 'exercise' | 'edit'>('theory')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -374,8 +597,8 @@ function LessonModal({ lesson, onClose, onSave, onDelete }: {
               <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${LEVEL_COLOR[lesson.cap_do as string] || 'bg-gray-100 text-gray-600'}`}>
                 {lesson.cap_do as string}
               </span>
-             {!!lesson.danh_muc && (
-              <span className="text-blue-200 text-xs">{String(lesson.danh_muc)}</span>
+              {!!lesson.danh_muc && (
+                <span className="text-blue-200 text-xs">{String(lesson.danh_muc)}</span>
               )}
             </div>
           </div>
@@ -410,7 +633,7 @@ function LessonModal({ lesson, onClose, onSave, onDelete }: {
           {tab === 'exercise' && (!baiTap || baiTap.length === 0) && (
             <div className="py-12 text-center text-gray-400 text-sm">Không có bài tập</div>
           )}
-          {tab === 'edit' && <TabChinhSua lesson={lesson} onSave={onSave} />}
+          {tab === 'edit' && <TabChinhSua lesson={lesson} onSave={onSave} categories={categories} />}
         </div>
 
         {/* Footer xóa */}
@@ -509,6 +732,14 @@ export default function GrammarAdminClient({ lessons: init }: { lessons: Lesson[
   const [showAdd, setShowAdd] = useState(false)
   const [generating, setGenerating] = useState(false)
   const supabase = createClient()
+
+  // Lấy danh mục động từ data thực tế trong CSDL
+  const categories = useMemo(() => {
+    const cats = list
+      .map(l => (l.danh_muc as string)?.trim())
+      .filter(Boolean)
+    return Array.from(new Set(cats)).sort()
+  }, [list])
 
   // ── Filter + Sort ─────────────────────────────────────
   const filtered = useMemo(() => {
@@ -610,8 +841,11 @@ Tạo ít nhất 8 câu bài tập, trộn đều 4 loại: mc, fill, tf, rewrit
       danh_muc: updated.danh_muc,
       thu_tu_hien_thi: updated.thu_tu_hien_thi,
       mo_ta: updated.mo_ta,
+      noi_dung_json: updated.noi_dung_json,
+      bai_tap_json: updated.bai_tap_json,
+      tong_bai_tap: Array.isArray(updated.bai_tap_json) ? (updated.bai_tap_json as unknown[]).length : updated.tong_bai_tap,
     }).eq('id', updated.id as string)
-    if (error) { toast.error('Lỗi khi lưu'); return }
+    if (error) { toast.error('Lỗi khi lưu: ' + error.message); return }
     setList(prev => prev.map(l => l.id === updated.id ? { ...l, ...updated } : l))
     setSelected(prev => prev ? { ...prev, ...updated } : null)
     toast.success('Đã lưu thay đổi')
@@ -716,7 +950,7 @@ Tạo ít nhất 8 câu bài tập, trộn đều 4 loại: mc, fill, tf, rewrit
         <select value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setPage(1) }}
           className="px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#1e3a5f]/40 transition-colors bg-white">
           <option value="">Tất cả danh mục</option>
-          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <select value={`${sortKey}|${sortDir}`}
           onChange={e => { const [k, d] = e.target.value.split('|'); setSortKey(k); setSortDir(d as 'asc' | 'desc'); setPage(1) }}
@@ -781,9 +1015,7 @@ Tạo ít nhất 8 câu bài tập, trộn đều 4 loại: mc, fill, tf, rewrit
                     <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 16px' }}>
                       <span className="font-semibold text-gray-800 text-[15px]">{lesson.tieu_de as string}</span>
                       {!!lesson.mo_ta && (
-                        <div className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">
-                          {String(lesson.mo_ta)}
-                          </div>
+                        <div className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{String(lesson.mo_ta)}</div>
                       )}
                     </td>
                     <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 16px', textAlign: 'center' }}>
@@ -861,7 +1093,7 @@ Tạo ít nhất 8 câu bài tập, trộn đều 4 loại: mc, fill, tf, rewrit
 
       {showAdd && <AddModal onClose={() => !generating && setShowAdd(false)} onGenerate={handleGenerate} generating={generating} />}
       {selected && (
-        <LessonModal lesson={selected} onClose={() => setSelected(null)} onSave={handleSave} onDelete={handleDelete} />
+        <LessonModal lesson={selected} onClose={() => setSelected(null)} onSave={handleSave} onDelete={handleDelete} categories={categories} />
       )}
     </div>
   )
