@@ -18,37 +18,45 @@ export default function LoginPage() {
   const [loading,  setLoading]  = useState(false)
   const router   = useRouter()
   const supabase = createClient()
-  
+
   useEffect(() => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {})
-  return () => subscription.unsubscribe()
-}, [])
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {})
+    return () => subscription.unsubscribe()
+  }, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim() || !password) return
     setLoading(true)
+
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
-if (error) {
-  toast.error('Email hoặc mật khẩu không đúng')
-  setLoading(false)
-  return
-}
+    if (error) {
+      toast.error('Email hoặc mật khẩu không đúng')
+      setLoading(false)
+      return
+    }
 
-const { data: { user } } = await supabase.auth.getUser()
-const { data: profile } = await supabase
-  .from('NguoiDung')
-  .select('vai_tro')
-  .eq('id', user!.id)
-  .single()
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: profile } = await supabase
+      .from('NguoiDung')
+      .select('vai_tro, is_locked')
+      .eq('id', user!.id)
+      .single()
 
-toast.success('Đăng nhập thành công!')
+    if (profile?.is_locked) {
+      await supabase.auth.signOut()
+      toast.error('Tài khoản của bạn đã bị khóa do vi phạm chính sách. Vui lòng liên hệ nhà trường để được hỗ trợ.')
+      setLoading(false)
+      return
+    }
 
-if (profile?.vai_tro === 'admin') {
-  window.location.href = '/admin/dashboard'
-} else {
-  window.location.href = '/dashboard'
-}
+    toast.success('Đăng nhập thành công!')
+
+    if (profile?.vai_tro === 'admin') {
+      window.location.href = '/admin/dashboard'
+    } else {
+      window.location.href = '/dashboard'
+    }
   }
 
   const features = [
@@ -84,7 +92,6 @@ if (profile?.vai_tro === 'admin') {
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
         @keyframes drift { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-20px)} }
 
-        /* ─── SHELL ─── */
         .shell {
           min-height: 100vh;
           overflow: hidden;
@@ -92,7 +99,6 @@ if (profile?.vai_tro === 'admin') {
           grid-template-columns: 52% 48%;
         }
 
-        /* ══════ LEFT ══════ */
         .panel-l {
           position: relative; overflow: hidden;
           height: 100vh;
@@ -179,7 +185,6 @@ if (profile?.vai_tro === 'admin') {
         }
         .sl { font-size:12px; color:rgba(255,255,255,.28); font-weight:500; letter-spacing:.2px; }
 
-        /* ══════ RIGHT ══════ */
         .panel-r {
           background:var(--white);
           display:flex; flex-direction:column;
@@ -187,7 +192,6 @@ if (profile?.vai_tro === 'admin') {
           overflow-y: auto;
         }
 
-        /* Nav strip at top */
         .r-nav {
           display:flex; align-items:center; justify-content:space-between;
           padding:20px 52px;
@@ -203,23 +207,20 @@ if (profile?.vai_tro === 'admin') {
         }
         .r-nav-back:hover { color:var(--text); border-color:#94A3B8; background:#F8FAFC; }
 
-        .r-nav-register {
-          font-size:13.5px; color:var(--muted);
-        }
+        .r-nav-register { font-size:13.5px; color:var(--muted); }
         .r-nav-register a {
           color:var(--green); font-weight:600;
           text-decoration:none; margin-left:5px;
         }
         .r-nav-register a:hover { text-decoration:underline; }
 
-        /* Scrollable body */
         .r-body {
           flex:1; display:flex; align-items:center; justify-content:center;
           padding:24px 52px;
           animation:up .45s ease both;
         }
 
-        .form-wrap { width:100%; max-width: 380px; text-align: center;}
+        .form-wrap { width:100%; max-width: 380px; text-align: center; }
 
         .form-kicker {
           display:inline-flex; align-items:center; gap:7px;
@@ -238,12 +239,9 @@ if (profile?.vai_tro === 'admin') {
         }
         .form-h1 em { font-style:italic; color:var(--gold); }
 
-        .form-sub {
-         font-size: 15px; color: var(--muted); line-height: 1.8; margin-bottom: 20px;
-        }
+        .form-sub { font-size: 15px; color: var(--muted); line-height: 1.8; margin-bottom: 20px; }
 
-        /* Fields */
-        .fg { margin-bottom: 12px; text-align: left;}
+        .fg { margin-bottom: 12px; text-align: left; }
         .fl {
           display:flex; align-items:center; justify-content:space-between;
           margin-bottom:7px;
@@ -281,7 +279,6 @@ if (profile?.vai_tro === 'admin') {
         }
         .ir:hover { color:var(--text); background:#F1F5F9; }
 
-        /* Submit */
         .btn-sub {
           width:100%; height:50px; margin-top:6px;
           background:var(--navy); color:#fff; border:none;
@@ -299,14 +296,10 @@ if (profile?.vai_tro === 'admin') {
         .btn-sub:active:not(:disabled) { transform:none; box-shadow:none; }
         .btn-sub:disabled { opacity:.48; cursor:not-allowed; }
 
-        /* OR divider */
-        .or {
-          display:flex; align-items:center; gap:12px; margin:20px 0;
-        }
+        .or { display:flex; align-items:center; gap:12px; margin:20px 0; }
         .or-l { flex:1; height:1px; background:var(--border); }
         .or-t  { font-size:13px; color:#94A3B8; font-weight:500; white-space:nowrap; }
 
-        /* Google */
         .btn-g {
           width:100%; height:46px;
           background:var(--white); border:1.5px solid var(--border);
@@ -318,7 +311,6 @@ if (profile?.vai_tro === 'admin') {
         }
         .btn-g:hover { border-color:#94A3B8; box-shadow:0 2px 10px rgba(0,0,0,.06); }
 
-        /* Footer bar */
         .r-foot {
           display:flex; align-items:center; justify-content:center;
           gap:22px; flex-wrap:wrap;
@@ -331,7 +323,6 @@ if (profile?.vai_tro === 'admin') {
           font-size:12.5px; color:var(--muted); font-weight:700;
         }
 
-        /* Mobile bar */
         .m-bar {
           display:none; background:var(--navy);
           padding:13px 20px; align-items:center; justify-content:space-between;
@@ -344,12 +335,12 @@ if (profile?.vai_tro === 'admin') {
         .m-bar-tag { font-size:12px; color:rgba(255,255,255,.33); }
 
         @media (max-width:900px) {
-          .shell { grid-template-columns: 1fr; height: auto; overflow: visible;}
+          .shell { grid-template-columns: 1fr; height: auto; overflow: visible; }
           .panel-l { display:none; }
           .m-bar { display:flex; }
           .panel-r { height: auto; min-height: calc(100svh - 54px); overflow: visible; }
           .r-nav { padding: 14px 20px; }
-          .r-body { padding: 24px 20px; align-items: flex-start;  }
+          .r-body { padding: 24px 20px; align-items: flex-start; }
           .r-foot { padding: 14px 20px; gap: 16px; }
         }
         @media (max-width:480px) {
@@ -426,7 +417,6 @@ if (profile?.vai_tro === 'admin') {
         {/* ══ RIGHT ══ */}
         <main className="panel-r">
 
-          {/* Top nav strip */}
           <nav className="r-nav">
             <Link href="/" className="r-nav-back">
               <ArrowLeft size={14} strokeWidth={2} />
@@ -438,7 +428,6 @@ if (profile?.vai_tro === 'admin') {
             </span>
           </nav>
 
-          {/* Form body */}
           <div className="r-body">
             <div className="form-wrap">
 
@@ -516,7 +505,6 @@ if (profile?.vai_tro === 'admin') {
             </div>
           </div>
 
-          {/* Footer strip */}
           <footer className="r-foot">
             <span className="trust"><ShieldCheck size={13} strokeWidth={2} color="#00A878" />Bảo mật SSL</span>
             <span className="trust"><BadgeCheck   size={13} strokeWidth={2} color="#C9A84C" />Miễn phí 100%</span>

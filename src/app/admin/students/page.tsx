@@ -6,7 +6,7 @@ export default async function StudentsPage() {
   const { data: students } = await supabase
     .from('NguoiDung')
     .select('*')
-    .eq('vai_tro', 'sinh_vien')
+    .eq('vai_tro', 'sinh_vien')  // ← chỉ lấy SV
     .order('created_at', { ascending: false })
 
   return <StudentsClient students={students || []} />
