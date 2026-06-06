@@ -10,6 +10,7 @@ interface Question {
   giai_thich?: string
   ky_nang: string
   loai_cau_hoi: string
+  so_phan?: number
 }
 
 interface ExamResult {
@@ -24,33 +25,38 @@ interface ExamResult {
 interface Props {
   loaiChungChi: string
   kyNang: string
+  mode: 'quick' | 'full'
   onFinish: () => void
 }
 
-export default function ExamSession({ loaiChungChi, kyNang, onFinish }: Props) {
-  const [questions, setQuestions] = useState<Question[]>([])
-  const [loading, setLoading] = useState(true)
+const SCORE_LABEL: Record<string, (diem: number | null | undefined) => string> = {
+  TOEIC: (d) => d ? `~${d} điểm TOEIC` : '',
+  VSTEP: (d) => d ? `~${d}/10 VSTEP` : '',
+  APTIS: (d) => d ? `~${d}/50 APTIS` : '',
+}
+
+export default function ExamSession({ loaiChungChi, kyNang, mode, onFinish }: Props) {
+  const [questions,  setQuestions]  = useState<Question[]>([])
+  const [loading,    setLoading]    = useState(true)
   const [currentIdx, setCurrentIdx] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
-  const [submitted, setSubmitted] = useState(false)
-  const [result, setResult] = useState<ExamResult | null>(null)
-  const [timeElapsed, setTimeElapsed] = useState(0)
+  const [answers,    setAnswers]    = useState<Record<string, string>>({})
+  const [submitted,  setSubmitted]  = useState(false)
+  const [result,     setResult]     = useState<ExamResult | null>(null)
+  const [timeElapsed,setTimeElapsed]= useState(0)
   const timerRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
-    fetch(`/api/exam?loai=${loaiChungChi}&kyNang=${kyNang}&limit=10`)
+    fetch(`/api/exam?loai=${loaiChungChi}&kyNang=${kyNang}&mode=${mode}`)
       .then(r => r.json())
       .then(data => { setQuestions(data.questions || []); setLoading(false) })
       .catch(() => { toast.error('Không thể tải câu hỏi'); setLoading(false) })
-  }, [loaiChungChi, kyNang])
+  }, [loaiChungChi, kyNang, mode])
 
   useEffect(() => {
     if (!submitted && !loading) {
       timerRef.current = setInterval(() => setTimeElapsed(t => t + 1), 1000)
     }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [submitted, loading])
 
   async function handleSubmit() {
@@ -62,6 +68,7 @@ export default function ExamSession({ loaiChungChi, kyNang, onFinish }: Props) {
       body: JSON.stringify({
         loai_chung_chi: loaiChungChi,
         ky_nang: kyNang,
+        mode,
         answers: answerList,
         questions,
         thoiGianLamBai: timeElapsed,
@@ -72,73 +79,100 @@ export default function ExamSession({ loaiChungChi, kyNang, onFinish }: Props) {
     setSubmitted(true)
   }
 
-  const formatTime = (s: number) => `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`
+  const formatTime = (s: number) =>
+    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
 
+  const answered    = Object.keys(answers).length
+  const total       = questions.length
+  const progressPct = total > 0 ? (answered / total) * 100 : 0
+
+  // ── Loading ───────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto flex flex-col items-center justify-center py-20">
-        <div className="text-4xl mb-4 animate-bounce">📝</div>
-        <div className="text-[#6B6B60]">Đang tải câu hỏi...</div>
+      <div style={{ maxWidth: 640, margin: '0 auto', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', paddingTop: 80, fontFamily:"'DM Sans',sans-serif" }}>
+        <div style={{ fontSize:48, marginBottom:16, animation:'bounce 1s infinite' }}>📝</div>
+        <div style={{ color:'#6B6B60', fontSize:15 }}>
+          {mode === 'full' ? 'Đang tải đề thi đầy đủ...' : 'Đang tải câu hỏi...'}
+        </div>
       </div>
     )
   }
 
+  // ── No questions ──────────────────────────────────────────────────────
   if (questions.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto text-center py-20">
-        <div className="text-4xl mb-4">😅</div>
-        <div className="font-display text-2xl font-bold text-[#0D0D0D] mb-2">Chưa có câu hỏi</div>
-        <div className="text-[#6B6B60] mb-6">Phần này chưa có câu hỏi trong ngân hàng</div>
-        <button onClick={onFinish} className="px-6 py-3 bg-[#0D0D0D] text-white rounded-xl font-medium hover:bg-[#2C2C28] transition-colors">
+      <div style={{ maxWidth: 640, margin: '0 auto', textAlign:'center', paddingTop: 80, fontFamily:"'DM Sans',sans-serif" }}>
+        <div style={{ fontSize:48, marginBottom:16 }}>😅</div>
+        <div style={{ fontSize:24, fontWeight:800, color:'#0D0D0D', marginBottom:8 }}>Chưa có câu hỏi</div>
+        <div style={{ color:'#6B6B60', marginBottom:24 }}>Phần này chưa có đủ câu hỏi trong ngân hàng</div>
+        <button onClick={onFinish} style={{ padding:'12px 24px', background:'#0D0D0D', color:'#fff', borderRadius:12, border:'none', cursor:'pointer', fontWeight:600 }}>
           ← Quay lại
         </button>
       </div>
     )
   }
 
+  // ── Result screen ─────────────────────────────────────────────────────
   if (submitted && result) {
-    const pct = result.phanTramDung || 0
+    const pct       = result.phanTramDung || 0
+    const emoji     = pct >= 80 ? '🏆' : pct >= 60 ? '🎯' : '📖'
+    const scoreLabel = SCORE_LABEL[loaiChungChi]?.(result.diemQuyDoi)
+
     return (
-      <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="text-6xl mb-4">{pct >= 80 ? '🏆' : pct >= 60 ? '🎯' : '📖'}</div>
-          <h2 className="font-display text-4xl font-bold text-[#0D0D0D] mb-2">{pct}%</h2>
-          <p className="text-[#6B6B60]">{result.diemSo || 0}/{result.tongSoCau || 0} câu đúng · {formatTime(timeElapsed)}</p>
-          {result.diemQuyDoi !== undefined && result.diemQuyDoi !== null && result.diemQuyDoi > 0 && (
-            <div className="mt-2 px-4 py-1.5 bg-[#E8FFF8] inline-block rounded-full text-[#00A878] font-semibold">
-              Ước tính TOEIC: {result.diemQuyDoi} điểm
+      <div style={{ maxWidth: 720, margin: '0 auto', fontFamily:"'DM Sans',sans-serif", paddingBottom: 60 }}>
+        {/* Score hero */}
+        <div style={{ textAlign:'center', marginBottom:32, padding:'36px', background:'#0F1C35', borderRadius:24, color:'#fff' }}>
+          <div style={{ fontSize:56, marginBottom:8 }}>{emoji}</div>
+          <div style={{ fontFamily:"'Playfair Display',serif", fontSize:52, fontWeight:900, color:'#fff', lineHeight:1 }}>{pct}%</div>
+          <div style={{ color:'rgba(255,255,255,.5)', marginTop:8, fontSize:14 }}>
+            {result.diemSo}/{result.tongSoCau} câu đúng · {formatTime(timeElapsed)}
+          </div>
+          {scoreLabel && (
+            <div style={{ marginTop:12, display:'inline-block', padding:'6px 18px', background:'rgba(201,168,76,.2)', border:'1px solid rgba(201,168,76,.4)', borderRadius:50, color:'#C9A84C', fontSize:14, fontWeight:700 }}>
+              {scoreLabel}
+            </div>
+          )}
+          {mode === 'full' && (
+            <div style={{ marginTop:8, display:'inline-block', padding:'4px 14px', background:'rgba(0,168,120,.15)', border:'1px solid rgba(0,168,120,.3)', borderRadius:50, color:'#4ECBA8', fontSize:12, fontWeight:600, marginLeft:8 }}>
+              ✅ Đề thi đầy đủ
             </div>
           )}
         </div>
 
+        {/* AI phân tích */}
         {result.phanTichAi && result.phanTichAi.trim() !== '' && (
-          <div className="mb-6 p-5 bg-[#F8F7F2] rounded-2xl border border-[#E8E8E0]">
-            <div className="font-semibold text-[#0D0D0D] mb-2 flex items-center gap-2">🤖 AI phân tích</div>
-            <div className="text-sm text-[#484840] leading-relaxed whitespace-pre-line">{result.phanTichAi}</div>
+          <div style={{ marginBottom:24, padding:20, background:'#F8F7F2', borderRadius:16, border:'1px solid #E8E8E0' }}>
+            <div style={{ fontWeight:700, color:'#0D0D0D', marginBottom:8, display:'flex', alignItems:'center', gap:8 }}>
+              🤖 AI phân tích
+            </div>
+            <div style={{ fontSize:14, color:'#484840', lineHeight:1.8, whiteSpace:'pre-line' }}>{result.phanTichAi}</div>
           </div>
         )}
 
-        <div className="space-y-4 mb-6">
+        {/* Chi tiết từng câu */}
+        <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:24 }}>
           {questions.map((q, i) => {
-            const userAns = answers[q.id]
+            const userAns  = answers[q.id]
             const isCorrect = userAns === q.dap_an_dung
             return (
-              <div key={q.id} className={`p-5 rounded-2xl border-2 ${isCorrect ? 'border-[#00A878]/30 bg-[#E8FFF8]' : 'border-[#FF6B6B]/30 bg-[#FFF0F0]'}`}>
-                <div className="flex items-start gap-3">
-                  <span className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold ${isCorrect ? 'bg-[#00A878]' : 'bg-[#FF6B6B]'}`}>
+              <div key={q.id} style={{ padding:20, borderRadius:16, border:`2px solid ${isCorrect ? 'rgba(0,168,120,.3)' : 'rgba(255,107,107,.3)'}`, background: isCorrect ? '#E8FFF8' : '#FFF0F0' }}>
+                <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+                  <span style={{ width:24, height:24, borderRadius:'50%', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:12, fontWeight:700, background: isCorrect ? '#00A878' : '#FF6B6B' }}>
                     {isCorrect ? '✓' : '✗'}
                   </span>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-[#0D0D0D] mb-2">Câu {i+1}. {q.noi_dung_cau_hoi}</div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:'#0D0D0D', marginBottom:6 }}>
+                      Câu {i + 1}. {q.noi_dung_cau_hoi.length > 120 ? q.noi_dung_cau_hoi.slice(0, 120) + '...' : q.noi_dung_cau_hoi}
+                    </div>
                     {!isCorrect && (
-                      <div className="text-sm">
-                        <span className="text-[#FF6B6B]">Bạn chọn: {userAns || 'Bỏ qua'}</span>
+                      <div style={{ fontSize:13, marginBottom:4 }}>
+                        <span style={{ color:'#FF6B6B' }}>Bạn chọn: {userAns || 'Bỏ qua'}</span>
                         {' · '}
-                        <span className="text-[#00A878]">Đáp án: {q.dap_an_dung}</span>
+                        <span style={{ color:'#00A878', fontWeight:600 }}>Đáp án: {q.dap_an_dung}</span>
                       </div>
                     )}
                     {q.giai_thich && (
-                      <div className="mt-2 text-xs text-[#6B6B60]">💡 {q.giai_thich}</div>
+                      <div style={{ fontSize:12, color:'#6B6B60', marginTop:4 }}>💡 {q.giai_thich}</div>
                     )}
                   </div>
                 </div>
@@ -147,12 +181,14 @@ export default function ExamSession({ loaiChungChi, kyNang, onFinish }: Props) {
           })}
         </div>
 
-        <div className="flex gap-3">
-          <button onClick={onFinish} className="flex-1 py-3.5 border-2 border-[#E8E8E0] text-[#0D0D0D] font-medium rounded-xl hover:border-[#0D0D0D] transition-colors">
+        {/* Actions */}
+        <div style={{ display:'flex', gap:12 }}>
+          <button onClick={onFinish}
+            style={{ flex:1, padding:'14px', border:'2px solid #E8E8E0', color:'#0D0D0D', fontWeight:600, borderRadius:12, background:'#fff', cursor:'pointer', fontSize:14 }}>
             ← Quay lại
           </button>
           <button onClick={() => { setSubmitted(false); setAnswers({}); setCurrentIdx(0); setTimeElapsed(0); setResult(null) }}
-            className="flex-1 py-3.5 bg-[#00A878] text-white font-semibold rounded-xl hover:bg-[#007A58] transition-colors">
+            style={{ flex:1, padding:'14px', background:'#00A878', color:'#fff', fontWeight:700, borderRadius:12, border:'none', cursor:'pointer', fontSize:14 }}>
             Thi lại
           </button>
         </div>
@@ -160,77 +196,102 @@ export default function ExamSession({ loaiChungChi, kyNang, onFinish }: Props) {
     )
   }
 
+  // ── Exam screen ───────────────────────────────────────────────────────
   const q = questions[currentIdx]
-  const progress = ((currentIdx) / questions.length) * 100
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div style={{ maxWidth: 680, margin: '0 auto', fontFamily:"'DM Sans',sans-serif", paddingBottom: 40 }}>
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <button onClick={onFinish} className="text-[#6B6B60] hover:text-[#0D0D0D] transition-colors text-sm">← Thoát</button>
-        <div className="text-center">
-          <div className="text-sm text-[#6B6B60]">{currentIdx + 1} / {questions.length}</div>
-          <div className="font-mono text-[#F5A623] font-semibold">{formatTime(timeElapsed)}</div>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+        <button onClick={onFinish} style={{ background:'none', border:'none', cursor:'pointer', color:'#6B6B60', fontSize:13 }}>← Thoát</button>
+        <div style={{ textAlign:'center' }}>
+          <div style={{ fontSize:12, color:'#6B6B60' }}>{currentIdx + 1} / {total}</div>
+          <div style={{ fontFamily:'monospace', color:'#F5A623', fontWeight:700, fontSize:15 }}>{formatTime(timeElapsed)}</div>
         </div>
-        <div className="text-sm text-[#00A878] font-medium">{loaiChungChi} · {kyNang}</div>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:11, color:'#6B6B60' }}>{loaiChungChi}</span>
+          {mode === 'full' && (
+            <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', background:'rgba(201,168,76,.15)', color:'#C9A84C', borderRadius:20 }}>FULL</span>
+          )}
+        </div>
       </div>
 
-      <div className="progress-bar mb-8">
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
+      {/* Progress bar */}
+      <div style={{ height:6, background:'#F0F0EA', borderRadius:99, marginBottom:24, overflow:'hidden' }}>
+        <div style={{ height:'100%', background:'#00A878', borderRadius:99, width:`${progressPct}%`, transition:'width .4s ease' }} />
       </div>
 
-      {/* Question */}
-      <div className="bg-white rounded-2xl border border-[#E8E8E0] p-6 mb-6">
-        <div className="text-xs text-[#A0A090] mb-2">Câu hỏi {currentIdx + 1}</div>
-        <div className="font-medium text-[#0D0D0D] leading-relaxed whitespace-pre-line">{q.noi_dung_cau_hoi}</div>
+      {/* Answered counter */}
+      <div style={{ textAlign:'right', fontSize:12, color:'#94A3B8', marginBottom:16 }}>
+        Đã trả lời: <strong style={{ color:'#00A878' }}>{answered}</strong>/{total}
+      </div>
+
+      {/* Question card */}
+      <div style={{ background:'#fff', borderRadius:20, border:'1px solid #E8E8E0', padding:24, marginBottom:20, boxShadow:'0 2px 12px rgba(0,0,0,.04)' }}>
+        <div style={{ fontSize:11, color:'#A0A090', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.5px', fontWeight:600 }}>
+          Câu {currentIdx + 1}
+          {mode === 'full' && q.so_phan && (
+            <span style={{ marginLeft:8, color:'#C9A84C' }}>· Part {q.so_phan}</span>
+          )}
+        </div>
+        <div style={{ fontSize:15, fontWeight:500, color:'#0D0D0D', lineHeight:1.75, whiteSpace:'pre-line' }}>
+          {q.noi_dung_cau_hoi}
+        </div>
       </div>
 
       {/* Options */}
       {q.cac_lua_chon && (
-        <div className="space-y-3 mb-8">
-          {q.cac_lua_chon.map(opt => (
-            <button key={opt.key} onClick={() => setAnswers(prev => ({ ...prev, [q.id]: opt.key }))}
-              className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all text-sm ${
-                answers[q.id] === opt.key
-                  ? 'border-[#0D0D0D] bg-[#F8F7F2] font-medium'
-                  : 'border-[#E8E8E0] bg-white hover:border-[#00A878]/40'
-              }`}>
-              <span className="font-semibold mr-2">{opt.key}.</span>{opt.value}
-            </button>
-          ))}
+        <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:28 }}>
+          {q.cac_lua_chon.map(opt => {
+            const selected = answers[q.id] === opt.key
+            return (
+              <button key={opt.key}
+                onClick={() => setAnswers(prev => ({ ...prev, [q.id]: opt.key }))}
+                style={{ width:'100%', textAlign:'left', padding:'14px 20px', borderRadius:14, border:`2px solid ${selected ? '#0D0D0D' : '#E8E8E0'}`, background: selected ? '#F8F7F2' : '#fff', fontWeight: selected ? 600 : 400, fontSize:14, cursor:'pointer', transition:'all .2s', color:'#0D0D0D' }}>
+                <span style={{ fontWeight:700, marginRight:8 }}>{opt.key}.</span>{opt.value}
+              </button>
+            )
+          })}
         </div>
       )}
 
       {/* Navigation */}
-      <div className="flex items-center justify-between">
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
         <button onClick={() => setCurrentIdx(Math.max(0, currentIdx - 1))}
           disabled={currentIdx === 0}
-          className="px-5 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-[#6B6B60] hover:border-[#0D0D0D] hover:text-[#0D0D0D] transition-colors disabled:opacity-30">
+          style={{ padding:'10px 20px', border:'2px solid #E8E8E0', borderRadius:12, color:'#6B6B60', background:'#fff', cursor:'pointer', fontSize:13, opacity: currentIdx === 0 ? 0.3 : 1 }}>
           ← Trước
         </button>
 
-        <div className="flex gap-1.5">
-          {questions.map((_, i) => (
-            <button key={i} onClick={() => setCurrentIdx(i)}
-              className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${
-                i === currentIdx ? 'bg-[#0D0D0D] text-white' :
-                answers[questions[i].id] ? 'bg-[#00A878]/20 text-[#00A878]' :
-                'bg-white border border-[#E8E8E0] text-[#6B6B60]'
-              }`}>
-              {i + 1}
-            </button>
-          ))}
-        </div>
+        {/* Dot navigator — chỉ hiện nếu ≤ 20 câu */}
+        {total <= 20 && (
+          <div style={{ display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center' }}>
+            {questions.map((_, i) => (
+              <button key={i} onClick={() => setCurrentIdx(i)}
+                style={{ width:30, height:30, borderRadius:8, fontSize:11, fontWeight:600, border: i === currentIdx ? '2px solid #0D0D0D' : '1px solid #E8E8E0', background: i === currentIdx ? '#0D0D0D' : answers[questions[i].id] ? '#00A87820' : '#fff', color: i === currentIdx ? '#fff' : answers[questions[i].id] ? '#00A878' : '#6B6B60', cursor:'pointer' }}>
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {currentIdx < questions.length - 1 ? (
+        {/* Full mode: compact progress thay dot navigator */}
+        {total > 20 && (
+          <div style={{ fontSize:13, color:'#6B6B60', textAlign:'center' }}>
+            <span style={{ fontWeight:700, color:'#0D0D0D' }}>{currentIdx + 1}</span> / {total}
+          </div>
+        )}
+
+        {currentIdx < total - 1 ? (
           <button onClick={() => setCurrentIdx(currentIdx + 1)}
-            className="px-5 py-2.5 bg-[#0D0D0D] text-white rounded-xl font-medium hover:bg-[#2C2C28] transition-colors">
+            style={{ padding:'10px 20px', background:'#0D0D0D', color:'#fff', borderRadius:12, border:'none', cursor:'pointer', fontSize:13, fontWeight:600 }}>
             Tiếp →
           </button>
         ) : (
           <button onClick={handleSubmit}
-            disabled={Object.keys(answers).length === 0}
-            className="px-5 py-2.5 bg-[#00A878] text-white rounded-xl font-semibold hover:bg-[#007A58] transition-colors disabled:opacity-50">
+            disabled={answered === 0}
+            style={{ padding:'10px 20px', background:'#00A878', color:'#fff', borderRadius:12, border:'none', cursor:'pointer', fontSize:13, fontWeight:700, opacity: answered === 0 ? 0.5 : 1 }}>
             Nộp bài ✓
           </button>
         )}
