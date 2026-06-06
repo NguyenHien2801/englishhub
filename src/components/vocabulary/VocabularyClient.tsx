@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import FlashcardMode from '@/components/vocabulary/FlashcardMode'
@@ -125,6 +126,7 @@ function CapDoBadge({ cap }: { cap: string }) {
 
 export default function VocabularyClient({ sets, dueWords, userId }: Props) {
   const supabase = createClient()
+  const searchParams = useSearchParams()
 
   const [activeMode, setActiveMode]   = useState<LearnMode | null>(null)
   const [activeSet, setActiveSet]     = useState<VocabSet | null>(null)
@@ -135,6 +137,21 @@ export default function VocabularyClient({ sets, dueWords, userId }: Props) {
   const [filterLoai, setFilterLoai]   = useState('all')
   const [filterCap, setFilterCap]     = useState('all')
   const [search, setSearch]           = useState('')
+
+  // Auto-start review session when navigated from "Ôn ngay" button (?mode=review)
+  useEffect(() => {
+    if (searchParams.get('mode') === 'review' && dueWords.length > 0) {
+      const reviewSet: VocabSet = {
+        id: '__review__', ten_bo: 'Ôn tập hôm nay', mo_ta: null,
+        loai_bo: '', cap_do: null, chu_de: null, tong_so_tu: dueWords.length,
+      }
+      setActiveSet(reviewSet)
+      setActiveWords(dueWords.map(d => d.TuVung))
+      setActiveMode('flashcard')
+      setInSessionSet(reviewSet)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const loaiList = Array.from(new Set(sets.map(s => s.loai_bo)))
   const filtered = sets.filter(s => {

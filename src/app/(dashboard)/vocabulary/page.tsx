@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import VocabularyClient from '@/components/vocabulary/VocabularyClient'
+import { Suspense } from 'react'
 
 export default async function VocabularyPage() {
   const supabase = createClient()
@@ -13,14 +14,14 @@ export default async function VocabularyPage() {
     .order('loai_bo')
     .order('cap_do')
 
-  // Query 2: tiến độ đến hạn ôn hôm nay
+  // Query 2: tiến độ đến hạn ôn hôm nay (giới hạn 50 từ/ngày)
   const today = new Date().toISOString().split('T')[0]
   const { data: tienDoList } = await supabase
     .from('TienDoHocTuVung')
     .select('*')
     .eq('nguoi_dung_id', user!.id)
     .lte('ngay_on_tiep_theo', today)
-    .limit(100)
+    .limit(50)
 
   // Query 3: lấy thông tin từ vựng tương ứng
   const wordIds = (tienDoList || []).map(d => d.tu_vung_id)
@@ -66,10 +67,12 @@ export default async function VocabularyPage() {
   }
 
   return (
-    <VocabularyClient
-      sets={sets || []}
-      dueWords={dueWords}
-      userId={user!.id}
-    />
+    <Suspense fallback={null}>
+      <VocabularyClient
+        sets={sets || []}
+        dueWords={dueWords}
+        userId={user!.id}
+      />
+    </Suspense>
   )
 }
