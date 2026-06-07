@@ -4,13 +4,18 @@ import toast from 'react-hot-toast'
 
 interface Question {
   id: string
-  noi_dung_cau_hoi: string
+  noi_dung_cau_hoi?: string
+  noi_dung?: string
+  cau_hoi?: string
   cac_lua_chon?: { key: string; value: string }[]
-  dap_an_dung: string
+  dap_an?: Record<string, string> | null
+  dap_an_dung: string | null
   giai_thich?: string
+  goi_y_tra_loi?: string | null
   ky_nang: string
-  loai_cau_hoi: string
+  loai_cau_hoi?: string
   so_phan?: number
+  la_cau_ai_sinh?: boolean
 }
 
 interface ExamResult {
@@ -35,14 +40,26 @@ const SCORE_LABEL: Record<string, (diem: number | null | undefined) => string> =
   APTIS: (d) => d ? `~${d}/50 APTIS` : '',
 }
 
+function normalize(q: Question) {
+  const noiDung = q.noi_dung_cau_hoi || q.noi_dung || ''
+  const cauHoi  = q.cau_hoi || ''
+  const full    = cauHoi ? `${noiDung}\n\n${cauHoi}`.trim() : noiDung
+
+  const choices: { key: string; value: string }[] =
+    q.cac_lua_chon ??
+    (q.dap_an ? Object.entries(q.dap_an).map(([k, v]) => ({ key: k, value: v })) : [])
+
+  return { text: full, choices }
+}
+
 export default function ExamSession({ loaiChungChi, kyNang, mode, onFinish }: Props) {
-  const [questions,  setQuestions]  = useState<Question[]>([])
-  const [loading,    setLoading]    = useState(true)
-  const [currentIdx, setCurrentIdx] = useState(0)
-  const [answers,    setAnswers]    = useState<Record<string, string>>({})
-  const [submitted,  setSubmitted]  = useState(false)
-  const [result,     setResult]     = useState<ExamResult | null>(null)
-  const [timeElapsed,setTimeElapsed]= useState(0)
+  const [questions,   setQuestions]   = useState<Question[]>([])
+  const [loading,     setLoading]     = useState(true)
+  const [currentIdx,  setCurrentIdx]  = useState(0)
+  const [answers,     setAnswers]     = useState<Record<string, string>>({})
+  const [submitted,   setSubmitted]   = useState(false)
+  const [result,      setResult]      = useState<ExamResult | null>(null)
+  const [timeElapsed, setTimeElapsed] = useState(0)
   const timerRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   useEffect(() => {
@@ -114,8 +131,8 @@ export default function ExamSession({ loaiChungChi, kyNang, mode, onFinish }: Pr
 
   // ── Result screen ─────────────────────────────────────────────────────
   if (submitted && result) {
-    const pct       = result.phanTramDung || 0
-    const emoji     = pct >= 80 ? '🏆' : pct >= 60 ? '🎯' : '📖'
+    const pct        = result.phanTramDung || 0
+    const emoji      = pct >= 80 ? '🏆' : pct >= 60 ? '🎯' : '📖'
     const scoreLabel = SCORE_LABEL[loaiChungChi]?.(result.diemQuyDoi)
 
     return (
@@ -152,24 +169,33 @@ export default function ExamSession({ loaiChungChi, kyNang, mode, onFinish }: Pr
         {/* Chi tiết từng câu */}
         <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:24 }}>
           {questions.map((q, i) => {
-            const userAns  = answers[q.id]
-            const isCorrect = userAns === q.dap_an_dung
+            const { text } = normalize(q)
+            const userAns   = answers[q.id]
+            const isCorrect = q.dap_an_dung === null ? null : userAns === q.dap_an_dung
+            const borderColor = isCorrect === null ? 'rgba(100,116,139,.3)' : isCorrect ? 'rgba(0,168,120,.3)' : 'rgba(255,107,107,.3)'
+            const bgColor     = isCorrect === null ? '#F8F8F8' : isCorrect ? '#E8FFF8' : '#FFF0F0'
+            const iconBg      = isCorrect === null ? '#94A3B8' : isCorrect ? '#00A878' : '#FF6B6B'
+            const icon        = isCorrect === null ? '—' : isCorrect ? '✓' : '✗'
+
             return (
-              <div key={q.id} style={{ padding:20, borderRadius:16, border:`2px solid ${isCorrect ? 'rgba(0,168,120,.3)' : 'rgba(255,107,107,.3)'}`, background: isCorrect ? '#E8FFF8' : '#FFF0F0' }}>
+              <div key={q.id} style={{ padding:20, borderRadius:16, border:`2px solid ${borderColor}`, background: bgColor }}>
                 <div style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
-                  <span style={{ width:24, height:24, borderRadius:'50%', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:12, fontWeight:700, background: isCorrect ? '#00A878' : '#FF6B6B' }}>
-                    {isCorrect ? '✓' : '✗'}
+                  <span style={{ width:24, height:24, borderRadius:'50%', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:12, fontWeight:700, background: iconBg }}>
+                    {icon}
                   </span>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:13, fontWeight:600, color:'#0D0D0D', marginBottom:6 }}>
-                      Câu {i + 1}. {q.noi_dung_cau_hoi.length > 120 ? q.noi_dung_cau_hoi.slice(0, 120) + '...' : q.noi_dung_cau_hoi}
+                      Câu {i + 1}. {text.length > 120 ? text.slice(0, 120) + '...' : text}
                     </div>
-                    {!isCorrect && (
+                    {isCorrect === false && (
                       <div style={{ fontSize:13, marginBottom:4 }}>
                         <span style={{ color:'#FF6B6B' }}>Bạn chọn: {userAns || 'Bỏ qua'}</span>
                         {' · '}
                         <span style={{ color:'#00A878', fontWeight:600 }}>Đáp án: {q.dap_an_dung}</span>
                       </div>
+                    )}
+                    {isCorrect === null && q.goi_y_tra_loi && (
+                      <div style={{ fontSize:12, color:'#6B6B60', marginTop:4 }}>💡 Gợi ý: {q.goi_y_tra_loi}</div>
                     )}
                     {q.giai_thich && (
                       <div style={{ fontSize:12, color:'#6B6B60', marginTop:4 }}>💡 {q.giai_thich}</div>
@@ -198,6 +224,8 @@ export default function ExamSession({ loaiChungChi, kyNang, mode, onFinish }: Pr
 
   // ── Exam screen ───────────────────────────────────────────────────────
   const q = questions[currentIdx]
+  const { text, choices } = normalize(q)
+  const isOpenEnded = choices.length === 0
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', fontFamily:"'DM Sans',sans-serif", paddingBottom: 40 }}>
@@ -234,16 +262,19 @@ export default function ExamSession({ loaiChungChi, kyNang, mode, onFinish }: Pr
           {mode === 'full' && q.so_phan && (
             <span style={{ marginLeft:8, color:'#C9A84C' }}>· Part {q.so_phan}</span>
           )}
+          {q.la_cau_ai_sinh && (
+            <span style={{ marginLeft:8, color:'#6478F0' }}>· AI</span>
+          )}
         </div>
         <div style={{ fontSize:15, fontWeight:500, color:'#0D0D0D', lineHeight:1.75, whiteSpace:'pre-line' }}>
-          {q.noi_dung_cau_hoi}
+          {text}
         </div>
       </div>
 
-      {/* Options */}
-      {q.cac_lua_chon && (
+      {/* Options — trắc nghiệm */}
+      {!isOpenEnded && (
         <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:28 }}>
-          {q.cac_lua_chon.map(opt => {
+          {choices.map(opt => {
             const selected = answers[q.id] === opt.key
             return (
               <button key={opt.key}
@@ -256,6 +287,24 @@ export default function ExamSession({ loaiChungChi, kyNang, mode, onFinish }: Pr
         </div>
       )}
 
+      {/* Open-ended — Nói / Viết */}
+      {isOpenEnded && (
+        <div style={{ marginBottom:28 }}>
+          <textarea
+            placeholder="Nhập câu trả lời của bạn tại đây..."
+            value={answers[q.id] || ''}
+            onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+            rows={5}
+            style={{ width:'100%', padding:'16px', borderRadius:14, border:'2px solid #E8E8E0', fontSize:14, lineHeight:1.7, resize:'vertical', fontFamily:"'DM Sans',sans-serif", color:'#0D0D0D', outline:'none' }}
+          />
+          {q.goi_y_tra_loi && (
+            <div style={{ marginTop:10, padding:'10px 16px', background:'#F8F7F2', borderRadius:10, fontSize:12, color:'#6B6B60', border:'1px solid #E8E8E0' }}>
+              💡 Gợi ý: {q.goi_y_tra_loi}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Navigation */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
         <button onClick={() => setCurrentIdx(Math.max(0, currentIdx - 1))}
@@ -264,7 +313,6 @@ export default function ExamSession({ loaiChungChi, kyNang, mode, onFinish }: Pr
           ← Trước
         </button>
 
-        {/* Dot navigator — chỉ hiện nếu ≤ 20 câu */}
         {total <= 20 && (
           <div style={{ display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center' }}>
             {questions.map((_, i) => (
@@ -276,7 +324,6 @@ export default function ExamSession({ loaiChungChi, kyNang, mode, onFinish }: Pr
           </div>
         )}
 
-        {/* Full mode: compact progress thay dot navigator */}
         {total > 20 && (
           <div style={{ fontSize:13, color:'#6B6B60', textAlign:'center' }}>
             <span style={{ fontWeight:700, color:'#0D0D0D' }}>{currentIdx + 1}</span> / {total}
