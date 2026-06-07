@@ -52,9 +52,20 @@ const GLOBAL_CSS = `
   .back-btn:hover { opacity: .7; transform: translateX(-2px); }
 `
 
+// ✅ [SỬA 1] Thêm hàm shuffle Fisher-Yates — thay thế .sort(() => Math.random() - 0.5) bị bias
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+// ✅ [SỬA 2] buildQuestions dùng shuffle() thay .sort(() => Math.random() - 0.5)
 function buildQuestions(words: VocabWord[]): BuiltQ[] {
   const allMeanings = words.map(w => w.TuVungCache?.nghia_tieng_viet).filter(Boolean) as string[]
-  return words.flatMap(word => {
+  return shuffle(words.flatMap(word => {
     const cache = word.TuVungCache
     if (cache?.cau_hoi_quiz?.length) {
       return cache.cau_hoi_quiz.map(q => ({
@@ -63,12 +74,12 @@ function buildQuestions(words: VocabWord[]): BuiltQ[] {
     }
     const correct = cache?.nghia_tieng_viet
     if (!correct) return []
-    const wrongs = allMeanings.filter(m => m !== correct).sort(() => Math.random() - 0.5).slice(0, 3)
+    const wrongs = shuffle(allMeanings.filter(m => m !== correct)).slice(0, 3)
     if (wrongs.length < 1) return []
-    const correctIndex = Math.floor(Math.random() * (wrongs.length + 1))
-    const dap_an = [...wrongs.slice(0, correctIndex), correct, ...wrongs.slice(correctIndex)]
-    return [{ wordId: word.id, cau_hoi: `"${word.tu_tieng_anh}" có nghĩa là gì?`, dap_an, correctIndex }]
-  })
+    const dap_an = shuffle([...wrongs, correct])
+    const correctIndex = dap_an.indexOf(correct)
+    return [{ wordId: word.id, cau_hoi: `"${word.tu_tieng_anh}" có nghĩa là gì?`, dap_an, correctIndex }] 
+  }))
 }
 
 export default function FlashcardMode({ words, setTitle, userId, isReviewMode, onBack, onBackToModes }: Props) {
@@ -80,8 +91,9 @@ export default function FlashcardMode({ words, setTitle, userId, isReviewMode, o
   const [done, setDone]           = useState(false)
   const supabase = createClient()
 
+  // ✅ [SỬA 3] Bỏ .sort() ngoài — buildQuestions đã shuffle rồi
   useEffect(() => {
-    setQuestions([...buildQuestions(words)].sort(() => Math.random() - 0.5))
+    setQuestions(buildQuestions(words))
   }, [words])
 
   const q        = questions[index]
@@ -109,8 +121,9 @@ export default function FlashcardMode({ words, setTitle, userId, isReviewMode, o
       total={questions.length} correct={correct}
       setTitle={setTitle} mode="quiz"
       onBack={onBack}
+      // ✅ [SỬA 4] Bỏ .sort() ngoài — buildQuestions đã shuffle rồi
       onRetry={() => {
-        setQuestions([...buildQuestions(words)].sort(() => Math.random() - 0.5))
+        setQuestions(buildQuestions(words))
         setIndex(0); setSelected(null); setConfirmed(false); setCorrect(0); setDone(false)
       }}
     />
