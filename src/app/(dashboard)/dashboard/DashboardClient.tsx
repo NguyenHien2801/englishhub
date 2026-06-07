@@ -741,7 +741,7 @@ export default function DashboardClient({
   const totalThoiGianRange = useMemo(() => examInRange.reduce((s, r) => s + (r.thoi_gian_lam_bai ?? 0), 0), [examInRange])
   const grammarAvg = useMemo(() => {
     const d = allGrammarProgress.filter(g => g.diem_bai_tap != null)
-    return d.length ? Math.round(d.reduce((s, g) => s + (g.diem_bai_tap ?? 0), 0) / d.length * 10) : 0
+    return d.length ? Math.round(d.reduce((s, g) => s + (g.diem_bai_tap ?? 0), 0) / d.length) : 0
   }, [allGrammarProgress])
 
   const chatGrouped = useMemo(() => {
@@ -970,7 +970,7 @@ body, .dash-root { font-size: 16px; line-height: 1.7; }
         <div className="dash-grid-4" style={{ display: 'grid', gridTemplateColumns: col4, gap: 14, marginBottom: 28 }}>
           {[
             { icon: CheckCircle2, label: 'Thuần thục', value: fmt(totalMastered), sub: `${pct(totalMastered, allVocabProgress.length || 1)}% tổng từ`, color: C.green,  bg: '#E6FDF4' },
-            { icon: Brain,        label: 'Bài ngữ pháp', value: `${grammarDoneCount}/${allGrammarLessons.length}`, sub: `Điểm TB ${grammarAvg}%`, color: C.violet, bg: '#F0EFFE' },
+            { icon: Brain, label: 'Bài ngữ pháp', value: `${grammarDoneCount}/${allGrammarLessons.length}`, sub: grammarDoneCount === 0 ? 'Chưa học bài nào' : `Điểm TB ${grammarAvg}%`, color: C.violet, bg: '#F0EFFE' },
             { icon: MessageSquare,label: `Câu AI (${rangeLabel})`, value: fmt(chatInRange), sub: `Tổng: ${fmt(chatHistory.length)} lượt`, color: '#06B6D4', bg: '#ECFEFF' },
             { icon: Award,        label: 'Điểm TB tổng', value: `${avgScoreAll}%`, sub: `${recentExams.length} phiên tất cả`, color: C.gold, bg: C.goldPale },
           ].map((item, i) => (
@@ -1311,8 +1311,16 @@ body, .dash-root { font-size: 16px; line-height: 1.7; }
 
           {/* Progress bars ngữ pháp */}
           <Panel>
-            <SectionHeader icon={Brain} title="Tiến độ ngữ pháp" sub={`${grammarDoneCount}/${allGrammarLessons.length} bài · Điểm TB ${grammarAvg}%`} color={C.violet} />
-            {grammarByLevel.map(lv => (
+            <SectionHeader icon={Brain} title="Tiến độ ngữ pháp" sub={`${grammarDoneCount}/${allGrammarLessons.length} bài · ${grammarDoneCount > 0 ? `Điểm TB ${grammarAvg}%` : 'Bắt đầu học để xem tiến độ'}`} color={C.violet} />
+            {grammarDoneCount === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                <Brain size={32} color={C.violet} opacity={0.25} />
+                <div style={{ fontSize: 14, color: C.textMid }}>Bạn chưa hoàn thành bài ngữ pháp nào</div>
+                <Link href="/grammar" style={{ fontSize: 13, color: C.violet, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                Học ngay <ChevronRight size={12} />
+                </Link>
+              </div>
+              ) : grammarByLevel.map(lv => (
               <ProgRow key={lv.lv} label={lv.lv} done={lv.done} total={lv.total} color={lv.color} />
             ))}
             <div style={{

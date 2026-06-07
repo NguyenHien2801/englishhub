@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import {
   BookOpen, Brain, CheckCircle2, ChevronRight,
   FileText, Flame, Target, Zap,
@@ -10,11 +11,7 @@ import {
   ArrowRight, ArrowLeft, Home, RotateCcw,
 } from 'lucide-react';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
+const supabase = createClient();
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
   bg:      '#F8F5EE',
@@ -351,6 +348,7 @@ interface GrammarClientProps {
 }
 
 export default function GrammarClient({ lessons, completedIds, userId }: GrammarClientProps) {
+  const router = useRouter()
   const [view, setView] = useState("home");
   const [CHAPTERS, setCHAPTERS] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -359,7 +357,21 @@ export default function GrammarClient({ lessons, completedIds, userId }: Grammar
   const [tab, setTab] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string | number | boolean>>({});
   const [submitted, setSubmitted] = useState(false);
-  const [completed, setCompleted] = useState<Record<string, { score: number; total: number }>>({});
+const [completed, setCompleted] = useState<Record<string, { score: number; total: number }>>(() => {
+  const init: Record<string, { score: number; total: number }> = {}
+  completedIds.forEach((id: string) => { init[id] = { score: 0, total: 0 } })
+  return init
+})
+
+useEffect(() => {
+  setCompleted(prev => {
+    const init: Record<string, { score: number; total: number }> = {}
+    completedIds.forEach((id: string) => {
+      init[id] = prev[id] ?? { score: 0, total: 0 }
+    })
+    return init
+  })
+}, [completedIds.size])
   const [filterLevel, setFilterLevel] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // ── NEW states ──
@@ -483,19 +495,29 @@ export default function GrammarClient({ lessons, completedIds, userId }: Grammar
     setShowConfirm(true);
   }
 
-  function confirmSubmit() {
-    if (!activeLesson) return;
-    const score = calcScore(activeLesson, answers);
-    const total = activeLesson.exercises.length;
-    setShowConfirm(false);
-    setSubmitted(true);
-    setShowSuccess(true);
-    // Auto-dismiss toast after 3.5s
-    setTimeout(() => setShowSuccess(false), 3500);
-    if (score >= Math.ceil(total * 0.6)) {
-      setCompleted(prev => ({ ...prev, [activeLesson.id]: { score, total } }));
-    }
+async function confirmSubmit() {
+  if (!activeLesson) return
+  const score = calcScore(activeLesson, answers)
+  const total = activeLesson.exercises.length
+  const pct   = Math.round((score / total) * 100)
+  setShowConfirm(false)
+  setSubmitted(true)
+  setShowSuccess(true)
+  setTimeout(() => setShowSuccess(false), 3500)
+  if (score >= Math.ceil(total * 0.6)) {
+    setCompleted(prev => ({ ...prev, [activeLesson.id]: { score, total } }))
   }
+  // Lưu vào Supabase
+  await supabase.from('TienDoNguPhap').upsert({
+    nguoi_dung_id:   userId,
+    bai_hoc_id:      activeLesson.id,
+    da_hoan_thanh:   pct >= 60,
+    diem_bai_tap:    pct,
+    ngay_hoan_thanh: new Date().toISOString(),
+  }, { onConflict: 'nguoi_dung_id,bai_hoc_id' })
+
+  router.refresh()
+}
 
   function resetQuiz() { setAnswers({}); setSubmitted(false); setShowSuccess(false); }
 
