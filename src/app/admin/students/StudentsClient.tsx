@@ -3,112 +3,178 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 // ═══════════════════════════════════════════════════════════
-//  TOAST SYSTEM
+//  ALERT MODAL SYSTEM
 // ═══════════════════════════════════════════════════════════
-type ToastType = 'success' | 'error' | 'warning' | 'info'
-type ToastItem = { id: number; type: ToastType; title: string; message?: string }
+type AlertType = 'success' | 'error' | 'warning' | 'info'
+type AlertItem = { id: number; type: AlertType; title: string; message?: string }
 
-let _toastId = 0
-let _setToasts: React.Dispatch<React.SetStateAction<ToastItem[]>> | null = null
+let _alertId = 0
+let _setAlerts: React.Dispatch<React.SetStateAction<AlertItem[]>> | null = null
 
-export function showToast(type: ToastType, title: string, message?: string) {
-  if (!_setToasts) return
-  const id = ++_toastId
-  _setToasts(prev => [...prev, { id, type, title, message }])
-  setTimeout(() => {
-    _setToasts!(prev => prev.filter(t => t.id !== id))
-  }, 3800)
+export function showToast(type: AlertType, title: string, message?: string) {
+  if (!_setAlerts) return
+  const id = ++_alertId
+  _setAlerts(prev => [...prev, { id, type, title, message }])
 }
 
-const TOAST_CONFIG: Record<ToastType, { icon: string; bar: string; bg: string; title: string }> = {
+const ACCENT = '#1e3a5f'
+
+const ALERT_META: Record<AlertType, {
+  chip: string
+  btnLabel: string
+  iconPath: React.ReactNode
+}> = {
   success: {
-    icon: '✓',
-    bar: '#10b981',
-    bg: 'linear-gradient(135deg,#ecfdf5 0%,#f0fdf4 100%)',
-    title: '#065f46',
+    chip: 'Thành công',
+    btnLabel: 'Đóng',
+    iconPath: <><circle cx="12" cy="12" r="9" /><path d="M9 12l2 2 4-4" /></>,
   },
   error: {
-    icon: '✕',
-    bar: '#ef4444',
-    bg: 'linear-gradient(135deg,#fef2f2 0%,#fff1f2 100%)',
-    title: '#991b1b',
+    chip: 'Lỗi hệ thống',
+    btnLabel: 'Đã hiểu',
+    iconPath: <><circle cx="12" cy="12" r="9" /><path d="M15 9l-6 6M9 9l6 6" /></>,
   },
   warning: {
-    icon: '!',
-    bar: '#f59e0b',
-    bg: 'linear-gradient(135deg,#fffbeb 0%,#fefce8 100%)',
-    title: '#92400e',
+    chip: 'Cảnh báo',
+    btnLabel: 'Được rồi',
+    iconPath: <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />,
   },
   info: {
-    icon: 'i',
-    bar: '#3b82f6',
-    bg: 'linear-gradient(135deg,#eff6ff 0%,#f0f9ff 100%)',
-    title: '#1e40af',
+    chip: 'Thông tin',
+    btnLabel: 'Đóng',
+    iconPath: <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
   },
 }
 
-function ToastContainer() {
-  const [toasts, setToasts] = useState<ToastItem[]>([])
-  _setToasts = setToasts
+function AlertContainer() {
+  const [alerts, setAlerts] = useState<AlertItem[]>([])
+  _setAlerts = setAlerts
+
+  useEffect(() => {
+    if (alerts.length === 0) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setAlerts(prev => prev.slice(1))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [alerts.length])
+
+  if (alerts.length === 0) return null
+  const current = alerts[0]
+  const meta = ALERT_META[current.type]
+
+  function dismiss() {
+    setAlerts(prev => prev.slice(1))
+  }
 
   return (
-    <div style={{
-      position: 'fixed', top: 20, right: 20, zIndex: 9999,
-      display: 'flex', flexDirection: 'column', gap: 10,
-      pointerEvents: 'none',
-    }}>
-      {toasts.map(t => {
-        const cfg = TOAST_CONFIG[t.type]
-        return (
-          <div key={t.id} style={{
-            pointerEvents: 'auto',
-            display: 'flex', alignItems: 'flex-start', gap: 12,
-            background: cfg.bg,
-            border: `1px solid ${cfg.bar}33`,
-            borderLeft: `4px solid ${cfg.bar}`,
-            borderRadius: 14,
-            boxShadow: `0 8px 32px ${cfg.bar}22, 0 2px 8px rgba(0,0,0,0.08)`,
-            padding: '13px 16px 13px 14px',
-            minWidth: 300, maxWidth: 380,
-            animation: 'toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+    <div
+      onClick={dismiss}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(10,20,40,0.55)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16,
+        animation: 'alertOverlayIn 0.18s ease',
+      }}>
+        <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 400,
+          background: '#fff',
+          borderRadius: 16,
+          border: `2px solid ${ACCENT}`,
+          overflow: 'hidden',
+          position: 'relative',
+          boxShadow: '0 16px 48px rgba(10,20,50,0.18)',
+          animation: 'alertModalIn 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+          fontFamily: 'DM Sans, sans-serif',
+        }}>
+
+        <button
+          onClick={dismiss}
+          style={{
+            position: 'absolute', top: 12, right: 12,
+            width: 28, height: 28, borderRadius: 8,
+            border: 'none', background: 'rgba(30,58,95,0.08)',
+            color: ACCENT, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,58,95,0.15)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(30,58,95,0.08)' }}>
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <div style={{ padding: '24px 24px 20px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <div style={{
+            width: 42, height: 42, borderRadius: 10, flexShrink: 0,
+            background: 'rgba(30,58,95,0.08)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            {/* Icon */}
-            <div style={{
-              width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-              background: cfg.bar, color: '#fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 800, fontSize: 13, marginTop: 1,
-            }}>
-              {cfg.icon}
-            </div>
-            {/* Text */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: cfg.title, lineHeight: 1.3 }}>
-                {t.title}
-              </div>
-              {t.message && (
-                <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2, lineHeight: 1.4 }}>
-                  {t.message}
-                </div>
-              )}
-            </div>
-            {/* Dismiss */}
-            <button
-              onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: '#9ca3af', padding: 2, lineHeight: 1, flexShrink: 0,
-                fontSize: 16, marginTop: -1,
-              }}>
-              ×
-            </button>
+            <svg width="22" height="22" fill="none" viewBox="0 0 24 24"
+              stroke={ACCENT} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              {meta.iconPath}
+            </svg>
           </div>
-        )
-      })}
+          <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+            <div style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', color: '#0f2847', marginBottom: 5,
+            }}>
+              {meta.chip}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.3 }}>
+              {current.title}
+            </div>
+            {current.message && (
+              <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, margin: '6px 0 0' }}>
+                {current.message}
+              </p>
+            )}
+          </div>
+        </div>
+        <div style={{
+          padding: '12px 24px 20px',
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+          borderTop: `1px solid rgba(30,58,95,0.12)`,
+        }}>
+          <button
+            onClick={dismiss}
+            style={{
+              padding: '9px 22px', borderRadius: 10,
+              border: 'none', background: ACCENT,
+              color: '#fff', fontWeight: 700, fontSize: 13,
+              cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+              transition: 'opacity 0.15s, transform 0.1s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+            onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)' }}
+            onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}>
+            {meta.btnLabel}
+          </button>
+        </div>
+        {alerts.length > 1 && (
+          <div style={{
+            position: 'absolute', top: 10, right: 14,
+            background: ACCENT, color: '#fff',
+            fontSize: 10, fontWeight: 700,
+            borderRadius: 20, padding: '2px 8px',
+          }}>
+            +{alerts.length - 1}
+          </div>
+        )}
+      </div>
+
       <style>{`
-        @keyframes toastIn {
-          from { opacity: 0; transform: translateX(60px) scale(0.92); }
-          to   { opacity: 1; transform: translateX(0)   scale(1); }
+        @keyframes alertOverlayIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes alertModalIn {
+          from { opacity: 0; transform: scale(0.88) translateY(16px); }
+          to   { opacity: 1; transform: scale(1)    translateY(0); }
         }
       `}</style>
     </div>
@@ -132,38 +198,24 @@ type ConfirmState = ConfirmOptions & {
   resolve: (v: boolean) => void
 }
 
-const CONFIRM_CONFIG: Record<ConfirmVariant, {
-  headerBg: string; iconBg: string; iconColor: string; icon: React.ReactNode; btnBg: string
-}> = {
+const CONFIRM_CONFIG: Record<ConfirmVariant, { icon: React.ReactNode }> = {
   danger: {
-    headerBg: 'linear-gradient(135deg,#7f1d1d 0%,#ef4444 100%)',
-    iconBg: 'rgba(254,202,202,0.25)',
-    iconColor: '#fca5a5',
-    btnBg: 'linear-gradient(135deg,#b91c1c,#ef4444)',
     icon: (
-      <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke={ACCENT} strokeWidth={2}>
         <path strokeLinecap="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
       </svg>
     ),
   },
   warning: {
-    headerBg: 'linear-gradient(135deg,#78350f 0%,#f59e0b 100%)',
-    iconBg: 'rgba(253,230,138,0.25)',
-    iconColor: '#fcd34d',
-    btnBg: 'linear-gradient(135deg,#b45309,#f59e0b)',
     icon: (
-      <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke={ACCENT} strokeWidth={2}>
         <path strokeLinecap="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
       </svg>
     ),
   },
   info: {
-    headerBg: 'linear-gradient(135deg,#0f2847 0%,#1e3a5f 100%)',
-    iconBg: 'rgba(147,197,253,0.2)',
-    iconColor: '#93c5fd',
-    btnBg: 'linear-gradient(135deg,#0f2847,#1e3a5f)',
     icon: (
-      <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke={ACCENT} strokeWidth={2}>
         <path strokeLinecap="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     ),
@@ -174,7 +226,6 @@ function ConfirmDialog({ state, onResolve }: { state: ConfirmState; onResolve: (
   const cfg = CONFIRM_CONFIG[state.variant ?? 'danger']
   const overlayRef = useRef<HTMLDivElement>(null)
 
-  // ESC to cancel
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onResolve(false)
@@ -190,74 +241,70 @@ function ConfirmDialog({ state, onResolve }: { state: ConfirmState; onResolve: (
       onClick={e => { if (e.target === overlayRef.current) onResolve(false) }}
       style={{
         position: 'fixed', inset: 0, zIndex: 9998,
-        background: 'rgba(10,20,40,0.65)',
-        backdropFilter: 'blur(6px)',
+        background: 'rgba(10,20,40,0.55)',
+        backdropFilter: 'blur(4px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 16,
         animation: 'fadeIn 0.18s ease',
       }}>
       <div style={{
-        width: '100%', maxWidth: 420,
-        background: '#fff', borderRadius: 20,
-        boxShadow: '0 24px 80px rgba(0,0,0,0.28)',
+        width: '100%', maxWidth: 400,
+        background: '#fff',
+        borderRadius: 16,
+        border: `2px solid ${ACCENT}`,
         overflow: 'hidden',
+        boxShadow: '0 16px 48px rgba(0,0,0,0.16)',
         animation: 'popIn 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+        fontFamily: 'DM Sans, sans-serif',
       }}>
-        {/* Header */}
-        <div style={{
-          background: cfg.headerBg, padding: '22px 24px 18px',
-          display: 'flex', alignItems: 'center', gap: 14,
-        }}>
+        <div style={{ padding: '24px 24px 20px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
           <div style={{
-            width: 50, height: 50, borderRadius: 14,
-            background: cfg.iconBg,
+            width: 42, height: 42, borderRadius: 10, flexShrink: 0,
+            background: 'rgba(30,58,95,0.08)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: cfg.iconColor, flexShrink: 0,
           }}>
             {cfg.icon}
           </div>
-          <div>
-            <div style={{ color: '#fff', fontWeight: 800, fontSize: 17, lineHeight: 1.2 }}>
+          <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.3 }}>
               {state.title}
             </div>
             {state.message && (
-              <div style={{ color: 'rgba(255,255,255,0.68)', fontSize: 13, marginTop: 4, lineHeight: 1.4 }}>
+              <p style={{ fontSize: 13, color: '#111827', lineHeight: 1.6, margin: '6px 0 0' }}>
                 {state.message}
-              </div>
+              </p>
             )}
           </div>
         </div>
 
-        {/* Footer */}
         <div style={{
-          padding: '16px 24px 20px',
+          padding: '12px 24px 20px',
           display: 'flex', gap: 10, justifyContent: 'flex-end',
-          background: '#fafafa', borderTop: '1px solid #f0f0f0',
+          borderTop: `1px solid rgba(30,58,95,0.12)`,
         }}>
           <button
             onClick={() => onResolve(false)}
             style={{
-              padding: '9px 20px', borderRadius: 12,
-              border: '2px solid #e5e7eb', background: '#fff',
-              color: '#374151', fontWeight: 600, fontSize: 14,
-              cursor: 'pointer', transition: 'all 0.15s',
-              fontFamily: 'DM Sans, sans-serif',
+              padding: '9px 20px', borderRadius: 10,
+              border: `1.5px solid rgba(30,58,95,0.25)`, background: '#fff',
+              color: '#374151', fontWeight: 600, fontSize: 13,
+              cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+              transition: 'background 0.15s',
             }}
-            onMouseEnter={e => { (e.target as HTMLButtonElement).style.borderColor = '#d1d5db'; (e.target as HTMLButtonElement).style.background = '#f9fafb' }}
-            onMouseLeave={e => { (e.target as HTMLButtonElement).style.borderColor = '#e5e7eb'; (e.target as HTMLButtonElement).style.background = '#fff' }}>
+            onMouseEnter={e => { (e.target as HTMLButtonElement).style.background = '#f9fafb' }}
+            onMouseLeave={e => { (e.target as HTMLButtonElement).style.background = '#fff' }}>
             {state.cancelText ?? 'Hủy'}
           </button>
           <button
             onClick={() => onResolve(true)}
             style={{
-              padding: '9px 22px', borderRadius: 12, border: 'none',
-              background: cfg.btnBg, color: '#fff',
-              fontWeight: 700, fontSize: 14,
-              cursor: 'pointer', transition: 'opacity 0.15s',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-              fontFamily: 'DM Sans, sans-serif',
+              padding: '9px 22px', borderRadius: 10, border: 'none',
+              background: ACCENT, color: '#fff',
+              fontWeight: 700, fontSize: 13,
+              cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+              transition: 'opacity 0.15s',
             }}
-            onMouseEnter={e => { (e.target as HTMLButtonElement).style.opacity = '0.88' }}
+            onMouseEnter={e => { (e.target as HTMLButtonElement).style.opacity = '0.85' }}
             onMouseLeave={e => { (e.target as HTMLButtonElement).style.opacity = '1' }}>
             {state.confirmText ?? 'Xác nhận'}
           </button>
@@ -274,7 +321,6 @@ function ConfirmDialog({ state, onResolve }: { state: ConfirmState; onResolve: (
   )
 }
 
-// Hook trả về hàm confirm() async
 function useConfirm() {
   const [state, setState] = useState<ConfirmState | null>(null)
 
@@ -295,7 +341,7 @@ function useConfirm() {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  HELPERS / CONSTANTS (giữ nguyên)
+//  HELPERS / CONSTANTS
 // ═══════════════════════════════════════════════════════════
 const ROLES: Record<string, string> = {
   sinh_vien: 'Sinh viên',
@@ -522,18 +568,8 @@ function StudentModal({
   async function handleToggleLock() {
     const ok = await confirm(
       isLocked
-        ? {
-            title: 'Mở khóa tài khoản?',
-            message: `"${form.ho_ten}" sẽ có thể đăng nhập trở lại.`,
-            confirmText: '🔓 Mở khóa',
-            variant: 'info',
-          }
-        : {
-            title: 'Khóa tài khoản?',
-            message: `"${form.ho_ten}" sẽ không thể đăng nhập cho đến khi được mở khóa.`,
-            confirmText: '🔒 Khóa tài khoản',
-            variant: 'warning',
-          }
+        ? { title: 'Mở khóa tài khoản?', message: `"${form.ho_ten}" sẽ có thể đăng nhập trở lại.`, confirmText: '🔓 Mở khóa', variant: 'info' }
+        : { title: 'Khóa tài khoản?', message: `"${form.ho_ten}" sẽ không thể đăng nhập cho đến khi được mở khóa.`, confirmText: '🔒 Khóa tài khoản', variant: 'warning' }
     )
     if (!ok) return
     setLoading(true)
@@ -551,7 +587,6 @@ function StudentModal({
         <div className="relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl bg-white"
           onClick={e => e.stopPropagation()}>
 
-          {/* Header */}
           <div className="flex items-center gap-4 px-6 py-5"
             style={{ background: 'linear-gradient(135deg,#0f2847 0%,#1e3a5f 100%)' }}>
             <Avatar name={form.ho_ten as string} size={56} />
@@ -575,7 +610,6 @@ function StudentModal({
             </button>
           </div>
 
-          {/* Body */}
           <div className="px-6 py-4 max-h-[52vh] overflow-y-auto">
             {fields.map(f => {
               const val = form[f.key]
@@ -605,7 +639,6 @@ function StudentModal({
             })}
           </div>
 
-          {/* Footer */}
           <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
             <button onClick={handleDelete} disabled={loading}
               className="px-4 py-2 rounded-xl text-sm border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50">
@@ -755,7 +788,7 @@ export default function StudentsClient({ students }: { students: Student[] }) {
     setSelected(prev => prev && (prev.id === id) ? { ...prev, is_locked: newLocked } : prev)
     showToast(
       newLocked ? 'warning' : 'success',
-      newLocked ? '🔒 Đã khóa tài khoản' : '🔓 Đã mở khóa tài khoản',
+      newLocked ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản',
     )
   }
 
@@ -763,18 +796,8 @@ export default function StudentsClient({ students }: { students: Student[] }) {
     const isLocked = !!sv.is_locked
     const ok = await confirm(
       isLocked
-        ? {
-            title: 'Mở khóa tài khoản?',
-            message: `"${sv.ho_ten}" sẽ có thể đăng nhập trở lại.`,
-            confirmText: '🔓 Mở khóa',
-            variant: 'info',
-          }
-        : {
-            title: 'Khóa tài khoản?',
-            message: `"${sv.ho_ten}" sẽ không thể đăng nhập cho đến khi được mở khóa.`,
-            confirmText: '🔒 Khóa tài khoản',
-            variant: 'warning',
-          }
+        ? { title: 'Mở khóa tài khoản?', message: `"${sv.ho_ten}" sẽ có thể đăng nhập trở lại.`, confirmText: '🔓 Mở khóa', variant: 'info' }
+        : { title: 'Khóa tài khoản?', message: `"${sv.ho_ten}" sẽ không thể đăng nhập cho đến khi được mở khóa.`, confirmText: '🔒 Khóa tài khoản', variant: 'warning' }
     )
     if (!ok) return
     await handleToggleLock(sv.id as string, isLocked)
@@ -843,9 +866,7 @@ export default function StudentsClient({ students }: { students: Student[] }) {
 
   return (
     <>
-      {/* Global toast container — mount once ở đây */}
-      <ToastContainer />
-      {/* Confirm dialog từ main scope (dùng cho row actions) */}
+      <AlertContainer />
       {dialog}
 
       <div className="max-w-7xl mx-auto px-2 py-4" style={{ fontFamily: 'DM Sans,sans-serif' }}>
@@ -958,17 +979,17 @@ export default function StudentsClient({ students }: { students: Student[] }) {
                       style={{ background: isLocked ? '#fffbeb' : bg, transition: 'background 0.1s', opacity: isLocked ? 0.82 : 1 }}
                       className="hover:!bg-blue-50 group">
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 16px', textAlign: 'center' }}>
-                        <span className="text-sm font-mono font-semibold text-gray-400">{i + 1}</span>
+                        <span className="text-sm font-mono font-semibold text-gray-700">{i + 1}</span>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 16px', whiteSpace: 'nowrap' }}>
                         <span className="font-semibold text-gray-800 text-[15px]">{sv.ho_ten as string}</span>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 16px' }}>
-                        <span className="font-mono text-sm text-gray-500">{sv.ma_sinh_vien as string}</span>
+                        <span className="font-mono text-sm text-gray-800">{sv.ma_sinh_vien as string}</span>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 16px' }}>
                         <div className="text-sm font-medium text-gray-700">{(sv.lop as string) || '—'}</div>
-                        <div className="text-[13px] text-gray-400">{(sv.khoa as string) || ''}</div>
+                        <div className="text-[13px] text-gray-600">{(sv.khoa as string) || ''}</div>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 16px' }}>
                         <span className={`px-2.5 py-1 rounded-full text-[13px] font-semibold ${goalBadge(sv.muc_tieu_hoc as string)}`}>
@@ -999,7 +1020,7 @@ export default function StudentsClient({ students }: { students: Student[] }) {
                         </select>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 16px' }}>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-gray-800">
                           {sv.created_at ? new Date(sv.created_at as string).toLocaleDateString('vi-VN') : '—'}
                         </span>
                       </td>
@@ -1036,7 +1057,7 @@ export default function StudentsClient({ students }: { students: Student[] }) {
               style={{ background: '#f8fafc', borderTop: '2px solid #c2cfe0' }}>
               <span>Tổng <strong className="text-[#1e3a5f]">{filtered.length}</strong> bản ghi</span>
               {filtered.length !== list.length && (
-                <span className="text-gray-400">Lọc từ {list.length} bản ghi</span>
+                <span className="text-gray-600">Lọc từ {list.length} bản ghi</span>
               )}
             </div>
           )}
