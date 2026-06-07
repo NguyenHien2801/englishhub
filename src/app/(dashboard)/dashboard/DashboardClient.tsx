@@ -553,15 +553,14 @@ function AIInsight({ profile, dueToday, totalMastered, avgScore }: {
     setPrevText(text)
     setLoading(true)
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/insight', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514', max_tokens: 1000,
-          messages: [{ role: 'user', content: `Gia sư AI cho ${profile.ho_ten}. Dữ liệu: ${profile.muc_tieu_hoc}|${profile.trinh_do_hien_tai}|Streak ${profile.streak_hien_tai}|Thuần thục ${totalMastered}|Ôn hôm nay ${dueToday}|Điểm TB ${avgScore}%|Yếu ${profile.diem_yeu ?? 'chưa rõ'}. 3 nhận xét sắc bén (emoji + 1 dòng) + 1 mục tiêu tuần (**...**). Tối đa 100 từ tiếng Việt.` }],
+          prompt: `Gia sư AI cho ${profile.ho_ten}. Dữ liệu: ${profile.muc_tieu_hoc}|${profile.trinh_do_hien_tai}|Streak ${profile.streak_hien_tai}|Thuần thục ${totalMastered}|Ôn hôm nay ${dueToday}|Điểm TB ${avgScore}%|Yếu ${profile.diem_yeu ?? 'chưa rõ'}. 3 nhận xét sắc bén (emoji + 1 dòng) + 1 mục tiêu tuần (**...**). Tối đa 100 từ tiếng Việt.`,
         }),
       })
       const d = await res.json()
-      setText(d.content?.map((b: { text?: string }) => b.text || '').join('') || '...')
+      setText(d.text || '...')
       setDone(true)
     } catch { setText('Không kết nối được AI.'); setDone(true) }
     finally { setLoading(false) }
