@@ -190,7 +190,7 @@ export default function StudentsProgressClient({
             </div>
             <div>
               <div className="text-2xl font-bold text-gray-900">{c.value.toLocaleString('vi-VN')}</div>
-              <div className="text-sm text-gray-500 mt-0.5">{c.label}</div>
+              <div className="text-sm text-gray-700 mt-0.5">{c.label}</div>
             </div>
           </div>
         ))}
@@ -276,11 +276,11 @@ export default function StudentsProgressClient({
                       }}
                       className="hover:!bg-blue-50 group">
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px', textAlign: 'center' }}>
-                        <span className="text-sm font-mono font-semibold text-gray-400">{i + 1}</span>
+                        <span className="text-sm font-mono font-semibold text-gray-700">{i + 1}</span>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px', whiteSpace: 'nowrap' }}>
                         <div className="font-semibold text-gray-800 text-[15px]">{u.ho_ten as string}</div>
-                        <div className="text-xs text-gray-400 font-mono mt-0.5">{u.ma_sinh_vien as string}</div>
+                        <div className="text-xs text-gray-600 font-mono mt-0.5">{u.ma_sinh_vien as string}</div>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${LEVEL_COLOR[u.trinh_do_hien_tai as string] || 'bg-gray-100 text-gray-500'}`}>
@@ -307,14 +307,14 @@ export default function StudentsProgressClient({
                         </span>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        <span className="text-sm text-gray-600">{s._sessions}</span>
+                        <span className="text-sm text-gray-800">{s._sessions}</span>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, padding: '12px 14px', whiteSpace: 'nowrap' }}>
                         {days === null
-                          ? <span className="text-sm text-gray-400">Chưa học</span>
+                          ? <span className="text-sm text-gray-700">Chưa học</span>
                           : days === 0
                             ? <span className="text-sm font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Hôm nay</span>
-                            : <span className="text-sm text-gray-400">{days} ngày trước</span>
+                            : <span className="text-sm text-gray-700">{days} ngày trước</span>
                         }
                       </td>
                     </tr>
@@ -328,7 +328,7 @@ export default function StudentsProgressClient({
               style={{ background: '#f8fafc', borderTop: '2px solid #c2cfe0' }}>
               <span>Tổng <strong className="text-[#1e3a5f]">{filtered.length}</strong> bản ghi</span>
               {filtered.length !== students.length && (
-                <span className="text-gray-400">Lọc từ {students.length} sinh viên</span>
+                <span className="text-gray-600">Lọc từ {students.length} sinh viên</span>
               )}
             </div>
           )}
@@ -364,7 +364,7 @@ export default function StudentsProgressClient({
                       { label: 'Streak cao nhất', value: `🔥 ${u.streak_cao_nhat as number ?? 0}` },
                     ].map(item => (
                       <div key={item.label} className="p-2.5 rounded-xl" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
-                        <div className="text-sm text-gray-400">{item.label}</div>
+                        <div className="text-sm text-gray-600">{item.label}</div>
                         <div className="font-semibold text-sm text-gray-800 mt-0.5">{item.value}</div>
                       </div>
                     ))}
@@ -372,7 +372,7 @@ export default function StudentsProgressClient({
 
                   {/* Từ vựng */}
                   <div>
-                    <div className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Từ vựng</div>
+                    <div className="text-sm font-bold text-gray-600 uppercase tracking-wider mb-2">Từ vựng</div>
                     <div className="grid grid-cols-3 gap-2">
                       {[
                         { label: 'Đang học',   value: selectedStats._vocab.total,                        color: '#2563eb' },
@@ -381,7 +381,7 @@ export default function StudentsProgressClient({
                       ].map(item => (
                         <div key={item.label} className="rounded-xl p-2.5 text-center" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
                           <div className="font-bold text-base" style={{ color: item.color }}>{item.value}</div>
-                          <div className="text-sm text-gray-400 mt-0.5">{item.label}</div>
+                          <div className="text-sm text-gray-700 mt-0.5">{item.label}</div>
                         </div>
                       ))}
                     </div>
@@ -389,7 +389,7 @@ export default function StudentsProgressClient({
 
                   {/* Ngữ pháp & Luyện thi */}
                   <div>
-                    <div className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Ngữ pháp & Luyện thi</div>
+                    <div className="text-sm font-bold text-gray-600 uppercase tracking-wider mb-2">Ngữ pháp & Luyện thi</div>
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         { label: 'Bài ngữ pháp xong', value: selectedStats._grammar.done,  color: '#d97706' },
@@ -397,7 +397,7 @@ export default function StudentsProgressClient({
                       ].map(item => (
                         <div key={item.label} className="rounded-xl p-2.5 text-center" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
                           <div className="font-bold text-base" style={{ color: item.color }}>{item.value}</div>
-                          <div className="text-sm text-gray-400 mt-0.5">{item.label}</div>
+                          <div className="text-sm text-gray-700 mt-0.5">{item.label}</div>
                         </div>
                       ))}
                     </div>
@@ -405,11 +405,11 @@ export default function StudentsProgressClient({
 
                   {/* Streak bar */}
                   <div>
-                    <div className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Streak hiện tại</div>
+                    <div className="text-sm font-bold text-gray-600 uppercase tracking-wider mb-2">Streak hiện tại</div>
                     <div className="rounded-xl p-3" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-sm font-semibold text-amber-600">🔥 {(u.streak_hien_tai as number) ?? 0} ngày</span>
-                        <span className="text-sm text-gray-400">Cao nhất: {(u.streak_cao_nhat as number) ?? 0} ngày</span>
+                        <span className="text-sm text-gray-600">Cao nhất: {(u.streak_cao_nhat as number) ?? 0} ngày</span>
                       </div>
                       <div className="w-full rounded-full h-2" style={{ background: '#e2e8f0' }}>
                         <div className="h-2 rounded-full transition-all"
@@ -433,7 +433,7 @@ export default function StudentsProgressClient({
                 </svg>
               </div>
               <div className="font-semibold text-gray-700 text-sm">Chọn sinh viên để xem chi tiết</div>
-              <div className="text-sm text-gray-400 mt-1">Click vào một hàng trong bảng</div>
+              <div className="text-sm text-gray-600 mt-1">Click vào một hàng trong bảng</div>
             </div>
           )}
         </div>
