@@ -180,7 +180,7 @@ export default function ReadingAdminClient({ passages }: { passages: Passage[] }
                       <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600, background: cb?.bg || '#F8F7F2', color: cb?.color || '#6B6B60' }}>{p.loai_chung_chi as string}</span>
                       <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600, background: lb?.bg || '#F8F7F2', color: lb?.text || '#6B6B60' }}>{p.cap_do as string}</span>
                       <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, background: '#F8F7F2', color: '#6B6B60' }}>{p.so_cau_hoi as number} câu</span>
-                      {p.da_kiem_duyet && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, background: '#d1fae5', color: '#065f46' }}>✓ Duyệt</span>}
+                      {!!p.da_kiem_duyet && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, background: '#d1fae5', color: '#065f46' }}>✓ Duyệt</span>}
                     </div>
                   </div>
                 )
@@ -195,7 +195,7 @@ export default function ReadingAdminClient({ passages }: { passages: Passage[] }
                     <span style={{ fontSize: 28 }}>{(selected.bieu_tuong as string) || '📄'}</span>
                     <div style={{ flex: 1 }}>
                       <h2 style={{ fontWeight: 700, fontSize: 18, color: NAVY }}>{selected.tieu_de as string}</h2>
-                      {selected.mo_ta && <p style={{ fontSize: 13, color: '#6B6B60', marginTop: 2 }}>{selected.mo_ta as string}</p>}
+                      {!!selected.mo_ta && <p style={{ fontSize: 13, color: '#6B6B60', marginTop: 2 }}>{selected.mo_ta as string}</p>}
                     </div>
                   </div>
 
@@ -208,7 +208,7 @@ export default function ReadingAdminClient({ passages }: { passages: Passage[] }
                     <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 10, background: '#F8F7F2', color: '#6B6B60' }}>{selected.luot_lam as number} lượt làm</span>
                   </div>
 
-                  {selected.thong_tin_ky_thi && (
+                  {!!selected.thong_tin_ky_thi && (
                     <div style={{ marginBottom: 12, padding: '10px 14px', background: 'rgba(201,168,76,0.06)', borderRadius: 10, border: '1px solid rgba(201,168,76,0.2)', fontSize: 13, color: '#6B6B60' }}>
                       📋 {selected.thong_tin_ky_thi as string}
                     </div>
@@ -300,8 +300,8 @@ export default function ReadingAdminClient({ passages }: { passages: Passage[] }
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600, background: cb?.bg || '#F8F7F2', color: cb?.color || '#6B6B60' }}>{q.loai_chung_chi as string}</span>
-                      {q.cap_do && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600, background: lb?.bg || '#F8F7F2', color: lb?.text || '#6B6B60' }}>{q.cap_do as string}</span>}
-                      {q.so_phan && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, background: '#F8F7F2', color: '#6B6B60' }}>Phần {q.so_phan as number}</span>}
+                      {!!q.cap_do && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600, background: lb?.bg || '#F8F7F2', color: lb?.text || '#6B6B60' }}>{q.cap_do as string}</span>}
+                      {!!q.so_phan && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, background: '#F8F7F2', color: '#6B6B60' }}>Phần {q.so_phan as number}</span>}
                     </div>
                   </div>
                 )
@@ -313,14 +313,14 @@ export default function ReadingAdminClient({ passages }: { passages: Passage[] }
                 <div style={{ ...card, position: 'sticky', top: 16 }}>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
                     {(() => { const cb = CERT_BADGE[nhSelected.loai_chung_chi as string]; return <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 10, fontWeight: 600, background: cb?.bg || '#F8F7F2', color: cb?.color || '#6B6B60' }}>{nhSelected.loai_chung_chi as string}</span> })()}
-                    {nhSelected.cap_do && (() => { const lb = LEVEL_BADGE[nhSelected.cap_do as string]; return <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 10, fontWeight: 600, background: lb?.bg || '#F8F7F2', color: lb?.text || '#6B6B60' }}>{nhSelected.cap_do as string}</span> })()}
-                    {nhSelected.so_phan && <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 10, background: '#F8F7F2', color: '#6B6B60' }}>Phần {nhSelected.so_phan as number}</span>}
+                    {!!nhSelected.cap_do && (() => { const lb = LEVEL_BADGE[nhSelected.cap_do as string]; return <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 10, fontWeight: 600, background: lb?.bg || '#F8F7F2', color: lb?.text || '#6B6B60' }}>{nhSelected.cap_do as string}</span> })()}
+                    {!!nhSelected.so_phan && <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 10, background: '#F8F7F2', color: '#6B6B60' }}>Phần {nhSelected.so_phan as number}</span>}
                   </div>
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Câu hỏi</div>
                     <p style={{ fontSize: 14, color: NAVY, lineHeight: 1.7 }}>{nhSelected.noi_dung_cau_hoi as string}</p>
                   </div>
-                  {nhSelected.cac_lua_chon && (
+                  {!!nhSelected.cac_lua_chon && (
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Các lựa chọn</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -338,7 +338,7 @@ export default function ReadingAdminClient({ passages }: { passages: Passage[] }
                       </div>
                     </div>
                   )}
-                  {nhSelected.giai_thich && (
+                  {!!nhSelected.giai_thich && (
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Giải thích</div>
                       <div style={{ padding: 12, background: 'rgba(201,168,76,0.06)', borderRadius: 12, fontSize: 13, color: '#6B6B60', lineHeight: 1.6, border: '1px solid rgba(201,168,76,0.15)' }}>
