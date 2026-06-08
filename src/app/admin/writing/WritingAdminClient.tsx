@@ -3,16 +3,36 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 
-const CERTS = ['VSTEP', 'TOEIC', 'APTIS']
+const NAVY  = '#0F1C35'
+const NAVY2 = '#1E2F50'
+const GOLD  = '#C9A84C'
+const CERTS  = ['VSTEP', 'TOEIC', 'APTIS']
 const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+
+const CERT_BADGE: Record<string, { bg: string; color: string }> = {
+  VSTEP: { bg: '#d1fae5', color: '#065f46' },
+  TOEIC: { bg: '#fef3c7', color: '#92400e' },
+  APTIS: { bg: '#ede9fe', color: '#5b21b6' },
+}
+const LEVEL_BADGE: Record<string, { bg: string; text: string }> = {
+  A1: { bg: '#ede9fe', text: '#5b21b6' }, A2: { bg: '#dbeafe', text: '#1d4ed8' },
+  B1: { bg: '#d1fae5', text: '#065f46' }, B2: { bg: '#fef3c7', text: '#92400e' },
+  C1: { bg: '#fee2e2', text: '#991b1b' }, C2: { bg: '#f3e8ff', text: '#6b21a8' },
+}
 
 const emptyForm = {
   chung_chi: 'VSTEP', cap_do: 'B1', tieu_de: '', bieu_tuong: '✍️',
   de_bai: '', so_tu_toi_thieu: 150, so_tu_toi_da: 250,
   thong_tin_ky_thi: '', thu_tu: 0, dang_hoat_dong: true,
 }
-
 type Lesson = Record<string, unknown>
+
+const inputCls: React.CSSProperties = {
+  width: '100%', padding: '10px 12px', border: '1px solid #E8E8E0',
+  borderRadius: 10, fontSize: 13, outline: 'none',
+  fontFamily: "'DM Sans', sans-serif", color: NAVY, background: '#fff',
+}
+const card: React.CSSProperties = { background: '#fff', border: '1px solid #E8E8E0', borderRadius: 18 }
 
 export default function WritingAdminClient({ lessons: init }: { lessons: Lesson[] }) {
   const [lessons, setLessons] = useState(init)
@@ -21,16 +41,8 @@ export default function WritingAdminClient({ lessons: init }: { lessons: Lesson[
   const [selected, setSelected] = useState<Lesson | null>(null)
   const supabase = createClient()
 
-  const certColor: Record<string, string> = {
-    VSTEP: 'bg-[#E8FFF8] text-[#00A878]',
-    TOEIC: 'bg-[#FFF8EC] text-[#F5A623]',
-    APTIS: 'bg-[#F0F0FF] text-[#7C7CFF]',
-  }
-
   async function save() {
-    if (!form.tieu_de.trim() || !form.de_bai.trim()) {
-      toast.error('Nhập đầy đủ tiêu đề và đề bài'); return
-    }
+    if (!form.tieu_de.trim() || !form.de_bai.trim()) { toast.error('Nhập đầy đủ tiêu đề và đề bài'); return }
     const payload = {
       ...form,
       rubric_json: { criteria: ['Nội dung', 'Cấu trúc', 'Từ vựng', 'Ngữ pháp'], weights: [25, 25, 25, 25] },
@@ -39,8 +51,7 @@ export default function WritingAdminClient({ lessons: init }: { lessons: Lesson[
     const { data, error } = await supabase.from('bailuyenviet').insert(payload).select().single()
     if (error) { toast.error(error.message); return }
     setLessons(prev => [...prev, data].sort((a, b) => (a.thu_tu as number) - (b.thu_tu as number)))
-    setForm({ ...emptyForm })
-    setShowForm(false)
+    setForm({ ...emptyForm }); setShowForm(false)
     toast.success('Đã thêm bài viết!')
   }
 
@@ -62,184 +73,222 @@ export default function WritingAdminClient({ lessons: init }: { lessons: Lesson[
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="max-w-6xl mx-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <h1 className="font-display text-3xl font-bold text-[#0D0D0D]">Bài viết (Writing)</h1>
-          <p className="text-[#6B6B60] mt-1">{lessons.length} bài luyện viết trong hệ thống</p>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: NAVY, marginBottom: 4 }}>
+            Bài viết (Writing)
+          </h1>
+          <p style={{ color: '#6B6B60', fontSize: 14 }}>{lessons.length} bài luyện viết trong hệ thống</p>
         </div>
-        <button onClick={() => setShowForm(true)}
-          className="px-5 py-2.5 bg-[#00A878] text-white font-semibold rounded-xl hover:bg-[#007A58] transition-colors">
+        <button onClick={() => setShowForm(true)} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px',
+          background: `linear-gradient(135deg, ${NAVY}, ${NAVY2})`,
+          color: '#fff', fontWeight: 700, fontSize: 14, borderRadius: 12,
+          border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+          boxShadow: '0 4px 14px rgba(15,28,53,0.2)',
+        }}>
           + Thêm bài viết
         </button>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Danh sách */}
-        <div className="space-y-2">
-          <div className="text-xs font-semibold text-[#A0A090] uppercase tracking-wide mb-2">Danh sách ({lessons.length})</div>
-          {lessons.map(lesson => (
-            <div key={lesson.id as string}
-              onClick={() => setSelected(lesson)}
-              className={`p-4 bg-white rounded-xl border-2 cursor-pointer transition-all hover:shadow-sm ${selected?.id === lesson.id ? 'border-[#00A878]' : 'border-[#E8E8E0]'} ${!lesson.dang_hoat_dong ? 'opacity-50' : ''}`}>
-              <div className="flex items-start justify-between gap-2 mb-1.5">
-                <span className="text-base">{lesson.bieu_tuong as string}</span>
-                <span className="font-semibold text-sm text-[#0D0D0D] line-clamp-2 flex-1">{lesson.tieu_de as string}</span>
-                <button onClick={e => { e.stopPropagation(); deleteLesson(lesson.id as string) }}
-                  className="text-[#FF6B6B] text-xs hover:bg-[#FFF0F0] px-1.5 py-0.5 rounded flex-shrink-0">✕</button>
-              </div>
-              <div className="flex flex-wrap gap-1.5 text-xs">
-                <span className={`px-2 py-0.5 rounded-full font-medium ${certColor[lesson.chung_chi as string] || 'bg-[#F8F7F2] text-[#6B6B60]'}`}>
-                  {lesson.chung_chi as string}
-                </span>
-                <span className="px-2 py-0.5 bg-[#F8F7F2] text-[#6B6B60] rounded-full">{lesson.cap_do as string}</span>
-              </div>
-              <div className="mt-1.5 text-xs text-[#A0A090]">
-                {lesson.so_tu_toi_thieu as number}–{lesson.so_tu_toi_da as number} từ
-              </div>
-            </div>
-          ))}
-          {lessons.length === 0 && (
-            <div className="text-center py-12 text-[#A0A090] text-sm">Chưa có bài viết nào</div>
-          )}
+        {/* List */}
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+            Danh sách ({lessons.length})
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {lessons.map(lesson => {
+              const cb = CERT_BADGE[lesson.chung_chi as string]
+              const lb = LEVEL_BADGE[lesson.cap_do as string]
+              const isActive = selected?.id === lesson.id
+              return (
+                <div key={lesson.id as string}
+                  onClick={() => setSelected(lesson)}
+                  style={{
+                    padding: 14, background: '#fff', borderRadius: 14, cursor: 'pointer',
+                    border: isActive ? `2px solid ${NAVY}` : '1px solid #E8E8E0',
+                    opacity: lesson.dang_hoat_dong ? 1 : 0.5, transition: 'all 0.15s',
+                  }}>
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 20 }}>{lesson.bieu_tuong as string}</span>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: NAVY, flex: 1, lineHeight: 1.4 }}>{lesson.tieu_de as string}</span>
+                    <button onClick={e => { e.stopPropagation(); deleteLesson(lesson.id as string) }}
+                      style={{ color: '#ef4444', fontSize: 11, padding: '2px 6px', borderRadius: 6, border: 'none', background: 'none', cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600, background: cb?.bg || '#F8F7F2', color: cb?.color || '#6B6B60' }}>{lesson.chung_chi as string}</span>
+                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 600, background: lb?.bg || '#F8F7F2', color: lb?.text || '#6B6B60' }}>{lesson.cap_do as string}</span>
+                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, background: '#F8F7F2', color: '#6B6B60' }}>{lesson.so_tu_toi_thieu as number}–{lesson.so_tu_toi_da as number} từ</span>
+                  </div>
+                </div>
+              )
+            })}
+            {lessons.length === 0 && <div style={{ textAlign: 'center', padding: '48px 0', color: '#A0A090', fontSize: 14 }}>Chưa có bài viết nào</div>}
+          </div>
         </div>
 
-        {/* Chi tiết */}
+        {/* Detail */}
         <div className="lg:col-span-2">
           {selected ? (
-            <div className="bg-white rounded-2xl border border-[#E8E8E0] p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-3xl">{selected.bieu_tuong as string}</span>
+            <div style={{ ...card, padding: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #E8E8E0' }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <span style={{ fontSize: 36 }}>{selected.bieu_tuong as string}</span>
                   <div>
-                    <h3 className="font-semibold text-[#0D0D0D] text-lg">{selected.tieu_de as string}</h3>
-                    <div className="flex gap-2 mt-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${certColor[selected.chung_chi as string]}`}>{selected.chung_chi as string}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-[#F8F7F2] text-[#6B6B60]">{selected.cap_do as string}</span>
+                    <h3 style={{ fontWeight: 700, fontSize: 17, color: NAVY }}>{selected.tieu_de as string}</h3>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                      {(() => {
+                        const cb = CERT_BADGE[selected.chung_chi as string]
+                        const lb = LEVEL_BADGE[selected.cap_do as string]
+                        return <>
+                          <span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 10, fontWeight: 600, background: cb?.bg || '#F8F7F2', color: cb?.color || '#6B6B60' }}>{selected.chung_chi as string}</span>
+                          <span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 10, fontWeight: 600, background: lb?.bg || '#F8F7F2', color: lb?.text || '#6B6B60' }}>{selected.cap_do as string}</span>
+                        </>
+                      })()}
                     </div>
                   </div>
                 </div>
                 <button onClick={() => toggleActive(selected.id as string, selected.dang_hoat_dong as boolean)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${selected.dang_hoat_dong ? 'bg-[#FFF0F0] text-[#FF6B6B] hover:bg-[#FFE0E0]' : 'bg-[#E8FFF8] text-[#00A878] hover:bg-[#D0FFF0]'}`}>
+                  style={{
+                    padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none',
+                    background: selected.dang_hoat_dong ? '#fee2e2' : '#d1fae5',
+                    color: selected.dang_hoat_dong ? '#991b1b' : '#065f46',
+                  }}>
                   {selected.dang_hoat_dong ? 'Ẩn bài' : 'Kích hoạt'}
                 </button>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 mb-5">
+              <div className="grid grid-cols-3 gap-3 mb-6">
                 {[
                   { label: 'Từ tối thiểu', value: `${selected.so_tu_toi_thieu} từ` },
-                  { label: 'Từ tối đa', value: `${selected.so_tu_toi_da} từ` },
-                  { label: 'Thứ tự', value: `#${selected.thu_tu}` },
+                  { label: 'Từ tối đa',    value: `${selected.so_tu_toi_da} từ` },
+                  { label: 'Thứ tự',       value: `#${selected.thu_tu}` },
                 ].map(s => (
-                  <div key={s.label} className="p-3 bg-[#F8F7F2] rounded-xl text-center">
-                    <div className="text-lg font-bold text-[#0D0D0D]">{s.value}</div>
-                    <div className="text-xs text-[#A0A090] mt-0.5">{s.label}</div>
+                  <div key={s.label} style={{ padding: 12, background: '#F8F7F2', borderRadius: 12, textAlign: 'center' }}>
+                    <div style={{ fontWeight: 800, fontSize: 18, color: NAVY, fontFamily: "'Playfair Display', serif" }}>{s.value}</div>
+                    <div style={{ fontSize: 11, color: '#A0A090', marginTop: 3 }}>{s.label}</div>
                   </div>
                 ))}
               </div>
 
-              <div className="space-y-4">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <h4 className="text-xs font-semibold text-[#6B6B60] uppercase tracking-wide mb-2">Đề bài</h4>
-                  <div className="p-4 bg-[#F8F7F2] rounded-xl text-sm text-[#0D0D0D] leading-relaxed whitespace-pre-wrap">
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Đề bài</div>
+                  <div style={{ padding: 14, background: '#F8F7F2', borderRadius: 12, fontSize: 14, color: NAVY, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
                     {selected.de_bai as string}
                   </div>
                 </div>
-                {selected.thong_tin_ky_thi ? (
+                {selected.thong_tin_ky_thi && (
                   <div>
-                    <h4 className="text-xs font-semibold text-[#6B6B60] uppercase tracking-wide mb-2">Thông tin kỳ thi</h4>
-                    <div className="p-3 bg-[#FFF8EC] rounded-xl text-sm text-[#6B6B60]">{selected.thong_tin_ky_thi as string}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Thông tin kỳ thi</div>
+                    <div style={{ padding: 12, background: 'rgba(201,168,76,0.06)', borderRadius: 12, fontSize: 13, color: '#6B6B60', border: '1px solid rgba(201,168,76,0.15)' }}>
+                      {selected.thong_tin_ky_thi as string}
                     </div>
-                ) : null}
-                {selected.rubric_json ? (
+                  </div>
+                )}
+                {selected.rubric_json && (
                   <div>
-                    <h4 className="text-xs font-semibold text-[#6B6B60] uppercase tracking-wide mb-2">Rubric chấm điểm</h4>
-                    <div className="flex flex-wrap gap-2">
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Rubric chấm điểm</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {((selected.rubric_json as Record<string, unknown>).criteria as string[] || []).map((c, i) => (
-                        <span key={i} className="px-3 py-1 bg-[#F0F0FF] text-[#7C7CFF] text-xs rounded-full font-medium">
+                        <span key={i} style={{ padding: '5px 12px', background: '#ede9fe', color: '#5b21b6', fontSize: 12, borderRadius: 20, fontWeight: 600 }}>
                           {c} ({((selected.rubric_json as Record<string, unknown>).weights as number[])?.[i]}%)
                         </span>
                       ))}
                     </div>
                   </div>
-                ) : null }
+                )}
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-[#E8E8E0] p-12 text-center text-[#A0A090]">
-              <div className="text-5xl mb-3">✍️</div>
-              <div className="font-medium">Chọn bài viết để xem chi tiết</div>
+            <div style={{ ...card, padding: 48, textAlign: 'center', color: '#A0A090' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>✍️</div>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>Chọn bài viết để xem chi tiết</div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Modal thêm */}
+      {/* Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="font-display font-bold text-[#0D0D0D] mb-4">Thêm bài viết mới</h3>
-            <div className="space-y-3">
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,20,40,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}
+          onClick={() => setShowForm(false)}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.3)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #E8E8E0' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${NAVY}, ${NAVY2})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ color: GOLD, fontSize: 18 }}>✍️</span>
+              </div>
+              <h3 style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: 18, color: NAVY }}>Thêm bài viết mới</h3>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#6B6B60] mb-1">Biểu tượng</label>
-                  <input type="text" value={form.bieu_tuong} onChange={e => setForm(p => ({ ...p, bieu_tuong: e.target.value }))}
-                    className="w-full px-3 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-sm focus:outline-none focus:border-[#00A878] text-center text-xl" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#6B6B60] mb-1">Chứng chỉ</label>
-                  <select value={form.chung_chi} onChange={e => setForm(p => ({ ...p, chung_chi: e.target.value }))}
-                    className="w-full px-3 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-sm focus:outline-none focus:border-[#00A878] bg-white">
-                    {CERTS.map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#6B6B60] mb-1">Cấp độ</label>
-                  <select value={form.cap_do} onChange={e => setForm(p => ({ ...p, cap_do: e.target.value }))}
-                    className="w-full px-3 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-sm focus:outline-none focus:border-[#00A878] bg-white">
-                    {LEVELS.map(l => <option key={l}>{l}</option>)}
-                  </select>
-                </div>
+                {[
+                  { label: 'Biểu tượng', el: <input type="text" value={form.bieu_tuong} onChange={e => setForm(p => ({ ...p, bieu_tuong: e.target.value }))} style={{ ...inputCls, textAlign: 'center', fontSize: 20 }} /> },
+                  { label: 'Chứng chỉ', el: (
+                    <select value={form.chung_chi} onChange={e => setForm(p => ({ ...p, chung_chi: e.target.value }))} style={{ ...inputCls }}>
+                      {CERTS.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  )},
+                  { label: 'Cấp độ', el: (
+                    <select value={form.cap_do} onChange={e => setForm(p => ({ ...p, cap_do: e.target.value }))} style={{ ...inputCls }}>
+                      {LEVELS.map(l => <option key={l}>{l}</option>)}
+                    </select>
+                  )},
+                ].map(({ label, el }) => (
+                  <div key={label}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</label>
+                    {el}
+                  </div>
+                ))}
               </div>
+
+              {[
+                { label: 'Tiêu đề *', placeholder: 'VD: VSTEP B1 – Task 1: Formal Letter', key: 'tieu_de' as const },
+                { label: 'Thông tin kỳ thi', placeholder: 'VD: Part 1 – VSTEP Writing', key: 'thong_tin_ky_thi' as const },
+              ].map(({ label, placeholder, key }) => (
+                <div key={key}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</label>
+                  <input type="text" value={form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} style={inputCls} />
+                </div>
+              ))}
+
               <div>
-                <label className="block text-xs font-semibold text-[#6B6B60] mb-1">Tiêu đề *</label>
-                <input type="text" value={form.tieu_de} onChange={e => setForm(p => ({ ...p, tieu_de: e.target.value }))}
-                  placeholder="VD: VSTEP B1 – Task 1: Formal Letter"
-                  className="w-full px-3 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-sm focus:outline-none focus:border-[#00A878]" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[#6B6B60] mb-1">Đề bài *</label>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Đề bài *</label>
                 <textarea value={form.de_bai} onChange={e => setForm(p => ({ ...p, de_bai: e.target.value }))}
                   rows={5} placeholder="Nhập đề bài chi tiết..."
-                  className="w-full px-3 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-sm focus:outline-none focus:border-[#00A878] resize-none" />
+                  style={{ ...inputCls, resize: 'vertical', lineHeight: 1.6 }} />
               </div>
+
               <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#6B6B60] mb-1">Từ tối thiểu</label>
-                  <input type="number" value={form.so_tu_toi_thieu} onChange={e => setForm(p => ({ ...p, so_tu_toi_thieu: +e.target.value }))}
-                    className="w-full px-3 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-sm focus:outline-none focus:border-[#00A878]" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#6B6B60] mb-1">Từ tối đa</label>
-                  <input type="number" value={form.so_tu_toi_da} onChange={e => setForm(p => ({ ...p, so_tu_toi_da: +e.target.value }))}
-                    className="w-full px-3 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-sm focus:outline-none focus:border-[#00A878]" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#6B6B60] mb-1">Thứ tự</label>
-                  <input type="number" value={form.thu_tu} onChange={e => setForm(p => ({ ...p, thu_tu: +e.target.value }))}
-                    className="w-full px-3 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-sm focus:outline-none focus:border-[#00A878]" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[#6B6B60] mb-1">Thông tin kỳ thi</label>
-                <input type="text" value={form.thong_tin_ky_thi} onChange={e => setForm(p => ({ ...p, thong_tin_ky_thi: e.target.value }))}
-                  placeholder="VD: Part 1 – VSTEP Writing"
-                  className="w-full px-3 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-sm focus:outline-none focus:border-[#00A878]" />
+                {[
+                  { label: 'Từ tối thiểu', k: 'so_tu_toi_thieu' as const },
+                  { label: 'Từ tối đa',    k: 'so_tu_toi_da' as const },
+                  { label: 'Thứ tự',       k: 'thu_tu' as const },
+                ].map(({ label, k }) => (
+                  <div key={k}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</label>
+                    <input type="number" value={form[k]} onChange={e => setForm(p => ({ ...p, [k]: +e.target.value }))} style={inputCls} />
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-[#0D0D0D] font-medium hover:border-[#0D0D0D] transition-colors">Hủy</button>
-              <button onClick={save} className="flex-1 py-2.5 bg-[#00A878] text-white font-semibold rounded-xl hover:bg-[#007A58] transition-colors">Thêm bài viết</button>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+              <button onClick={() => setShowForm(false)} style={{
+                flex: 1, padding: '12px 0', border: '1px solid #E8E8E0', borderRadius: 12,
+                color: NAVY, fontWeight: 600, fontSize: 14, cursor: 'pointer', background: '#fff', fontFamily: "'DM Sans', sans-serif",
+              }}>Hủy</button>
+              <button onClick={save} style={{
+                flex: 1, padding: '12px 0', background: `linear-gradient(135deg, ${NAVY}, ${NAVY2})`,
+                color: '#fff', fontWeight: 700, fontSize: 14, borderRadius: 12, border: 'none',
+                cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                boxShadow: '0 4px 14px rgba(15,28,53,0.2)',
+              }}>Thêm bài viết</button>
             </div>
           </div>
         </div>

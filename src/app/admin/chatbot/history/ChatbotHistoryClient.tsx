@@ -1,6 +1,9 @@
 'use client'
 import { useState, useMemo } from 'react'
 
+const NAVY = '#0F1C35'
+const GOLD = '#C9A84C'
+
 type Msg = Record<string, unknown>
 
 function fmtDate(d: string) {
@@ -11,14 +14,11 @@ export default function ChatbotHistoryClient({ messages }: { messages: Msg[] }) 
   const [search, setSearch] = useState('')
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
 
-  // Nhóm theo phiên
   const sessions = useMemo(() => {
     const map = new Map<string, { phien_id: string; user: Record<string, string> | null; msgs: Msg[]; last: string }>()
     for (const m of messages) {
       const pid = m.phien_id as string
-      if (!map.has(pid)) {
-        map.set(pid, { phien_id: pid, user: m.NguoiDung as Record<string, string> | null, msgs: [], last: m.created_at as string })
-      }
+      if (!map.has(pid)) map.set(pid, { phien_id: pid, user: m.NguoiDung as Record<string, string> | null, msgs: [], last: m.created_at as string })
       map.get(pid)!.msgs.push(m)
     }
     return Array.from(map.values()).sort((a, b) => b.last.localeCompare(a.last))
@@ -26,45 +26,62 @@ export default function ChatbotHistoryClient({ messages }: { messages: Msg[] }) 
 
   const filteredSessions = useMemo(() => {
     const q = search.toLowerCase()
-    return sessions.filter(s =>
-      !q || s.user?.ho_ten?.toLowerCase().includes(q) || s.user?.ma_sinh_vien?.toLowerCase().includes(q)
-    )
+    return sessions.filter(s => !q || s.user?.ho_ten?.toLowerCase().includes(q) || s.user?.ma_sinh_vien?.toLowerCase().includes(q))
   }, [sessions, search])
 
   const currentSession = selectedSession ? sessions.find(s => s.phien_id === selectedSession) : null
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      {/* Header */}
       <div className="mb-6">
-        <h1 className="font-display text-3xl font-bold text-[#0D0D0D]">Lịch sử hội thoại Chatbot</h1>
-        <p className="text-[#6B6B60] mt-1">{sessions.length} phiên · {messages.length} tin nhắn</p>
+        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: NAVY, marginBottom: 4 }}>
+          Lịch sử hội thoại Chatbot
+        </h1>
+        <p style={{ color: '#6B6B60', fontSize: 14 }}>{sessions.length} phiên · {messages.length} tin nhắn</p>
       </div>
 
       <div className="grid lg:grid-cols-5 gap-6" style={{ height: 'calc(100vh - 220px)' }}>
         {/* Sessions list */}
         <div className="lg:col-span-2 flex flex-col">
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+          <input
+            type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Tìm theo tên, mã SV..."
-            className="px-3 py-2.5 border-2 border-[#E8E8E0] rounded-xl text-sm focus:outline-none focus:border-[#00A878] mb-3" />
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            style={{
+              padding: '10px 14px', border: '1px solid #E8E8E0', borderRadius: 12, fontSize: 14,
+              outline: 'none', marginBottom: 12, fontFamily: "'DM Sans', sans-serif", color: NAVY,
+            }}
+            onFocus={e => { e.currentTarget.style.borderColor = NAVY }}
+            onBlur={e => { e.currentTarget.style.borderColor = '#E8E8E0' }}
+          />
+          <div className="flex-1 overflow-y-auto pr-1" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {filteredSessions.map(s => {
+              const isActive = selectedSession === s.phien_id
               const lastMsg = s.msgs[0]
               return (
                 <div key={s.phien_id}
                   onClick={() => setSelectedSession(s.phien_id)}
-                  className={`p-4 bg-white rounded-xl border-2 cursor-pointer transition-all hover:shadow-sm ${selectedSession === s.phien_id ? 'border-[#00A878]' : 'border-[#E8E8E0]'}`}>
-                  <div className="flex items-start justify-between mb-1.5">
+                  style={{
+                    padding: 16, background: '#fff', borderRadius: 14, cursor: 'pointer',
+                    border: isActive ? `2px solid ${NAVY}` : '1px solid #E8E8E0',
+                    transition: 'all 0.15s',
+                    boxShadow: isActive ? `0 0 0 1px ${NAVY}20` : 'none',
+                  }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#C8C8C0' }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = '#E8E8E0' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <div>
-                      <div className="font-semibold text-sm text-[#0D0D0D]">{s.user?.ho_ten || 'Ẩn danh'}</div>
-                      <div className="text-xs text-[#A0A090] font-mono">{s.user?.ma_sinh_vien}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: NAVY }}>{s.user?.ho_ten || 'Ẩn danh'}</div>
+                      <div style={{ fontSize: 12, color: '#A0A090', fontFamily: 'monospace' }}>{s.user?.ma_sinh_vien}</div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xs text-[#A0A090]">{fmtDate(s.last)}</div>
-                      <div className="text-xs text-[#00A878] mt-0.5">{s.msgs.length} tin</div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 11, color: '#A0A090' }}>{fmtDate(s.last)}</div>
+                      <div style={{ fontSize: 11, color: GOLD, fontWeight: 600, marginTop: 2 }}>{s.msgs.length} tin</div>
                     </div>
                   </div>
                   {lastMsg && (
-                    <p className="text-xs text-[#6B6B60] line-clamp-1">
+                    <p style={{ fontSize: 12, color: '#6B6B60', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {lastMsg.vai_tro === 'user' ? '👤' : '🤖'} {lastMsg.noi_dung as string}
                     </p>
                   )}
@@ -72,52 +89,59 @@ export default function ChatbotHistoryClient({ messages }: { messages: Msg[] }) 
               )
             })}
             {filteredSessions.length === 0 && (
-              <div className="text-center py-12 text-[#A0A090] text-sm">Không có kết quả</div>
+              <div style={{ textAlign: 'center', padding: '48px 0', color: '#A0A090', fontSize: 14 }}>Không có kết quả</div>
             )}
           </div>
         </div>
 
         {/* Chat detail */}
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-[#E8E8E0] flex flex-col overflow-hidden">
+        <div className="lg:col-span-3" style={{
+          background: '#fff', borderRadius: 18, border: '1px solid #E8E8E0',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        }}>
           {currentSession ? (
             <>
-              <div className="px-5 py-4 border-b border-[#E8E8E0] flex items-center justify-between flex-shrink-0">
+              <div style={{
+                padding: '16px 20px', borderBottom: '1px solid #E8E8E0',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+              }}>
                 <div>
-                  <span className="font-semibold text-[#0D0D0D]">{currentSession.user?.ho_ten || 'Ẩn danh'}</span>
-                  <span className="text-sm text-[#6B6B60] ml-2 font-mono">{currentSession.user?.ma_sinh_vien}</span>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: NAVY }}>{currentSession.user?.ho_ten || 'Ẩn danh'}</span>
+                  <span style={{ fontSize: 13, color: '#6B6B60', marginLeft: 8, fontFamily: 'monospace' }}>{currentSession.user?.ma_sinh_vien}</span>
                 </div>
-                <span className="text-xs text-[#A0A090] bg-[#F8F7F2] px-2 py-1 rounded-lg">
+                <span style={{ fontSize: 12, color: '#6B6B60', background: '#F8F7F2', padding: '4px 10px', borderRadius: 8 }}>
                   {currentSession.msgs.length} tin nhắn
                 </span>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="flex-1 overflow-y-auto" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {[...currentSession.msgs].reverse().map(m => (
-                  <div key={m.id as string} className={`flex gap-2.5 ${m.vai_tro === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div key={m.id as string} style={{ display: 'flex', gap: 10, justifyContent: m.vai_tro === 'user' ? 'flex-end' : 'flex-start' }}>
                     {m.vai_tro === 'assistant' && (
-                      <div className="w-7 h-7 rounded-lg bg-[#0F1C35] flex items-center justify-center text-white text-xs flex-shrink-0 mt-0.5">🤖</div>
+                      <div style={{ width: 28, height: 28, borderRadius: 8, background: NAVY, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, marginTop: 2 }}>🤖</div>
                     )}
-                    <div className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                      m.vai_tro === 'user'
-                        ? 'bg-[#0F1C35] text-white rounded-tr-sm'
-                        : 'bg-[#F8F7F2] text-[#0D0D0D] rounded-tl-sm'
-                    }`}>
-                      <p className="whitespace-pre-wrap">{m.noi_dung as string}</p>
-                      <div className={`text-xs mt-1 ${m.vai_tro === 'user' ? 'text-white/50' : 'text-[#A0A090]'}`}>
-                        {fmtDate(m.created_at as string)}
-                        {m.loai_ngucan ? ` · ${String(m.loai_ngucan)}` : null}
+                    <div style={{
+                      maxWidth: '75%', padding: '10px 14px', borderRadius: 16, fontSize: 13, lineHeight: 1.6,
+                      background: m.vai_tro === 'user' ? NAVY : '#F8F7F2',
+                      color: m.vai_tro === 'user' ? '#fff' : NAVY,
+                      borderTopRightRadius: m.vai_tro === 'user' ? 4 : 16,
+                      borderTopLeftRadius: m.vai_tro === 'user' ? 16 : 4,
+                    }}>
+                      <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{m.noi_dung as string}</p>
+                      <div style={{ fontSize: 11, marginTop: 4, color: m.vai_tro === 'user' ? 'rgba(255,255,255,0.5)' : '#A0A090' }}>
+                        {fmtDate(m.created_at as string)}{m.loai_ngucan ? ` · ${String(m.loai_ngucan)}` : null}
                       </div>
                     </div>
                     {m.vai_tro === 'user' && (
-                      <div className="w-7 h-7 rounded-lg bg-[#E8E8E0] flex items-center justify-center text-xs flex-shrink-0 mt-0.5">👤</div>
+                      <div style={{ width: 28, height: 28, borderRadius: 8, background: '#E8E8E0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0, marginTop: 2 }}>👤</div>
                     )}
                   </div>
                 ))}
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-[#A0A090] flex-col gap-3">
-              <div className="text-5xl">💬</div>
-              <div className="font-medium">Chọn phiên hội thoại để xem</div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: '#A0A090' }}>
+              <div style={{ fontSize: 48 }}>💬</div>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>Chọn phiên hội thoại để xem</div>
             </div>
           )}
         </div>
