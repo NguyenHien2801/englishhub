@@ -89,6 +89,7 @@ export default function StudentsProgressClient({
       if (v.trang_thai === 'thuan_thuc') cur.mastered++
       vocabByUser.set(v.nguoi_dung_id, cur)
     }
+    console.log('[DEBUG] grammar array length:', grammar.length, grammar.slice(0, 2))
     const grammarByUser = new Map<string, { done: number; avg: number }>()
     for (const g of grammar) {
       const cur = grammarByUser.get(g.nguoi_dung_id) || { done: 0, avg: 0 }
@@ -97,12 +98,16 @@ export default function StudentsProgressClient({
     }
     const sessionsByUser = new Map<string, number>()
     for (const s of sessions) sessionsByUser.set(s.nguoi_dung_id, (sessionsByUser.get(s.nguoi_dung_id) || 0) + 1)
-    return students.map(s => ({
-      ...(s as Record<string, unknown>),
-      _vocab:    vocabByUser.get(s.id as string)    || { total: 0, mastered: 0 },
-      _grammar:  grammarByUser.get(s.id as string)  || { done: 0, avg: 0 },
-      _sessions: sessionsByUser.get(s.id as string) || 0,
-    }))
+    return students.map(s => {
+    const uid = s.id as string
+    console.log('[DEBUG] uid:', uid, '| grammar entry:', grammarByUser.get(uid))
+    return {
+    ...(s as Record<string, unknown>),
+    _vocab:    vocabByUser.get(uid)    || { total: 0, mastered: 0 },
+    _grammar:  grammarByUser.get(uid)  || { done: 0, avg: 0 },
+    _sessions: sessionsByUser.get(uid) || 0,
+  }
+})
   }, [students, vocab, grammar, sessions])
 
   const filtered = useMemo(() => {
@@ -167,12 +172,6 @@ export default function StudentsProgressClient({
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">TIẾN ĐỘ HỌC TẬP </h1>
-          <p className="text-gray-500 mt-0.5 text-sm">
-            Tổng <span className="font-semibold text-[#1e3a5f]">{students.length}</span> sinh viên
-            {filtered.length !== students.length && (
-              <> · đang lọc <span className="font-semibold text-[#1e3a5f]">{filtered.length}</span> kết quả</>
-            )}
-          </p>
         </div>
       </div>
 
