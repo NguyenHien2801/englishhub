@@ -181,7 +181,7 @@ export default function WritingAdminClient({ lessons: init }: { lessons: Lesson[
                     {selected.de_bai as string}
                   </div>
                 </div>
-                {selected.thong_tin_ky_thi && (
+                {!!selected.thong_tin_ky_thi && (
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Thông tin kỳ thi</div>
                     <div style={{ padding: 12, background: 'rgba(201,168,76,0.06)', borderRadius: 12, fontSize: 13, color: '#6B6B60', border: '1px solid rgba(201,168,76,0.15)' }}>
@@ -189,7 +189,7 @@ export default function WritingAdminClient({ lessons: init }: { lessons: Lesson[
                     </div>
                   </div>
                 )}
-                {selected.rubric_json && (
+                {!!selected.rubric_json && (
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#6B6B60', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Rubric chấm điểm</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
