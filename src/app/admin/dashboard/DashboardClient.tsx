@@ -154,13 +154,13 @@ function StatsBlock({ stats }: { stats: DashProps['stats'] }) {
             <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600">
               <IconUsers />
             </span>
-            <span className="text-[11px] font-semibold text-[#94a3b8] uppercase tracking-widest">Tổng sinh viên</span>
+            <span className="text-[11px] font-semibold text-[#64748b] uppercase tracking-widest">Tổng sinh viên</span>
           </div>
 
           <div ref={heroRef} className="text-[56px] font-bold leading-none tracking-tight text-[#0f2847] mb-2">
             {heroCount.toLocaleString('vi-VN')}
           </div>
-          <div className="text-sm text-[#64748b] mb-4">đăng ký hôm nay</div>
+          <div className="text-sm text-[#374151] font-medium mb-4">đăng ký hôm nay</div>
         </div>
 
         <div className="space-y-3">
@@ -170,7 +170,7 @@ function StatsBlock({ stats }: { stats: DashProps['stats'] }) {
           </span>
 
           <div>
-            <div className="flex justify-between text-xs text-[#94a3b8] mb-1.5">
+            <div className="flex justify-between text-sm text-[#374151] font-medium mb-1.5">
               <span>Mục tiêu tháng</span>
               <span className="font-semibold text-[#0f2847]">{stats.totalSV}/{monthGoal}</span>
             </div>
@@ -213,11 +213,11 @@ function TileCard({ tile, stats }: { tile: TileItem; stats: DashProps['stats'] }
         >
           {tile.icon}
         </span>
-        <span className="text-[12px] text-[#64748b] truncate">{tile.label}</span>
+        <span className="text-sm text-[#374151] font-semibold truncate">{tile.label}</span>
       </div>
 
       {/* number */}
-      <div ref={ref} className="text-[28px] font-bold leading-none tracking-tight text-[#0f2847]">
+      <div ref={ref} className="text-[32px] font-bold leading-none tracking-tight text-[#0f2847]">
         {count.toLocaleString('vi-VN')}
       </div>
 
@@ -257,8 +257,8 @@ function SectionTitle({ title, href, sub }: { title: string; href?: string; sub?
   return (
     <div className="flex items-center justify-between mb-4">
       <div>
-        <h2 className="font-bold text-[15px] text-[#0f2847]">{title}</h2>
-        {sub && <p className="text-xs text-[#94a3b8] mt-0.5">{sub}</p>}
+        <h2 className="font-bold text-[17px] text-[#0f2847]">{title}</h2>
+        {sub && <p className="text-sm text-[#475569] mt-0.5">{sub}</p>}
       </div>
       {href && (
         <Link href={href} className="text-xs font-semibold text-[#1e3a5f] opacity-60 hover:opacity-100 transition-opacity">
@@ -312,8 +312,8 @@ export default function DashboardClient(props: DashProps) {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c: { parsed: { y: number } }) => ` ${c.parsed.y} phiên` } } },
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
-        y: { grid: { color: GRID }, ticks: { font: { size: 11 }, color: '#94a3b8' }, beginAtZero: true },
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#475569' } },
+        y: { min: 0, max: 100, grid: { color: GRID }, ticks: { font: { size: 11 }, color: '#475569' } },
       },
     },
   }), [last12Months])
@@ -349,7 +349,7 @@ export default function DashboardClient(props: DashProps) {
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
-      scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(30,58,95,0.1)' }, angleLines: { color: 'rgba(30,58,95,0.1)' }, pointLabels: { font: { size: 11 }, color: '#64748b' } } },
+      scales: { r: { min: 0, max: 100, ticks: { display: false }, grid: { color: 'rgba(30,58,95,0.1)' }, angleLines: { color: 'rgba(30,58,95,0.1)' }, pointLabels: { font: { size: 14 }, color: '#475569' } } }
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [JSON.stringify(certSkillAvg)])
@@ -369,8 +369,8 @@ export default function DashboardClient(props: DashProps) {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
-        y: { min: 0, max: 100, grid: { color: GRID }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
+       x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#475569' } },
+       y: { grid: { color: GRID }, ticks: { font: { size: 11 }, color: '#475569' }, beginAtZero: true },
       },
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -389,8 +389,8 @@ export default function DashboardClient(props: DashProps) {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#94a3b8', maxTicksLimit: 10 } },
-        y: { grid: { color: GRID }, ticks: { font: { size: 10 }, color: '#94a3b8' } },
+        x: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#475569', maxTicksLimit: 10 } },
+        y: { grid: { color: GRID }, ticks: { font: { size: 12 }, color: '#475569' } },
       },
     },
   }), [activityDays])
@@ -410,8 +410,7 @@ export default function DashboardClient(props: DashProps) {
         {/* ── Topbar ── */}
         <div className="flex items-center justify-between mb-7">
           <div>
-            <h1 className="text-2xl font-bold text-[#0f2847] tracking-tight">Tổng quan hệ thống</h1>
-            <p className="text-sm text-[#64748b] mt-0.5">EnglishHub Admin Panel</p>
+            <h1 className="text-2xl font-bold text-[#0f2847] tracking-tight">TỔNG QUAN HỆ THỐNG</h1>
           </div>
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
@@ -443,8 +442,8 @@ export default function DashboardClient(props: DashProps) {
               <span className="text-3xl">{k.icon}</span>
               <div>
                 <div className="text-2xl font-bold" style={{ color: k.color }}>{k.value}</div>
-                <div className="text-sm font-semibold text-[#0f2847]">{k.label}</div>
-                <div className="text-xs text-[#94a3b8] mt-0.5">{k.sub}</div>
+                <div className="text-[15px] font-semibold text-[#0f2847]">{k.label}</div>
+                <div className="text-sm text-[#475569] mt-0.5">{k.sub}</div>
               </div>
             </Card>
           ))}
@@ -459,9 +458,9 @@ export default function DashboardClient(props: DashProps) {
             </div>
             <div className="flex items-center gap-2 mt-3">
               <span className="inline-block w-3 h-3 rounded-sm" style={{ background: NAVY }} />
-              <span className="text-xs text-[#64748b]">Tháng hiện tại</span>
+              <span className="text-sm text-[#374151]">Tháng hiện tại</span>
               <span className="inline-block w-3 h-3 rounded-sm ml-3" style={{ background: NAVY2 + 'aa' }} />
-              <span className="text-xs text-[#64748b]">Các tháng trước</span>
+              <span className="text-sm text-[#374151]">Các tháng trước</span>
             </div>
           </Card>
 
@@ -479,8 +478,8 @@ export default function DashboardClient(props: DashProps) {
                   return (
                     <div key={g}>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="font-bold" style={{ color: s.color }}>{g}</span>
-                        <span className="text-[#94a3b8]">{cnt} SV ({pct}%)</span>
+                        <span className="text-sm font-bold" style={{ color: s.color }}>{g}</span>
+                        <span className="text-sm text-[#475569] font-medium">{cnt} SV ({pct}%)</span>
                       </div>
                       <div className="h-1.5 rounded-full bg-[#f1f5f9] overflow-hidden">
                         <div className="h-full rounded-full" style={{ width: `${pct}%`, background: s.color }} />
@@ -512,19 +511,19 @@ export default function DashboardClient(props: DashProps) {
                 { label: 'Streak active', value: '73%',                           color: '#7c3aed' },
               ].map(m => (
                 <div key={m.label} className="bg-[#f8fafc] rounded-xl px-3 py-2 text-center">
-                  <div className="font-bold text-lg" style={{ color: m.color }}>{m.value}</div>
-                  <div className="text-xs text-[#94a3b8]">{m.label}</div>
+                  <div className="font-bold text-2xl" style={{ color: m.color }}>{m.value}</div>
+                  <div className="text-sm text-[#374151] font-medium">{m.label}</div>
                 </div>
               ))}
             </div>
-            <div style={{ position: 'relative', height: 180 }}>
+           <div style={{ position: 'relative', height: 220 }}>
               <canvas ref={chartLineRef} role="img" aria-label="Hoạt động học tập 30 ngày" />
             </div>
             <div className="flex items-center gap-4 mt-3">
-              <span className="flex items-center gap-1.5 text-xs text-[#64748b]">
+              <span className="flex items-center gap-1.5 text-sm text-[#374151]">
                 <span className="inline-block w-6 h-0.5" style={{ background: NAVY2 }} />Phiên học
               </span>
-              <span className="flex items-center gap-1.5 text-xs text-[#64748b]">
+              <span className="flex items-center gap-1.5 text-sm text-[#374151]">
                 <span className="inline-block w-6 h-0.5 border-t-2 border-dashed border-emerald-500" />Hoàn thành
               </span>
             </div>
@@ -544,20 +543,20 @@ export default function DashboardClient(props: DashProps) {
                       <div className="flex-1 h-2 rounded-full bg-[#f1f5f9] overflow-hidden">
                         <div className="h-full rounded-full" style={{ width: `${pct}%`, background: s.bar }} />
                       </div>
-                      <span className="text-xs text-[#94a3b8] w-16 text-right">{cnt} sv ({pct}%)</span>
+                      <span className="text-sm text-[#374151] font-medium w-20 text-right">{cnt} sv ({pct}%)</span>
                     </div>
                   )
                 })}
               </div>
             </Card>
             <Card className="flex-1">
-              <SectionTitle title="Hiệu suất theo chứng chỉ" sub="Radar kỹ năng" />
+              <SectionTitle title="Hiệu suất theo chứng chỉ" />
               <div style={{ position: 'relative', height: 160 }}>
                 <canvas ref={chartRadarRef} role="img" aria-label="Radar hiệu suất chứng chỉ" />
               </div>
               <div className="flex justify-center gap-4 mt-2">
                 {['VSTEP', 'TOEIC', 'APTIS'].map(c => (
-                  <span key={c} className="flex items-center gap-1.5 text-xs text-[#64748b]">
+                  <span key={c} className="flex items-center gap-1.5 text-sm text-[#374151]">
                     <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: CERT_COLOR[c] }} />{c}
                   </span>
                 ))}
@@ -582,8 +581,8 @@ export default function DashboardClient(props: DashProps) {
                       {(u.ho_ten as string).charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-[#1e293b] truncate">{u.ho_ten as string}</div>
-                      <div className="text-xs text-[#94a3b8] font-mono">{u.ma_sinh_vien as string}</div>
+                    <div className="text-[15px] font-semibold text-[#1e293b] truncate">{u.ho_ten as string}</div>
+                    <div className="text-sm text-[#475569] font-mono">{u.ma_sinh_vien as string}</div>
                     </div>
                     <div className="text-right flex-shrink-0">
                       <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: s.bg, color: s.text }}>{lv}</span>
@@ -610,8 +609,8 @@ export default function DashboardClient(props: DashProps) {
                   <div key={i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-[#f8fafc] transition-colors">
                     <span className="text-xs font-bold px-2 py-1 rounded-md flex-shrink-0" style={{ background: gs.bg, color: gs.color }}>{cert}</span>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-[#1e293b] truncate">{(user?.ho_ten as string) || 'Sinh viên'}</div>
-                      <div className="text-[13px] text-[#94a3b8]">{(e.ky_nang as string) || 'Tổng hợp'} · {new Date(e.created_at as string).toLocaleDateString('vi-VN')}</div>
+                      <div className="text-[15px] font-semibold text-[#1e293b] truncate">{(user?.ho_ten as string) || 'Sinh viên'}</div>
+                      <div className="text-sm text-[#475569]">{(e.ky_nang as string) || 'Tổng hợp'} · {new Date(e.created_at as string).toLocaleDateString('vi-VN')}</div>
                     </div>
                     <span className="text-base font-bold flex-shrink-0" style={{ color: scoreColor }}>{pct}%</span>
                   </div>
@@ -634,11 +633,11 @@ export default function DashboardClient(props: DashProps) {
                 return (
                   <div key={i}>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-bold text-[#94a3b8] w-5">#{i + 1}</span>
+                      <span className="text-[15px] font-bold text-[#475569] w-5">#{i + 1}</span>
                       <div className="w-6 h-6 rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: avatarBg(u.ho_ten as string) }}>
                         {(u.ho_ten as string).charAt(0)}
                       </div>
-                      <span className="flex-1 text-sm font-semibold text-[#1e293b] truncate">{u.ho_ten as string}</span>
+                      <span className="flex-1 text-[15px] font-semibold text-[#1e293b] truncate">{u.ho_ten as string}</span>
                       <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: ls.bg, color: ls.text }}>{lv}</span>
                       <span className="text-base font-bold text-amber-500 flex-shrink-0">🔥 {streak}</span>
                     </div>
@@ -659,8 +658,9 @@ export default function DashboardClient(props: DashProps) {
             <div className="space-y-1">
               {recentActivity.length === 0 && <p className="text-center py-6 text-[#94a3b8] text-sm">Chưa có tin nhắn</p>}
               {recentActivity.map((msg, i) => {
-                const m = msg as Record<string, unknown>
-                const user = (m.NguoiDung as Record<string, unknown>[] | null)?.[0]
+                 const m = msg as Record<string, unknown>
+                const rawU = m.NguoiDung
+                const user = Array.isArray(rawU) ? (rawU as Record<string, unknown>[])[0] : rawU as Record<string, unknown> | null
                 const content = (m.noi_dung as string).slice(0, 80)
                 return (
                   <div key={i} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-[#f8fafc] transition-colors">
@@ -669,10 +669,10 @@ export default function DashboardClient(props: DashProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-sm font-bold text-[#1e293b]">{(user?.ho_ten as string) || 'Ẩn danh'}</span>
-                        <span className="text-xs text-[#94a3b8]">{new Date(m.created_at as string).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-[15px] font-bold text-[#1e293b]">{(user?.ho_ten as string) || 'Ẩn danh'}</span>
+                        <span className="text-sm text-[#475569]">{new Date(m.created_at as string).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <p className="text-[13px] text-[#475569] truncate">{content}{(m.noi_dung as string).length > 80 ? '...' : ''}</p>
+                      <p className="text-sm text-[#374151] truncate">{content}{(m.noi_dung as string).length > 80 ? '...' : ''}</p>
                     </div>
                   </div>
                 )
@@ -681,7 +681,7 @@ export default function DashboardClient(props: DashProps) {
           </Card>
 
           <Card>
-            <div className="text-sm font-bold text-[#94a3b8] uppercase tracking-widest mb-4">Truy cập nhanh</div>
+            <div className="text-sm font-bold text-[#475569] uppercase tracking-widest mb-4">Truy cập nhanh</div>
             <div className="grid grid-cols-2 gap-2">
               {[
                 { href: '/admin/students/roles',   label: 'Phân quyền',  icon: '🔐' },
@@ -696,15 +696,11 @@ export default function DashboardClient(props: DashProps) {
                 <Link key={s.href} href={s.href}
                   className="flex items-center gap-2.5 p-3 rounded-xl border border-[#e2e8f0] hover:border-[#1e3a5f] hover:bg-[#f0f6ff] transition-all group">
                   <span className="text-lg">{s.icon}</span>
-                  <span className="text-sm font-semibold text-[#64748b] group-hover:text-[#0f2847] transition-colors">{s.label}</span>
+                  <span className="text-[15px] font-semibold text-[#374151] group-hover:text-[#0f2847] transition-colors">{s.label}</span>
                 </Link>
               ))}
             </div>
           </Card>
-        </div>
-
-        <div className="text-center text-sm text-[#94a3b8] py-2">
-          EnglishHub Admin · Dữ liệu cập nhật theo thời gian thực từ Supabase
         </div>
       </div>
     </>

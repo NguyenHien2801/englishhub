@@ -1,8 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import DashboardClient from './DashboardClient'
 
 export default async function AdminDashboardPage() {
   const supabase = createClient()
+  const adminSupabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 
   const [
     { count: totalSV },
@@ -20,7 +25,7 @@ export default async function AdminDashboardPage() {
     { data: goalDist },
     { data: examsByMonth },
     { data: topStreaks },
-    { data: recentActivity },
+    { data: svIds },
     { data: actRaw },
     { data: phienRaw },
   ] = await Promise.all([
@@ -70,12 +75,10 @@ export default async function AdminDashboardPage() {
       .order('streak_hien_tai', { ascending: false })
       .limit(5),
 
-    // Hoạt động chatbot gần nhất
-    supabase.from('LichSuChatbot')
-      .select('noi_dung, vai_tro, created_at, NguoiDung(ho_ten)')
-      .eq('vai_tro', 'user')
-      .order('created_at', { ascending: false })
-      .limit(5),
+    // Lấy id tất cả sinh viên
+    supabase.from('NguoiDung')
+      .select('id')
+      .eq('vai_tro', 'sinh_vien'),
 
     // Daily activity 30 ngày
     supabase.from('PhienLuyenThi')
@@ -88,6 +91,25 @@ export default async function AdminDashboardPage() {
       .not('ky_nang', 'is', null)
       .not('tong_so_cau', 'is', null),
   ])
+
+  // ── Lấy chatbot chỉ của sinh viên ──
+  const svIdList = (svIds || []).map((u: Record<string, unknown>) => u.id as string)
+
+  const { data: recentActivity } = await adminSupabase
+    .from('LichSuChatbot')
+    .select('noi_dung, vai_tro, created_at, nguoi_dung_id, NguoiDung(ho_ten, vai_tro)')
+    .eq('vai_tro', 'user')
+    .in('nguoi_dung_id', svIdList)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  const recentActivityFiltered = (recentActivity || [])
+    .filter(m => {
+      const u = (m as Record<string, unknown>).NguoiDung as Record<string, unknown>[] | Record<string, unknown> | null
+      const user = Array.isArray(u) ? u[0] : u
+      return user?.vai_tro === 'sinh_vien'
+    })
+    .slice(0, 5)
 
   // ── Phân phối trình độ ──
   const levelMap: Record<string, number> = {}
@@ -202,7 +224,7 @@ export default async function AdminDashboardPage() {
     goalMap,
     last12Months,
     topStreaks: topStreaks || [],
-    recentActivity: recentActivity || [],
+    recentActivity: recentActivityFiltered,
     certScores,
     dailyActivity,
     skillAvg,
