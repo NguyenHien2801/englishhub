@@ -1,8 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import WritingAdminClient from './WritingAdminClient'
 
 export default async function WritingAdminPage() {
-  const supabase = createClient()
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
   const { data: lessons } = await supabase
     .from('bailuyenviet')
     .select('*')
