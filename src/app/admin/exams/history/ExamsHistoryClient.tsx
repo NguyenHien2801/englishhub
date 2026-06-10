@@ -10,6 +10,12 @@ function fmtDate(d: string) {
   })
 }
 
+function fmtDateShort(d: string) {
+  return new Date(d).toLocaleDateString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  })
+}
+
 function getAvatarColor(name: string) {
   const colors = [
     'linear-gradient(135deg,#0f2847,#2563eb)',
@@ -38,9 +44,9 @@ function Avatar({ name, size = 36 }: { name: string; size?: number }) {
 }
 
 const CERT_COLOR: Record<string, string> = {
-  VSTEP:  'bg-[#d1fae5] text-[#065f46]',
-  TOEIC:  'bg-[#fef3c7] text-[#92400e]',
-  APTIS:  'bg-[#ede9fe] text-[#5b21b6]',
+  VSTEP: 'bg-[#d1fae5] text-[#065f46]',
+  TOEIC: 'bg-[#fef3c7] text-[#92400e]',
+  APTIS: 'bg-[#ede9fe] text-[#5b21b6]',
 }
 
 const SKILL_COLOR: Record<string, string> = {
@@ -65,31 +71,50 @@ const TH: React.CSSProperties = {
 }
 const CELL_BORDER = '1px solid #c2cfe0'
 
+interface StudentGroup {
+  mssv: string
+  ho_ten: string
+  lop: string
+  khoa: string
+  sessions: Session[]
+}
+
 export default function ExamsHistoryClient({ sessions }: { sessions: Session[] }) {
   const [search,      setSearch]      = useState('')
   const [filterCert,  setFilterCert]  = useState('')
-  const [filterMonth, setFilterMonth] = useState('')
-  const [selected,    setSelected]    = useState<Session | null>(null)
+  const [selected,    setSelected]    = useState<StudentGroup | null>(null)
 
-  const months = useMemo(() => {
-    const set = new Set(sessions.map(s => (s.created_at as string).slice(0, 7)))
-    return Array.from(set).sort().reverse()
+  // Group sessions by student
+  const grouped = useMemo(() => {
+    const map = new Map<string, StudentGroup>()
+    for (const s of sessions) {
+      const u = s.NguoiDung as Record<string, string> | null
+      const mssv = u?.ma_sinh_vien || 'unknown'
+      if (!map.has(mssv)) {
+        map.set(mssv, {
+          mssv,
+          ho_ten: u?.ho_ten || '–',
+          lop: u?.lop || '–',
+          khoa: u?.khoa || '–',
+          sessions: [],
+        })
+      }
+      map.get(mssv)!.sessions.push(s)
+    }
+    return Array.from(map.values())
   }, [sessions])
 
-  const filtered = useMemo(() => sessions.filter(s => {
-    const user = s.NguoiDung as Record<string, string> | null
+  const filtered = useMemo(() => grouped.filter(g => {
     const q = search.toLowerCase()
-    return (
-      (!q || user?.ho_ten?.toLowerCase().includes(q) || user?.ma_sinh_vien?.toLowerCase().includes(q)) &&
-      (!filterCert  || s.loai_chung_chi === filterCert) &&
-      (!filterMonth || (s.created_at as string).startsWith(filterMonth))
-    )
-  }), [sessions, search, filterCert, filterMonth])
+    const matchSearch = !q || g.ho_ten.toLowerCase().includes(q) || g.mssv.toLowerCase().includes(q)
+    const matchCert = !filterCert || g.sessions.some(s => s.loai_chung_chi === filterCert)
+    return matchSearch && matchCert
+  }), [grouped, search, filterCert])
 
   function exportCSV() {
     const rows = [
       ['Mã SV','Họ tên','Lớp','Khoa','Chứng chỉ','Kỹ năng','Câu đúng','Tổng câu','Điểm (%)','Điểm quy đổi','Thời gian (s)','Ngày thi'],
-      ...filtered.map(s => {
+      ...sessions.map(s => {
         const u = s.NguoiDung as Record<string, string> | null
         const pct = s.tong_so_cau ? Math.round(((s.so_cau_dung as number) / (s.tong_so_cau as number)) * 100) : ''
         return [u?.ma_sinh_vien, u?.ho_ten, u?.lop, u?.khoa, s.loai_chung_chi, s.ky_nang, s.so_cau_dung, s.tong_so_cau, pct, s.diem_quy_doi, s.thoi_gian_lam_bai, fmtDate(s.created_at as string)]
@@ -102,68 +127,28 @@ export default function ExamsHistoryClient({ sessions }: { sessions: Session[] }
     a.click()
   }
 
-  const totalPass      = filtered.filter(s => s.tong_so_cau && ((s.so_cau_dung as number) / (s.tong_so_cau as number)) >= 0.7).length
-  const avgScore       = filtered.length
-    ? Math.round(filtered.reduce((acc, s) => acc + (s.tong_so_cau ? ((s.so_cau_dung as number) / (s.tong_so_cau as number)) * 100 : 0), 0) / filtered.length)
+  const totalSessions   = sessions.length
+  const uniqueStudents  = grouped.length
+  const totalPass       = sessions.filter(s => s.tong_so_cau && ((s.so_cau_dung as number) / (s.tong_so_cau as number)) >= 0.7).length
+  const avgScore        = sessions.length
+    ? Math.round(sessions.reduce((acc, s) => acc + (s.tong_so_cau ? ((s.so_cau_dung as number) / (s.tong_so_cau as number)) * 100 : 0), 0) / sessions.length)
     : 0
-  const uniqueStudents = new Set(filtered.map(s => (s.NguoiDung as Record<string, string> | null)?.ma_sinh_vien)).size
-
-  const summaryCards = [
-    { label: 'Tổng phiên thi', value: sessions.length, icon: (
-      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16"/>
-      </svg>
-    ), color: '#1e3a5f' },
-    { label: 'Sinh viên tham gia', value: uniqueStudents, icon: (
-      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
-        <path d="M16 3.13a4 4 0 010 7.75M21 21v-2a4 4 0 00-3-3.85"/>
-      </svg>
-    ), color: '#2563eb' },
-    { label: 'Đạt (≥ 70%)', value: totalPass, icon: (
-      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
-      </svg>
-    ), color: '#059669' },
-    { label: 'Điểm trung bình', value: `${avgScore}%`, icon: (
-      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
-      </svg>
-    ), color: '#d97706' },
-  ]
 
   const cols = [
-    { label: 'STT',       minWidth: 48  },
-    { label: 'Sinh viên', minWidth: 180 },
-    { label: 'Lớp',       minWidth: 80  },
-    { label: 'Chứng chỉ', minWidth: 90  },
-    { label: 'Kỹ năng',   minWidth: 100 },
-    { label: 'Câu đúng',  minWidth: 85  },
-    { label: 'Điểm (%)',  minWidth: 80  },
-    { label: 'Điểm QĐ',  minWidth: 75  },
-    { label: 'Ngày thi',  minWidth: 140 },
+    { label: 'STT',        minWidth: 48  },
+    { label: 'Sinh viên',  minWidth: 200 },
+    { label: 'Lớp',        minWidth: 90  },
+    { label: 'Số lần thi', minWidth: 90  },
+    { label: 'Chứng chỉ',  minWidth: 130 },
+    { label: 'Lần cuối',   minWidth: 120 },
   ]
-
-  const selUser = selected ? (selected.NguoiDung as Record<string, unknown>) || {} : null
-  const selPct  = selected && selected.tong_so_cau
-    ? Math.round(((selected.so_cau_dung as number) / (selected.tong_so_cau as number)) * 100)
-    : null
 
   return (
     <div className="max-w-7xl mx-auto px-2 py-4" style={{ fontFamily: 'DM Sans, sans-serif' }}>
 
       {/* Header */}
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">LỊCH SỬ THI</h1>
-          <p className="text-gray-500 mt-0.5 text-sm">
-            Tổng <span className="font-semibold text-[#1e3a5f]">{sessions.length}</span> phiên thi
-            {filtered.length !== sessions.length && (
-              <> · đang lọc <span className="font-semibold text-[#1e3a5f]">{filtered.length}</span> kết quả</>
-            )}
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900">LỊCH SỬ THI</h1>
         <button onClick={exportCSV}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors"
           style={{ background: 'linear-gradient(135deg,#0f2847,#1e3a5f)' }}>
@@ -174,14 +159,20 @@ export default function ExamsHistoryClient({ sessions }: { sessions: Session[] }
         </button>
       </div>
 
-      {/* Summary cards — giống hệt StudentsProgressClient */}
+      {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-        {summaryCards.map(c => (
+        {[
+          { label: 'Tổng phiên thi',     value: totalSessions,  color: '#1e3a5f',
+            icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16"/></svg> },
+          { label: 'Sinh viên tham gia', value: uniqueStudents, color: '#2563eb',
+            icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M16 3.13a4 4 0 010 7.75M21 21v-2a4 4 0 00-3-3.85"/></svg> },
+          { label: 'Đạt (≥ 70%)',        value: totalPass,      color: '#059669',
+            icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg> },
+          { label: 'Điểm trung bình',    value: `${avgScore}%`, color: '#d97706',
+            icon: <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path strokeLinecap="round" strokeLinejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg> },
+        ].map(c => (
           <div key={c.label} className="rounded-2xl p-4 flex items-center gap-3"
-            style={{
-              border: `2px solid ${c.color}30`,
-              background: `linear-gradient(135deg, #fff 60%, ${c.color}0d 100%)`,
-            }}>
+            style={{ border: `2px solid ${c.color}30`, background: `linear-gradient(135deg,#fff 60%,${c.color}0d 100%)` }}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{ background: `${c.color}15`, color: c.color, border: `1.5px solid ${c.color}25` }}>
               {c.icon}
@@ -196,7 +187,7 @@ export default function ExamsHistoryClient({ sessions }: { sessions: Session[] }
         ))}
       </div>
 
-      {/* Filters — giống hệt StudentsProgressClient */}
+      {/* Filters */}
       <div className="flex flex-wrap gap-2.5 mb-4">
         <div className="relative flex-1 min-w-[220px]">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -206,8 +197,7 @@ export default function ExamsHistoryClient({ sessions }: { sessions: Session[] }
             placeholder="Tìm theo tên, mã SV..."
             className="w-full pl-9 pr-9 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#1e3a5f]/40 transition-colors bg-white" />
           {search && (
-            <button onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
               <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12"/>
               </svg>
@@ -219,13 +209,8 @@ export default function ExamsHistoryClient({ sessions }: { sessions: Session[] }
           <option value="">Tất cả chứng chỉ</option>
           {['VSTEP','TOEIC','APTIS'].map(c => <option key={c}>{c}</option>)}
         </select>
-        <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
-          className="px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#1e3a5f]/40 transition-colors bg-white">
-          <option value="">Tất cả tháng</option>
-          {months.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-        {(search || filterCert || filterMonth) && (
-          <button onClick={() => { setSearch(''); setFilterCert(''); setFilterMonth('') }}
+        {(search || filterCert) && (
+          <button onClick={() => { setSearch(''); setFilterCert('') }}
             className="px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm hover:border-red-300 hover:text-red-500 transition-colors bg-white">
             Xoá lọc
           </button>
@@ -234,7 +219,7 @@ export default function ExamsHistoryClient({ sessions }: { sessions: Session[] }
 
       <div className="grid lg:grid-cols-5 gap-5">
 
-        {/* Table — giống hệt StudentsProgressClient */}
+        {/* Student list table */}
         <div className="lg:col-span-3 rounded-2xl overflow-hidden shadow-md" style={{ border: '2px solid #b0bfd4' }}>
           <div className="overflow-x-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#b0bfd4 transparent' }}>
             <table className="w-full text-sm" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
@@ -261,64 +246,55 @@ export default function ExamsHistoryClient({ sessions }: { sessions: Session[] }
                       Không có kết quả
                     </td>
                   </tr>
-                ) : filtered.slice(0, 100).map((s, i) => {
-                  const user = s.NguoiDung as Record<string, string> | null
-                  const pct  = s.tong_so_cau ? Math.round(((s.so_cau_dung as number) / (s.tong_so_cau as number)) * 100) : null
-                  const isSelected = selected?.id === s.id
-                  const even = i % 2 === 0
+                ) : filtered.map((g, i) => {
+                  const isSel = selected?.mssv === g.mssv
+                  const even  = i % 2 === 0
+                  // Unique certs
+                  const certs = Array.from(new Set(g.sessions.map(s => s.loai_chung_chi as string).filter(Boolean)))
+                  // Latest session
+                  const latest = g.sessions.slice().sort((a, b) =>
+                    new Date(b.created_at as string).getTime() - new Date(a.created_at as string).getTime()
+                  )[0]
+
                   return (
-                    <tr key={s.id as string}
-                      onClick={() => setSelected(isSelected ? null : s)}
+                    <tr key={g.mssv}
+                      onClick={() => setSelected(isSel ? null : g)}
                       style={{
-                        background: isSelected ? '#eff6ff' : even ? '#f1f5f9' : '#ffffff',
+                        background: isSel ? '#eff6ff' : even ? '#f1f5f9' : '#ffffff',
                         cursor: 'pointer', transition: 'background 0.1s',
+                        borderLeft: isSel ? '3px solid #1e3a5f' : '3px solid transparent',
                       }}
-                      className="hover:!bg-blue-50 group">
+                      className="hover:!bg-blue-50">
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px', textAlign: 'center' }}>
                         <span className="text-sm font-mono font-semibold text-gray-700">{i + 1}</span>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                        <div className="flex items-center gap-2">
-                          <Avatar name={user?.ho_ten || ''} size={28} />
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={g.ho_ten} size={30} />
                           <div>
-                            <div className="font-semibold text-gray-800 text-[14px]">{user?.ho_ten || '–'}</div>
-                            <div className="text-xs text-gray-500 font-mono">{user?.ma_sinh_vien}</div>
+                            <div className="font-semibold text-gray-800 text-[14px]">{g.ho_ten}</div>
+                            <div className="text-xs text-gray-500 font-mono">{g.mssv}</div>
                           </div>
                         </div>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                        <span className="text-sm text-gray-700">{user?.lop || '–'}</span>
-                      </td>
-                      <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px' }}>
-                        <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${CERT_COLOR[s.loai_chung_chi as string] || 'bg-gray-100 text-gray-500'}`}>
-                          {s.loai_chung_chi as string}
-                        </span>
-                      </td>
-                      <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px' }}>
-                        <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${SKILL_COLOR[s.ky_nang as string] || 'bg-gray-100 text-gray-500'}`}>
-                          {(s.ky_nang as string) || '–'}
-                        </span>
-                      </td>
-                      <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        <span className="text-sm font-semibold text-gray-800">{s.so_cau_dung as number}</span>
-                        <span className="text-sm text-gray-400">/{s.tong_so_cau as number}</span>
+                        <span className="text-sm text-gray-700">{g.lop}</span>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px', textAlign: 'center' }}>
-                        {pct !== null ? (
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                            pct >= 70 ? 'bg-[#d1fae5] text-[#065f46]' :
-                            pct >= 50 ? 'bg-[#fef3c7] text-[#92400e]' :
-                                        'bg-[#fee2e2] text-[#991b1b]'
-                          }`}>{pct}%</span>
-                        ) : <span className="text-sm text-gray-400">–</span>}
-                      </td>
-                      <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px', textAlign: 'center' }}>
-                        <span className="text-sm font-semibold text-gray-800">
-                          {s.diem_quy_doi ? (s.diem_quy_doi as number).toFixed(1) : '–'}
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold text-white"
+                          style={{ background: 'linear-gradient(135deg,#0f2847,#2563eb)' }}>
+                          {g.sessions.length}
                         </span>
+                      </td>
+                      <td style={{ borderBottom: CELL_BORDER, borderRight: CELL_BORDER, padding: '12px 14px' }}>
+                        <div className="flex flex-wrap gap-1">
+                          {certs.map(c => (
+                            <span key={c} className={`text-xs px-2 py-0.5 rounded-full font-bold ${CERT_COLOR[c] || 'bg-gray-100 text-gray-500'}`}>{c}</span>
+                          ))}
+                        </div>
                       </td>
                       <td style={{ borderBottom: CELL_BORDER, padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                        <span className="text-sm text-gray-700">{fmtDate(s.created_at as string)}</span>
+                        <span className="text-sm text-gray-600">{fmtDateShort(latest.created_at as string)}</span>
                       </td>
                     </tr>
                   )
@@ -329,104 +305,105 @@ export default function ExamsHistoryClient({ sessions }: { sessions: Session[] }
           {filtered.length > 0 && (
             <div className="px-4 py-3 flex items-center justify-between text-sm text-gray-500"
               style={{ background: '#f8fafc', borderTop: '2px solid #c2cfe0' }}>
-              <span>Tổng <strong className="text-[#1e3a5f]">{filtered.length}</strong> phiên thi</span>
-              {filtered.length > 100 && (
-                <span className="text-gray-400 text-xs">Hiển thị 100/{filtered.length} — Xuất CSV để xem đầy đủ</span>
-              )}
+              <span>Tổng <strong className="text-[#1e3a5f]">{filtered.length}</strong> sinh viên</span>
+              <span className="text-gray-400 text-xs">{sessions.length} phiên thi</span>
             </div>
           )}
         </div>
 
-        {/* Detail panel — giống hệt StudentsProgressClient */}
+        {/* Detail panel: list of sessions for selected student */}
         <div className="lg:col-span-2">
-          {selected && selUser ? (
-            <div className="bg-white rounded-2xl shadow-md sticky top-4 overflow-hidden"
-              style={{ border: '2px solid #b0bfd4' }}>
+          {selected ? (
+            <div className="bg-white rounded-2xl shadow-md sticky top-4 overflow-hidden" style={{ border: '2px solid #b0bfd4' }}>
               {/* Header */}
-              <div className="flex items-center gap-4 px-5 py-4"
+              <div className="flex items-center gap-3 px-5 py-4"
                 style={{ background: 'linear-gradient(135deg,#0f2847 0%,#1e3a5f 100%)' }}>
-                <Avatar name={selUser.ho_ten as string || ''} size={48} />
+                <Avatar name={selected.ho_ten} size={44} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-white font-bold text-base truncate">{selUser.ho_ten as string || '–'}</div>
-                  <div className="text-blue-200 text-sm font-mono">{selUser.ma_sinh_vien as string}</div>
+                  <div className="text-white font-bold text-base truncate">{selected.ho_ten}</div>
+                  <div className="text-blue-200 text-xs font-mono mt-0.5">{selected.mssv} · {selected.lop}</div>
                 </div>
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${CERT_COLOR[selected.loai_chung_chi as string] || 'bg-gray-100 text-gray-500'}`}>
-                  {selected.loai_chung_chi as string}
-                </span>
+                <button onClick={() => setSelected(null)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)' }}>
+                  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
               </div>
 
-              <div className="p-4 space-y-4">
-                {/* Info grid */}
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { label: 'Lớp',      value: (selUser.lop as string)  || '–' },
-                    { label: 'Khoa',     value: (selUser.khoa as string) || '–' },
-                    { label: 'Kỹ năng',  value: (selected.ky_nang as string) || '–' },
-                    { label: 'Thời gian', value: selected.thoi_gian_lam_bai
-                        ? `${Math.floor((selected.thoi_gian_lam_bai as number) / 60)}p ${(selected.thoi_gian_lam_bai as number) % 60}s`
-                        : '–' },
-                  ].map(item => (
-                    <div key={item.label} className="p-2.5 rounded-xl" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
-                      <div className="text-xs text-gray-500">{item.label}</div>
-                      <div className="font-semibold text-sm text-gray-800 mt-0.5">{item.value}</div>
-                    </div>
-                  ))}
+              {/* Session list */}
+              <div className="p-4 flex flex-col gap-3" style={{ maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
+                <div className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">
+                  {selected.sessions.length} phiên thi
                 </div>
+                {selected.sessions
+                  .slice()
+                  .sort((a, b) => new Date(b.created_at as string).getTime() - new Date(a.created_at as string).getTime())
+                  .map((s, idx) => {
+                    const pct = s.tong_so_cau
+                      ? Math.round(((s.so_cau_dung as number) / (s.tong_so_cau as number)) * 100)
+                      : null
+                    return (
+                      <div key={s.id as string} className="rounded-xl p-3.5" style={{ border: '1.5px solid #e2e8f0', background: '#f8fafc' }}>
+                        {/* Row 1: cert + skill + date */}
+                        <div className="flex items-center justify-between gap-2 mb-2.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-mono text-gray-400">#{selected.sessions.length - idx}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${CERT_COLOR[s.loai_chung_chi as string] || 'bg-gray-100 text-gray-500'}`}>
+                              {s.loai_chung_chi as string}
+                            </span>
+                            {!!s.ky_nang && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${SKILL_COLOR[s.ky_nang as string] || 'bg-gray-100 text-gray-500'}`}>
+                                {s.ky_nang as string}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-400 flex-shrink-0">{fmtDateShort(s.created_at as string)}</span>
+                        </div>
 
-                {/* Kết quả */}
-                <div>
-                  <div className="text-sm font-bold text-gray-600 uppercase tracking-wider mb-2">Kết quả</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { label: 'Câu đúng', value: selected.so_cau_dung as number, color: '#059669' },
-                      { label: 'Tổng câu', value: selected.tong_so_cau as number, color: '#0369a1' },
-                      { label: 'Điểm QĐ',  value: selected.diem_quy_doi ? (selected.diem_quy_doi as number).toFixed(1) : '–', color: '#d97706' },
-                    ].map(item => (
-                      <div key={item.label} className="rounded-xl p-2.5 text-center" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
-                        <div className="font-bold text-base" style={{ color: item.color }}>{item.value}</div>
-                        <div className="text-sm text-gray-700 mt-0.5">{item.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                        {/* Row 2: stats */}
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm font-semibold text-gray-700">
+                            <span className="text-[#1e3a5f] font-bold">{s.so_cau_dung as number}</span>
+                            <span className="text-gray-400 font-normal">/{s.tong_so_cau as number} câu</span>
+                          </div>
+                          {pct !== null && (
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                              pct >= 70 ? 'bg-[#d1fae5] text-[#065f46]' :
+                              pct >= 50 ? 'bg-[#fef3c7] text-[#92400e]' :
+                                          'bg-[#fee2e2] text-[#991b1b]'
+                            }`}>{pct}%</span>
+                          )}
+                          {!!s.diem_quy_doi && (
+                            <span className="text-xs text-gray-500">
+                              QĐ: <span className="font-bold text-gray-700">{(s.diem_quy_doi as number).toFixed(1)}</span>
+                            </span>
+                          )}
+                          {!!s.thoi_gian_lam_bai && (
+                            <span className="text-xs text-gray-400 ml-auto">
+                              ⏱ {Math.floor((s.thoi_gian_lam_bai as number) / 60)}p{(s.thoi_gian_lam_bai as number) % 60}s
+                            </span>
+                          )}
+                        </div>
 
-                {/* Score bar */}
-                {selPct !== null && (
-                  <div>
-                    <div className="text-sm font-bold text-gray-600 uppercase tracking-wider mb-2">Tỉ lệ đúng</div>
-                    <div className="rounded-xl p-3" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                          selPct >= 70 ? 'bg-[#d1fae5] text-[#065f46]' :
-                          selPct >= 50 ? 'bg-[#fef3c7] text-[#92400e]' :
-                                         'bg-[#fee2e2] text-[#991b1b]'
-                        }`}>{selPct}%</span>
-                        <span className="text-sm text-gray-600">
-                          {selPct >= 70 ? '✅ Đạt' : selPct >= 50 ? '⚠️ Trung bình' : '❌ Chưa đạt'}
-                        </span>
+                        {/* Progress bar */}
+                        {pct !== null && (
+                          <div className="mt-2.5 w-full rounded-full h-1.5" style={{ background: '#e2e8f0' }}>
+                            <div className="h-1.5 rounded-full transition-all"
+                              style={{
+                                width: `${pct}%`,
+                                background: pct >= 70
+                                  ? 'linear-gradient(90deg,#10b981,#34d399)'
+                                  : pct >= 50
+                                    ? 'linear-gradient(90deg,#f59e0b,#fbbf24)'
+                                    : 'linear-gradient(90deg,#ef4444,#f87171)',
+                              }} />
+                          </div>
+                        )}
                       </div>
-                      <div className="w-full rounded-full h-2" style={{ background: '#e2e8f0' }}>
-                        <div className="h-2 rounded-full transition-all"
-                          style={{
-                            width: `${selPct}%`,
-                            background: selPct >= 70
-                              ? 'linear-gradient(90deg,#10b981,#34d399)'
-                              : selPct >= 50
-                                ? 'linear-gradient(90deg,#f59e0b,#fbbf24)'
-                                : 'linear-gradient(90deg,#ef4444,#f87171)',
-                          }} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Ngày thi */}
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
-                  </svg>
-                  {fmtDate(selected.created_at as string)}
-                </div>
+                    )
+                  })}
               </div>
             </div>
           ) : (
@@ -438,8 +415,8 @@ export default function ExamsHistoryClient({ sessions }: { sessions: Session[] }
                   <path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16"/>
                 </svg>
               </div>
-              <div className="font-semibold text-gray-700 text-sm">Chọn phiên thi để xem chi tiết</div>
-              <div className="text-sm text-gray-600 mt-1">Click vào một hàng trong bảng</div>
+              <div className="font-semibold text-gray-700 text-sm">Chọn sinh viên để xem lịch sử</div>
+              <div className="text-sm text-gray-500 mt-1">Click vào một hàng trong bảng</div>
             </div>
           )}
         </div>
