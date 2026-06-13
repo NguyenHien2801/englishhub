@@ -37,7 +37,7 @@ const C = {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Exercise = {
-  type: "mc" | "tf" | "fill" | "order";
+  type: "mc" | "tf" | "fill" | "order" | "rewrite";
   q?: string;
   opts?: string[];
   ans: number | boolean | string;
@@ -365,13 +365,14 @@ const [completed, setCompleted] = useState<Record<string, { score: number; total
 
 useEffect(() => {
   setCompleted(prev => {
-    const init: Record<string, { score: number; total: number }> = {}
+    const next = { ...prev } // giữ lại tất cả state hiện tại
     completedIds.forEach((id: string) => {
-      init[id] = prev[id] ?? { score: 0, total: 0 }
+      if (!next[id]) next[id] = { score: 0, total: 0 }
     })
-    return init
+    return next
   })
 }, [completedIds.size])
+
   const [filterLevel, setFilterLevel] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // ── NEW states ──
@@ -454,7 +455,7 @@ useEffect(() => {
     lesson.exercises.filter((ex, i) => {
       if (ex.type === "mc") return ans[i] === ex.ans;
       if (ex.type === "tf") return ans[i] === ex.ans;
-      if (ex.type === "fill" || ex.type === "order")
+      if (ex.type === "fill" || ex.type === "order" || ex.type === "rewrite")
         return String(ans[i] || "").trim().toLowerCase() === String(ex.ans).toLowerCase();
       return false;
     }).length;
@@ -500,25 +501,50 @@ async function confirmSubmit() {
   const score = calcScore(activeLesson, answers)
   const total = activeLesson.exercises.length
   const pct   = Math.round((score / total) * 100)
+
   setShowConfirm(false)
   setSubmitted(true)
   setShowSuccess(true)
   setTimeout(() => setShowSuccess(false), 3500)
+
   if (score >= Math.ceil(total * 0.6)) {
     setCompleted(prev => ({ ...prev, [activeLesson.id]: { score, total } }))
   }
-  // Lưu vào Supabase
-  await supabase.from('TienDoNguPhap').upsert({
-    nguoi_dung_id:   userId,
-    bai_hoc_id:      activeLesson.id,
-    da_hoan_thanh:   pct >= 60,
-    diem_bai_tap:    pct,
-    ngay_hoan_thanh: new Date().toISOString(),
-  }, { onConflict: 'nguoi_dung_id,bai_hoc_id' })
 
-  router.refresh()
+  const { data: existing, error: selectError } = await supabase
+    .from('TienDoNguPhap')
+    .select('id')
+    .eq('nguoi_dung_id', userId)
+    .eq('bai_hoc_id', activeLesson.id)
+    .maybeSingle()
+
+  console.log('select result:', { existing, selectError })
+
+  if (existing?.id) {
+    const { error } = await supabase
+      .from('TienDoNguPhap')
+      .update({
+        da_hoan_thanh:   pct >= 60,
+        diem_bai_tap:    pct,
+        ngay_hoan_thanh: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+    console.log('update error:', error)
+  } else {
+    const { error } = await supabase
+      .from('TienDoNguPhap')
+      .insert({
+        nguoi_dung_id:   userId,
+        bai_hoc_id:      activeLesson.id,
+        da_hoan_thanh:   pct >= 60,
+        diem_bai_tap:    pct,
+        ngay_hoan_thanh: new Date().toISOString(),
+      })
+    console.log('insert error:', error)
+  }
+
+  setTimeout(() => router.refresh(), 1000)
 }
-
   function resetQuiz() { setAnswers({}); setSubmitted(false); setShowSuccess(false); }
 
   const navItems = CHAPTERS.map(ch => ({
@@ -1187,8 +1213,10 @@ async function confirmSubmit() {
                           fontWeight: 700,
                         }}>
                           {ex.type === "mc" ? "Trắc nghiệm"
-                            : ex.type === "tf" ? "Đúng / Sai"
-                            : ex.type === "fill" ? "Điền từ" : "Sắp xếp câu"}
+                          : ex.type === "tf" ? "Đúng / Sai"
+                          : ex.type === "fill" ? "Điền từ"
+                          : ex.type === "rewrite" ? "Viết lại câu"
+                          : "Sắp xếp câu"}
                         </span>
                       </div>
 
@@ -1272,7 +1300,7 @@ async function confirmSubmit() {
                             (dạng "Viết lại câu" như câu 11 trong ảnh)
                           - Input luôn hiển thị cho cả fill và order
                       ────────────────────────────────────────────────────────────── */}
-                      {(ex.type === "fill" || ex.type === "order") && (
+                      {(ex.type === "fill" || ex.type === "order" || ex.type === "rewrite") && (
                         <div>
                           {/* Word chips — chỉ hiện khi có words */}
                           {ex.type === "order" && ex.words && ex.words.length > 0 && (
