@@ -251,20 +251,63 @@ Trả về JSON THUẦN TÚY:
 
     // ── 7. AI phân tích sâu + lộ trình cá nhân hóa ───────────────────────
     //    Truyền đủ context thực tế để AI phân tích có chiều sâu
-    const weakSkills = [
-      listeningCorrect / listeningQs.length < 0.6 ? 'Listening' : null,
-      readingCorrect   / readingQs.length   < 0.6 ? 'Reading'   : null,
-      gvCorrect        / gvQs.length        < 0.6 ? 'Grammar'   : null,
-      writingScore.overall  < 5 ? 'Writing'  : null,
-      speakingScore.overall < 5 ? 'Speaking' : null,
-    ].filter(Boolean)
+    // ── 7. AI phân tích sâu + lộ trình cá nhân hóa ───────────────────────
+    const skillScores: Record<string, number> = {
+      Listening: listeningCorrect / listeningQs.length,
+      Reading:   readingCorrect   / readingQs.length,
+      Grammar:   gvCorrect        / gvQs.length,
+      Writing:   writingScore.overall  / 10,
+      Speaking:  speakingScore.overall / 10,
+    }
+
+    // Sắp xếp từ yếu → mạnh để AI biết ưu tiên đúng
+    const skillPriority = Object.entries(skillScores)
+      .sort(([, a], [, b]) => a - b)
+      .map(([s, v]) => `${s}(${Math.round(v * 100)}%)`)
+      .join(' < ')
+
+    const weakSkills = Object.entries(skillScores)
+      .filter(([, v]) => v < 0.6)
+      .sort(([, a], [, b]) => a - b)
+      .map(([s]) => s)
+
+    const strongSkills = Object.entries(skillScores)
+      .filter(([, v]) => v >= 0.6)
+      .map(([s]) => s)
 
     const vstepGap = LEVEL_ORDER.indexOf('B1') - LEVEL_ORDER.indexOf(overallLevel)
 
-    const analysisPrompt = `
-Bạn là chuyên gia giáo dục tiếng Anh của ĐH Thái Bình. Phân tích kết quả Level Test và xây dựng lộ trình học CÁ NHÂN HÓA chi tiết.
+    const weak0 = weakSkills[0] ?? strongSkills[0] ?? 'Grammar'
+    const weak1 = weakSkills[1] ?? weakSkills[0] ?? 'Củng cố toàn diện'
+    const weakTop2 = weakSkills.slice(0, 2).join(' & ') || 'Tất cả kỹ năng'
+    const weakNext = weakSkills.slice(1, 3).join(' & ') || weakSkills[0] || 'Củng cố toàn diện'
+    const timeEst = vstepGap > 0
+      ? `${vstepGap * 6}–${vstepGap * 8} tuần`
+      : '8–12 tuần để nâng lên trình độ cao hơn'
+    const levelNext = LEVEL_ORDER[Math.min(LEVEL_ORDER.indexOf(overallLevel) + 1, 5)]
 
-═══ KẾT QUẢ CHI TIẾT ═══
+    const analysisPrompt = `Bạn là chuyên gia giáo dục tiếng Anh của ĐH Thái Bình. Phân tích kết quả Level Test và tạo lộ trình học CÁ NHÂN HÓA dựa HOÀN TOÀN vào số liệu thực tế dưới đây.
+
+═══ NỀN TẢNG ENGLISHHUB (CHỈ recommend các module này, KHÔNG dùng app/web ngoài) ═══
+EnglishHub là web học tiếng Anh của ĐH Thái Bình gồm các module:
+- /listening  : Luyện nghe bài audio theo chủ đề, cấp độ A1–C1
+- /reading    : Bài đọc hiểu, câu hỏi trắc nghiệm theo cấp độ
+- /grammar    : Bài học ngữ pháp có giải thích + bài tập thực hành
+- /vocabulary : Flashcard, quiz từ vựng theo bộ chủ đề
+- /speaking   : Luyện nói với AI, ghi âm và chấm điểm tự động
+- /writing    : Nộp bài viết, AI chấm theo 4 tiêu chí VSTEP
+- /exam       : Thi thử VSTEP/TOEIC theo dạng đề thật có tính giờ
+- /ai-chat    : Hỏi đáp AI về ngữ pháp, từ vựng, luyện hội thoại
+
+VÍ DỤ hoat_dong TỐT (dùng tên module cụ thể + mô tả + thời lượng):
+✓ "Làm 2 bài nghe cấp độ ${overallLevel} trên /listening mỗi ngày, tập trung phần câu hỏi suy luận, 20 phút/ngày"
+✓ "Luyện 1 bài flashcard từ vựng chủ đề ${topic || exam.topic} trên /vocabulary, ôn lại 10 phút trước khi ngủ"
+✓ "Nộp 1 bài writing trên /writing mỗi tuần, đọc kỹ feedback AI rồi viết lại bài đã sửa"
+✓ "Hỏi /ai-chat giải thích từng câu grammar sai trong bài thi, tự tạo 3 câu ví dụ tương tự"
+✗ KHÔNG ĐƯỢC: "Dùng Duolingo", "Xem YouTube", "Học Quizlet", "Luyện nghe BBC/CNN"
+✗ KHÔNG ĐƯỢC: "Luyện nghe thêm", "Học từ vựng nhiều hơn" (quá chung chung, vô nghĩa)
+
+═══ KẾT QUẢ THI THỰC TẾ ═══
 
 LISTENING: ${listeningCorrect}/${listeningQs.length} câu đúng (${Math.round(listeningCorrect/listeningQs.length*100)}%) → ${listeningLevel}
 ${listeningWrong.length > 0 ? `Câu sai:\n${listeningWrong.map(w => `  • ${w}`).join('\n')}` : '✓ Đúng tất cả'}
@@ -276,97 +319,86 @@ GRAMMAR/VOCAB: ${gvCorrect}/${gvQs.length} câu đúng (${Math.round(gvCorrect/g
 ${grammarWrong.length > 0 ? `Câu sai:\n${grammarWrong.map(w => `  • ${w}`).join('\n')}` : '✓ Đúng tất cả'}
 
 WRITING: ${writingScore.overall}/10 → ${writingScore.level}
-Đề: "${exam.writing.prompt}"
-Bài (${writingWords} từ): "${writingTrimmed.slice(0, 250)}${writingTrimmed.length > 250 ? '...' : ''}"
-Feedback: ${writingScore.feedback}
+Đề bài: "${exam.writing.prompt}"
+Bài viết (${writingWords} từ): "${writingTrimmed.slice(0, 600)}${writingTrimmed.length > 600 ? '...' : ''}"
+Feedback AI: ${writingScore.feedback}
 
 SPEAKING: ${speakingScore.overall}/10 → ${speakingScore.level}
 Câu hỏi: "${exam.speaking.prompt}"
-Transcript (${speakingWords} từ): "${speakingTrimmed.slice(0, 180)}${speakingTrimmed.length > 180 ? '...' : ''}"
-Feedback: ${speakingScore.feedback}
+Transcript (${speakingWords} từ): "${speakingTrimmed.slice(0, 300)}${speakingTrimmed.length > 300 ? '...' : ''}"
+Feedback AI: ${speakingScore.feedback}
 
-═══ BỐI CẢNH ═══
+═══ PHÂN TÍCH ═══
 Trình độ tổng thể: ${overallLevel}
-Kỹ năng yếu (< 60%): ${weakSkills.length > 0 ? weakSkills.join(', ') : 'Không có'}
-Khoảng cách VSTEP B1: ${vstepGap > 0 ? `còn ${vstepGap} bậc` : vstepGap === 0 ? 'Đã đạt B1' : `Vượt B1 ${Math.abs(vstepGap)} bậc`}
+THỨ TỰ ƯU TIÊN (yếu → mạnh): ${skillPriority}
+Kỹ năng CẦN CẢI THIỆN NGAY: ${weakSkills.length > 0 ? weakSkills.join(', ') : 'Không có — duy trì và nâng cao'}
+Kỹ năng đã ổn: ${strongSkills.length > 0 ? strongSkills.join(', ') : 'Chưa có'}
+Khoảng cách VSTEP B1: ${vstepGap > 0 ? `còn ${vstepGap} bậc CEFR` : vstepGap === 0 ? 'Đã đạt B1' : `Vượt B1 ${Math.abs(vstepGap)} bậc`}
 
-═══ YÊU CẦU ═══
-Trả về JSON THUẦN TÚY. Tất cả nội dung bằng tiếng Việt.
-
-QUAN TRỌNG về lo_trinh.phases:
-- Mỗi phase có ĐÚNG 4-5 hoat_dong CỤ THỂ (tên app/website, loại bài, tần suất/tuần)
-- Ví dụ hoat_dong tốt: "Luyện TOEIC Listening Part 1-2 trên app TOEIC Preparation, 30 phút/ngày, 5 ngày/tuần"
-- Ví dụ hoat_dong tốt: "Học 10 từ vựng chủ đề ${topic || exam.topic} qua Quizlet, ôn lại theo spaced repetition"
-- Ví dụ hoat_dong XẤU (không được dùng): "Luyện nghe thêm" / "Học từ vựng nhiều hơn"
-- muc_tieu phải đo lường được: "Đạt 70% câu đúng trong Listening mock test" không phải "Cải thiện Listening"
-- ky_nang_chinh: tên kỹ năng ngắn gọn (vd: "Listening & Vocab" hoặc "Writing & Speaking")
-- tieu_de: tiêu đề ngắn gọn, có động từ hành động (vd: "Xây nền tảng ${weakSkills[0] ?? 'Grammar'}")
-- Thời gian ${vstepGap > 0 ? `ưu tiên kỹ năng yếu: ${weakSkills.join(', ')}` : 'duy trì và nâng lên C1'}
-
+Trả về JSON THUẦN TÚY (không markdown, không backtick, không text ngoài JSON). Tất cả nội dung bằng tiếng Việt:
 {
   "trinh_do": "${overallLevel}",
-  "nhan_xet": "3-4 câu nhận xét thực tế, dẫn số liệu cụ thể, bằng tiếng Việt",
+  "nhan_xet": "Nhận xét 3-4 câu PHẢI dẫn số liệu cụ thể (ví dụ: Listening đúng ${listeningCorrect}/${listeningQs.length}, Writing đạt ${writingScore.overall}/10...). Nêu đặc điểm nổi bật và vấn đề chính.",
   "diem_manh": [
-    "Điểm mạnh 1 — kèm số liệu bằng chứng",
-    "Điểm mạnh 2 — kèm số liệu bằng chứng"
+    "Kỹ năng mạnh nhất — kèm con số bằng chứng từ kết quả thi",
+    "Điểm mạnh thứ 2 — kèm con số bằng chứng"
   ],
   "diem_yeu": [
-    "Điểm yếu 1 — nguyên nhân cụ thể từ kết quả",
-    "Điểm yếu 2 — nguyên nhân cụ thể từ kết quả"
+    "Kỹ năng yếu nhất (${weak0}) — nêu nguyên nhân cụ thể dựa trên câu sai hoặc feedback",
+    "Kỹ năng yếu thứ 2 — nêu nguyên nhân cụ thể"
   ],
   "lo_trinh": {
-    "muc_tieu": "Mục tiêu cụ thể phù hợp trình độ hiện tại",
-    "thoi_gian": "X tuần/tháng — ước tính thực tế theo gap",
+    "muc_tieu": "Đạt ${levelNext} sau ${timeEst}, tập trung cải thiện ${weak0} và ${weak1}",
+    "thoi_gian": "${timeEst}",
     "phases": [
       {
-        "tieu_de": "Tiêu đề phase 1 có động từ hành động",
-        "ky_nang_chinh": "Kỹ năng 1 & Kỹ năng 2",
+        "tieu_de": "Chinh phục ${weak0} — xây nền vững chắc",
+        "ky_nang_chinh": "${weakTop2}",
         "hoat_dong": [
-          "Hoạt động cụ thể 1: tên tài liệu/app + thời lượng + tần suất",
-          "Hoạt động cụ thể 2: dạng bài cụ thể + mục đích",
-          "Hoạt động cụ thể 3: phương pháp học + ví dụ",
-          "Hoạt động cụ thể 4: cách ôn luyện + kiểm tra tiến độ"
+          "Hoạt động 1: module EnglishHub cụ thể + mô tả chi tiết + thời lượng/tần suất",
+          "Hoạt động 2: module EnglishHub cụ thể + mô tả chi tiết + thời lượng/tần suất",
+          "Hoạt động 3: module EnglishHub cụ thể + mô tả chi tiết + thời lượng/tần suất",
+          "Hoạt động 4: module EnglishHub cụ thể + mô tả chi tiết + thời lượng/tần suất"
         ],
-        "muc_tieu": "Mục tiêu đo lường được cuối phase 1"
+        "muc_tieu": "Mục tiêu đo lường được sau phase 1 — phải có con số % hoặc điểm cụ thể"
       },
       {
-        "tieu_de": "Tiêu đề phase 2",
-        "ky_nang_chinh": "Kỹ năng 3 & Kỹ năng 4",
+        "tieu_de": "Nâng vững ${weak1} — phát triển song song",
+        "ky_nang_chinh": "${weakNext}",
         "hoat_dong": [
-          "Hoạt động 1 phase 2",
-          "Hoạt động 2 phase 2",
-          "Hoạt động 3 phase 2",
-          "Hoạt động 4 phase 2"
+          "Hoạt động 1 phase 2: module cụ thể + nội dung + thời lượng",
+          "Hoạt động 2 phase 2: module cụ thể + nội dung + thời lượng",
+          "Hoạt động 3 phase 2: module cụ thể + nội dung + thời lượng",
+          "Hoạt động 4 phase 2: module cụ thể + nội dung + thời lượng"
         ],
-        "muc_tieu": "Mục tiêu đo lường được cuối phase 2"
+        "muc_tieu": "Mục tiêu đo lường được sau phase 2 — có con số cụ thể"
       },
       {
-        "tieu_de": "Tiêu đề phase 3",
-        "ky_nang_chinh": "Tổng hợp 5 kỹ năng",
+        "tieu_de": "Tích hợp toàn diện — luyện tập tổng hợp",
+        "ky_nang_chinh": "Tích hợp 5 kỹ năng",
         "hoat_dong": [
-          "Hoạt động 1 phase 3",
-          "Hoạt động 2 phase 3",
-          "Hoạt động 3 phase 3",
-          "Hoạt động 4 phase 3"
+          "Hoạt động 1 phase 3: kết hợp nhiều module, mô tả cụ thể",
+          "Hoạt động 2 phase 3: kết hợp nhiều module, mô tả cụ thể",
+          "Hoạt động 3 phase 3: kết hợp nhiều module, mô tả cụ thể",
+          "Hoạt động 4 phase 3: kết hợp nhiều module, mô tả cụ thể"
         ],
-        "muc_tieu": "Mục tiêu đo lường được cuối phase 3"
+        "muc_tieu": "Mục tiêu đo lường được sau phase 3"
       },
       {
-        "tieu_de": "Tiêu đề phase 4 — Ôn tập & Thi thử",
+        "tieu_de": "Thi thử & Hoàn thiện — sẵn sàng VSTEP",
         "ky_nang_chinh": "Mock Test & Review",
         "hoat_dong": [
-          "Hoạt động 1 phase 4",
-          "Hoạt động 2 phase 4",
-          "Hoạt động 3 phase 4",
-          "Hoạt động 4 phase 4"
+          "Làm đề thi thử VSTEP B1 trên /exam mỗi tuần, đặt đồng hồ đúng thời gian thật",
+          "Sau mỗi mock test: phân tích câu sai trên /ai-chat, hiểu nguyên nhân từng lỗi",
+          "Hoạt động 3 phase 4: ôn lại điểm yếu còn lại với module phù hợp",
+          "Hoạt động 4 phase 4: kiểm tra tiến độ tổng thể, điều chỉnh nếu cần"
         ],
-        "muc_tieu": "Sẵn sàng thi VSTEP B1 thực tế"
+        "muc_tieu": "Đạt ≥ 70% tổng điểm trong 2 mock test liên tiếp trên /exam — sẵn sàng thi thật"
       }
     ]
   }
-}
-`
-    const aiRaw = await callGemini(analysisPrompt, SYSTEM_PROMPTS.levelTest)
+}`
+    const aiRaw = await callGemini(analysisPrompt, SYSTEM_PROMPTS.levelTest, undefined, 3000)
     const aiCleaned = aiRaw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     let aiResult
     try {

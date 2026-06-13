@@ -210,24 +210,15 @@ Luôn thân thiện, khuyến khích, giải thích bằng tiếng Việt khi c�
 Có thể luyện hội thoại, giải thích ngữ pháp, từ vựng, và chấm writing.`,
 
   // FIX: Thêm chỉ dẫn ngôn ngữ rõ ràng
-  levelTest: `Phân tích kết quả Level Test và tạo lộ trình học cá nhân.
-Viết toàn bộ nội dung (nhan_xet, diem_manh, diem_yeu, lo_trinh) bằng tiếng Việt.
-Trả về JSON THUẦN TÚY — không markdown, không backtick, không giải thích ngoài JSON.
-Format bắt buộc:
-{
-  "trinh_do": "B1",
-  "nhan_xet": "Nhận xét tổng thể 2-3 câu bằng tiếng Việt",
-  "diem_manh": ["Điểm mạnh 1 bằng tiếng Việt", "Điểm mạnh 2"],
-  "diem_yeu": ["Điểm yếu 1 bằng tiếng Việt", "Điểm yếu 2"],
-  "lo_trinh": {
-    "muc_tieu": "VSTEP B1",
-    "thoi_gian": "3 tháng",
-    "tuan_1_2": "Nội dung tuần 1-2 bằng tiếng Việt",
-    "tuan_3_4": "Nội dung tuần 3-4 bằng tiếng Việt",
-    "tuan_5_8": "Nội dung tuần 5-8 bằng tiếng Việt",
-    "tuan_9_12": "Nội dung tuần 9-12 bằng tiếng Việt"
-  }
-}`,
+  levelTest: `Bạn là chuyên gia giáo dục tiếng Anh. Nhiệm vụ: phân tích kết quả thi và tạo lộ trình học CÁ NHÂN HÓA.
+TUYỆT ĐỐI tuân thủ:
+1. Trả về JSON THUẦN TÚY — không markdown, không backtick, không text ngoài JSON.
+2. Tất cả nội dung bằng tiếng Việt.
+3. hoat_dong PHẢI dùng module EnglishHub (/listening, /reading, /grammar, /vocabulary, /speaking, /writing, /exam, /ai-chat) — KHÔNG recommend app/web ngoài.
+4. hoat_dong phải cụ thể: tên module + nội dung + thời lượng + tần suất.
+5. muc_tieu của mỗi phase phải có con số đo lường được (%, điểm).
+6. phases[0] BẮT BUỘC tập trung vào kỹ năng YẾU NHẤT trong kết quả thi.
+7. KHÔNG điền placeholder như "Hoạt động 1 phase 2" — phải là nội dung thật.`,
 
   generate: `Bạn là chuyên gia thiết kế đề thi tiếng Anh theo chuẩn VSTEP, TOEIC và APTIS.
 Nhiệm vụ: Tạo đề thi hoàn chỉnh gồm 5 phần theo đúng format JSON được yêu cầu.
