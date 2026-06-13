@@ -22,7 +22,6 @@ interface BuiltQ {
   correctIndex: number
 }
 
-// ── Design tokens ────────────────────────────────────────────────────────────
 const C = {
   bg:       '#F8F5EE',
   white:    '#FFFFFF',
@@ -52,7 +51,6 @@ const GLOBAL_CSS = `
   .back-btn:hover { opacity: .7; transform: translateX(-2px); }
 `
 
-// ✅ [SỬA 1] Thêm hàm shuffle Fisher-Yates — thay thế .sort(() => Math.random() - 0.5) bị bias
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
@@ -62,23 +60,31 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-// ✅ [SỬA 2] buildQuestions dùng shuffle() thay .sort(() => Math.random() - 0.5)
 function buildQuestions(words: VocabWord[]): BuiltQ[] {
   const allMeanings = words.map(w => w.TuVungCache?.nghia_tieng_viet).filter(Boolean) as string[]
+
   return shuffle(words.flatMap(word => {
     const cache = word.TuVungCache
+
     if (cache?.cau_hoi_quiz?.length) {
-      return cache.cau_hoi_quiz.map(q => ({
-        wordId: word.id, cau_hoi: q.cau_hoi, dap_an: q.dap_an, correctIndex: q.dung,
-      }))
+      return cache.cau_hoi_quiz.map(q => {
+        const shuffled = shuffle(q.dap_an)
+        const correctAnswer = q.dap_an[q.dung]
+        return {
+          wordId: word.id,
+          cau_hoi: q.cau_hoi,
+          dap_an: shuffled,
+          correctIndex: shuffled.indexOf(correctAnswer),
+        }
+      })
     }
+
     const correct = cache?.nghia_tieng_viet
     if (!correct) return []
     const wrongs = shuffle(allMeanings.filter(m => m !== correct)).slice(0, 3)
-    if (wrongs.length < 1) return []
+    if (wrongs.length < 3) return []
     const dap_an = shuffle([...wrongs, correct])
-    const correctIndex = dap_an.indexOf(correct)
-    return [{ wordId: word.id, cau_hoi: `"${word.tu_tieng_anh}" có nghĩa là gì?`, dap_an, correctIndex }] 
+    return [{ wordId: word.id, cau_hoi: `"${word.tu_tieng_anh}" có nghĩa là gì?`, dap_an, correctIndex: dap_an.indexOf(correct) }]
   }))
 }
 
@@ -91,7 +97,6 @@ export default function FlashcardMode({ words, setTitle, userId, isReviewMode, o
   const [done, setDone]           = useState(false)
   const supabase = createClient()
 
-  // ✅ [SỬA 3] Bỏ .sort() ngoài — buildQuestions đã shuffle rồi
   useEffect(() => {
     setQuestions(buildQuestions(words))
   }, [words])
@@ -121,7 +126,6 @@ export default function FlashcardMode({ words, setTitle, userId, isReviewMode, o
       total={questions.length} correct={correct}
       setTitle={setTitle} mode="quiz"
       onBack={onBack}
-      // ✅ [SỬA 4] Bỏ .sort() ngoài — buildQuestions đã shuffle rồi
       onRetry={() => {
         setQuestions(buildQuestions(words))
         setIndex(0); setSelected(null); setConfirmed(false); setCorrect(0); setDone(false)
@@ -136,7 +140,6 @@ export default function FlashcardMode({ words, setTitle, userId, isReviewMode, o
     </div>
   )
 
-  // ── Choice styles ─────────────────────────────────────────────────────────
   function choiceStyle(idx: number): React.CSSProperties {
     if (confirmed) {
       if (idx === q.correctIndex) return {
@@ -170,34 +173,28 @@ export default function FlashcardMode({ words, setTitle, userId, isReviewMode, o
     <div style={{ maxWidth: 600, margin: '0 auto', paddingTop: 32, paddingBottom: 80, fontFamily: "'DM Sans', sans-serif" }}>
       <style suppressHydrationWarning>{GLOBAL_CSS}</style>
 
-      {/* ── Progress header ─────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
-        {/* Arrow only — no text */}
-        <button className="back-btn" onClick={onBackToModes} 
+        <button className="back-btn" onClick={onBackToModes}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 10, background: C.white, border: `1.5px solid ${C.border}`, cursor: 'pointer', flexShrink: 0 }}>
           <ArrowLeft size={16} strokeWidth={2} color={C.gold} />
         </button>
 
-        {/* Progress bar only — no labels */}
         <div style={{ flex: 1, position: 'relative' }}>
           <div style={{ height: 6, background: `${C.navy}0D`, borderRadius: 3, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${progress}%`, background: C.gold, borderRadius: 3, transition: 'width .5s cubic-bezier(.16,1,.3,1)' }} />
           </div>
         </div>
 
-        {/* Counter */}
         <span style={{ fontSize: 13, fontWeight: 700, color: C.navy, flexShrink: 0, fontFamily: "'Playfair Display', serif" }}>
           {index + 1} <span style={{ color: C.textLt, fontWeight: 400, fontFamily: "'DM Sans', sans-serif", fontSize: 12 }}>/ {questions.length}</span>
         </span>
 
-        {/* Correct count */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: '#E1F5EE', borderRadius: 50, border: '1px solid rgba(0,168,120,.25)', flexShrink: 0 }}>
           <CheckCircle2 size={13} color="#0F6E56" strokeWidth={2.5} />
           <span style={{ fontSize: 13, fontWeight: 700, color: '#0F6E56' }}>{correct}</span>
         </div>
       </div>
 
-      {/* ── Question card ───────────────────────────────────────────────── */}
       <div className="fade-in" style={{
         background: C.white, borderRadius: 24,
         border: `1.5px solid ${C.border}`,
@@ -205,16 +202,13 @@ export default function FlashcardMode({ words, setTitle, userId, isReviewMode, o
         padding: '32px 36px', marginBottom: 20,
         position: 'relative', overflow: 'hidden',
       }}>
-        {/* Gold top bar — thay cho "CÂU X" label */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: C.gold, borderRadius: '24px 24px 0 0' }} />
 
-        {/* Set title + number nhỏ xíu */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 4 }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.08em' }}>{setTitle}</span>
           <span style={{ fontSize: 11, color: C.textLt }}>Câu {index + 1}</span>
         </div>
 
-        {/* Question text — Playfair, centered, bold */}
         <p style={{
           fontFamily: "'Playfair Display', serif",
           fontSize: 'clamp(20px,3.5vw,26px)',
@@ -228,7 +222,6 @@ export default function FlashcardMode({ words, setTitle, userId, isReviewMode, o
         </p>
       </div>
 
-      {/* ── Choices ─────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
         {q.dap_an.map((ans, idx) => (
           <button
@@ -247,7 +240,6 @@ export default function FlashcardMode({ words, setTitle, userId, isReviewMode, o
               ...choiceStyle(idx),
             }}
           >
-            {/* Letter badge */}
             <span style={{
               width: 30, height: 30, borderRadius: 8,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -260,14 +252,12 @@ export default function FlashcardMode({ words, setTitle, userId, isReviewMode, o
 
             <span style={{ flex: 1, fontSize: 15, fontWeight: 500, lineHeight: 1.5 }}>{ans}</span>
 
-            {/* Result icon */}
             {confirmed && idx === q.correctIndex && <CheckCircle2 size={18} color="#0F6E56" strokeWidth={2} style={{ flexShrink: 0 }} />}
             {confirmed && idx === selected && idx !== q.correctIndex && <XCircle size={18} color="#F06464" strokeWidth={2} style={{ flexShrink: 0 }} />}
           </button>
         ))}
       </div>
 
-      {/* ── Feedback banner ──────────────────────────────────────────────── */}
       {confirmed && (
         <div className="slide-in" style={{
           borderRadius: 16, padding: '14px 18px', marginBottom: 16,
@@ -292,7 +282,6 @@ export default function FlashcardMode({ words, setTitle, userId, isReviewMode, o
         </div>
       )}
 
-      {/* ── Action button ─────────────────────────────────────────────────── */}
       {!confirmed
         ? (
           <button className="action-btn" onClick={confirm} disabled={selected === null}
