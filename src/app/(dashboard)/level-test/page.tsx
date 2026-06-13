@@ -151,6 +151,26 @@ const GLOBAL_CSS = `
   .mcq-opt { transition: all .22s cubic-bezier(.16,1,.3,1); }
   .mcq-opt:hover { transform: translateY(-2px); }
   .skill-tab { transition: all .25s cubic-bezier(.16,1,.3,1); }
+
+  /* ── Responsive grids ── */
+  .mcq-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 640px) {
+    .mcq-grid { grid-template-columns: 1fr; }
+    .speaking-criteria-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .writing-criteria-grid { grid-template-columns: 1fr !important; }
+    .result-grid { grid-template-columns: 1fr !important; }
+    .topbar-score { display: none !important; }
+  }
+
+  /* ── Reading passage scroll ── */
+  .passage-box {
+    max-height: 420px;
+    overflow-y: auto;
+  }
 `
 
 // ─── Shared atoms ─────────────────────────────────────────────────────────────
@@ -180,7 +200,7 @@ function SectionHeader({ icon: Icon, title, sub, color }: {
       </div>
       <div>
         <div style={{ fontSize: 17, fontWeight: 700, color: C.navy, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.3 }}>{title}</div>
-        {sub && <div style={{ fontSize: 13, color: C.textMid, marginTop: 3 }}>{sub}</div>}
+        {sub && <div style={{ fontSize: 14, color: C.textMid, fontWeight: 500, marginTop: 4 }}>{sub}</div>}
       </div>
     </div>
   )
@@ -201,6 +221,7 @@ function ScoreRing({ score, max }: { score: number; max: number }) {
   const r = 44, cx = 52, cy = 52, circ = 2 * Math.PI * r
   const pct = score / max
   const barColor = pct >= 0.8 ? C.green : pct >= 0.6 ? C.gold : pct >= 0.4 ? C.blue : C.rose
+  const scoreFontSize = score >= 100 ? 20 : 24
   return (
     <svg width={108} height={108} viewBox="0 0 104 104">
       <circle cx={cx} cy={cy} r={r} fill="none" stroke={`${C.navy}10`} strokeWidth={8} />
@@ -208,7 +229,7 @@ function ScoreRing({ score, max }: { score: number; max: number }) {
         strokeDasharray={`${circ * pct} ${circ * (1 - pct)}`}
         strokeDashoffset={circ * 0.25} strokeLinecap="round"
         style={{ transition: 'stroke-dasharray 1s ease' }} />
-      <text x={cx} y={cy - 7} textAnchor="middle" fill={barColor} fontSize={24} fontWeight={800}
+      <text x={cx} y={cy - 7} textAnchor="middle" fill={barColor} fontSize={scoreFontSize} fontWeight={800}
         fontFamily="'Playfair Display', serif">{score}</text>
       <text x={cx} y={cy + 14} textAnchor="middle" fill={C.textLt} fontSize={13}
         fontFamily="'DM Sans', sans-serif">/{max}</text>
@@ -247,7 +268,8 @@ function SectionTimer({ seconds, onExpire, color }: { seconds: number; onExpire:
           style={{ transition: 'stroke-dasharray 1s linear' }} />
       </svg>
       <span style={{
-        fontFamily: 'monospace', fontSize: 14, fontWeight: 700,
+        fontFamily: "'DM Sans', sans-serif", fontVariantNumeric: 'tabular-nums',
+        fontSize: 14, fontWeight: 700,
         color: isLow ? C.rose : C.navy, letterSpacing: '0.05em',
       }}>
         {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
@@ -261,13 +283,13 @@ function MCQCard({ question, index, selected, onSelect, color }: {
 }) {
   return (
     <Panel style={{ padding: '22px 26px' }}>
-      <p style={{ fontSize: 15, fontWeight: 600, color: C.navy, marginBottom: 16, lineHeight: 1.65, fontFamily: "'DM Sans', sans-serif" }}>
-        <span style={{ fontWeight: 900, color: C.textLt, marginRight: 8, fontFamily: 'monospace' }}>
+      <p style={{ fontSize: 16, fontWeight: 600, color: C.navy, marginBottom: 16, lineHeight: 1.65, fontFamily: "'DM Sans', sans-serif" }}>
+        <span style={{ fontWeight: 900, color: C.textLt, marginRight: 8, fontFamily: "'DM Sans', sans-serif" }}>
           {String(index + 1).padStart(2, '0')}.
         </span>
         {question.question}
       </p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div className="mcq-grid">
         {question.options.map(opt => {
           const letter = opt.charAt(0)
           const isSel = selected === letter
@@ -327,29 +349,34 @@ function RoadmapCard({ phase, index }: {
       >
         {/* Phase number box — giống score box của CriterionCard */}
         <div style={{
-          flexShrink: 0, width: 54, height: 54, borderRadius: 14,
-          background: `${color}12`, border: `1px solid ${color}28`,
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color, letterSpacing: '.04em', textTransform: 'uppercase' }}>{label}</span>
-          <span style={{ fontSize: 10, color: C.textLt, marginTop: 2 }}>{week}</span>
-        </div>
+  flexShrink: 0, width: 80, height: 64, borderRadius: 14,
+  background: `${color}12`, border: `1px solid ${color}28`,
+  display: 'flex', flexDirection: 'column',
+  alignItems: 'center', justifyContent: 'center',
+  padding: '0 10px',
+}}>
+  <span style={{ fontSize: 11, fontWeight: 800, color, letterSpacing: '.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{label}</span>
+  <span style={{ fontSize: 12, color: C.textMid, marginTop: 3, fontWeight: 500, whiteSpace: 'nowrap' }}>{week}</span>
+</div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Skill badge + title */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: ky_nang ? 6 : 0 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: C.navy, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: ky_nang ? 6 : 0 }}>
+            <span style={{
+              fontSize: 15, fontWeight: 700, color: C.navy,
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+              overflow: 'hidden', lineHeight: 1.35,
+            }}>
               {title}
             </span>
             {ky_nang && (
-              <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 8, background: `${color}12`, color, border: `1px solid ${color}22` }}>
+              <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 8, background: `${color}12`, color, border: `1px solid ${color}22`, whiteSpace: 'nowrap' }}>
                 {ky_nang}
               </span>
             )}
           </div>
           {/* Progress bar — decorative, 100% per phase */}
-          <div style={{ height: 4, background: `${C.navy}08`, borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ height: 4, background: `${C.navy}08`, borderRadius: 2, overflow: 'hidden', marginTop: 8 }}>
             <div style={{ height: '100%', width: `${(index + 1) * 25}%`, background: color, borderRadius: 2, transition: 'width .6s cubic-bezier(.16,1,.3,1)' }} />
           </div>
         </div>
@@ -365,11 +392,11 @@ function RoadmapCard({ phase, index }: {
           {/* Activities list */}
           {hoat_dong.length > 0 && (
             <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: C.textMid, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>
                 Hoạt động cụ thể
               </div>
               {hoat_dong.map((act, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 8, fontSize: 14, color: C.textMid, lineHeight: 1.65 }}>
+                <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, fontSize: 15, color: C.text, lineHeight: 1.7 }}>
                   <div style={{ width: 20, height: 20, borderRadius: '50%', background: `${color}15`, border: `1px solid ${color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color, flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
                   {act}
                 </div>
@@ -381,7 +408,7 @@ function RoadmapCard({ phase, index }: {
           {muc_tieu && (
             <div style={{ marginTop: 14, padding: '12px 16px', background: `${color}08`, borderLeft: `3px solid ${color}`, borderRadius: '0 12px 12px 0' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 4 }}>🎯 Mục tiêu cuối phase</div>
-              <div style={{ fontSize: 14, color: C.textMid, lineHeight: 1.65 }}>{muc_tieu}</div>
+              <div style={{ fontSize: 15, color: C.text, lineHeight: 1.7, fontWeight: 500 }}>{muc_tieu}</div>
             </div>
           )}
         </div>
@@ -501,6 +528,7 @@ export default function LevelTestPage() {
       case 'reading':   return exam.reading.questions.every(q => mcqAnswers[q.id])
       case 'writing':   return wordCount >= (exam.writing?.min_words ?? 80)
       case 'grammar':   return exam.grammar_vocab.questions.every(q => mcqAnswers[q.id])
+      default:          return false
     }
   }
 
@@ -578,9 +606,9 @@ export default function LevelTestPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <span style={{ fontSize: 15, fontWeight: 700, color: C.navy }}>{SKILL_LABEL[s]}</span>
-                  <span style={{ fontSize: 13, color: C.textLt, marginLeft: 8 }}>{qCount} {qCount === 1 ? 'task' : 'questions'}</span>
+                 <span style={{ fontSize: 14, color: C.textMid, marginLeft: 8, fontWeight: 500 }}>{qCount} {qCount === 1 ? 'task' : 'questions'}</span>
                 </div>
-                <span style={{ fontSize: 13, color: C.textLt }}>{mins} min</span>
+               <span style={{ fontSize: 14, color: C.textMid, fontWeight: 500 }}>{mins} min</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color, fontFamily: "'Playfair Display', serif" }}>25 pts</span>
               </div>
             )
@@ -601,7 +629,7 @@ export default function LevelTestPage() {
             return (
               <div key={l} style={{ padding: '12px 8px', borderRadius: 14, border: `1px solid ${color}25`, background: `${color}08`, textAlign: 'center' }}>
                 <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 900, color }}>{l}</div>
-                <div style={{ fontSize: 11, color: C.textLt, marginTop: 4, lineHeight: 1.3 }}>{CEFR_TITLE[l]}</div>
+               <div style={{ fontSize: 12, color: C.textMid, marginTop: 4, lineHeight: 1.3, fontWeight: 500 }}>{CEFR_TITLE[l]}</div>
               </div>
             )
           })}
@@ -648,7 +676,7 @@ export default function LevelTestPage() {
       >
         <Send size={17} strokeWidth={2.2} /> Begin Test
       </button>
-      <p style={{ textAlign: 'center', fontSize: 12, color: C.textLt, marginTop: 12 }}>
+      <p style={{ textAlign: 'center', fontSize: 13, color: C.textMid, marginTop: 12, fontWeight: 500 }}>
         By starting, you agree to complete the test honestly without external assistance.
       </p>
     </div>
@@ -717,7 +745,7 @@ export default function LevelTestPage() {
               </div>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: C.navy }}>{SKILL_LABEL[currentSkill]}</div>
-                <div style={{ fontSize: 12, color: C.textLt }}>{SKILL_PART[currentSkill]} · {exam.topic}</div>
+                <div style={{ fontSize: 13, color: '#4A5568', fontWeight: 600 }}>{SKILL_PART[currentSkill]} · {exam.topic}</div>
               </div>
             </div>
 
@@ -733,7 +761,7 @@ export default function LevelTestPage() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ textAlign: 'right' }}>
+              <div className="topbar-score" style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 11, color: C.textLt }}>Section Score</div>
                 <div style={{ fontSize: 14, fontWeight: 800, color, fontFamily: "'Playfair Display', serif" }}>25 pts</div>
               </div>
@@ -747,7 +775,7 @@ export default function LevelTestPage() {
               <div style={{ flex: 1, height: 4, background: `${C.navy}08`, borderRadius: 2, overflow: 'hidden' }}>
                 <div style={{ height: '100%', borderRadius: 2, background: color, width: `${(answeredCount / totalQs) * 100}%`, transition: 'width .4s' }} />
               </div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: C.textLt, fontFamily: 'monospace' }}>{answeredCount}/{totalQs}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.textLt, fontVariantNumeric: 'tabular-nums' }}>{answeredCount}/{totalQs}</span>
             </div>
           )}
         </div>
@@ -785,7 +813,7 @@ export default function LevelTestPage() {
           {currentSkill === 'listening' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <Panel>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
                   <SectionHeader icon={Headphones} title="Audio Passage" color={color} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {[1, 2].map(n => (
@@ -808,7 +836,7 @@ export default function LevelTestPage() {
                   ))}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <button
                     onClick={isPlaying ? stopScript : playScript}
                     disabled={playCount >= 2}
@@ -823,7 +851,7 @@ export default function LevelTestPage() {
                     }}>
                     {isPlaying ? <><Square size={14} strokeWidth={2.5} /> Stop</> : <><Play size={14} strokeWidth={2.5} fill="currentColor" /> {playCount === 0 ? 'Play Audio' : 'Play Again (final)'}</>}
                   </button>
-                  {playCount >= 2 && <span style={{ fontSize: 13, color: C.textLt, fontStyle: 'italic' }}>Maximum plays reached</span>}
+                  {playCount >= 2 && <span style={{ fontSize: 14, color: C.textMid, fontWeight: 500 }}>Maximum plays reached</span>}
                 </div>
               </Panel>
 
@@ -831,7 +859,7 @@ export default function LevelTestPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ flex: 1, height: 1, background: C.border }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.textMid, textTransform: 'uppercase', letterSpacing: '.06em', textAlign: 'center' }}>
                       Comprehension Questions · {exam.listening.questions.length} items · 25 pts
                     </span>
                     <div style={{ flex: 1, height: 1, background: C.border }} />
@@ -844,8 +872,8 @@ export default function LevelTestPage() {
               ) : (
                 <div style={{ textAlign: 'center', padding: '60px 0', color: C.textLt }}>
                   <div style={{ fontSize: 52, marginBottom: 12 }}>🔊</div>
-                  <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Play the audio to reveal the questions.</p>
-                  <p style={{ fontSize: 13, marginTop: 6 }}>Questions will appear after the recording ends.</p>
+                  <p style={{ fontSize: 16, fontWeight: 600, color: C.navy, margin: 0 }}>Play the audio to reveal the questions.</p>
+                  <p style={{ fontSize: 14, color: C.textMid, fontWeight: 500, marginTop: 6 }}>Questions will appear after the recording ends.</p>
                 </div>
               )}
             </div>
@@ -859,11 +887,11 @@ export default function LevelTestPage() {
                 <div style={{ padding: '18px 20px', background: `${color}07`, border: `1px solid ${color}20`, borderRadius: 14, fontSize: 15, fontWeight: 600, color: C.navy, lineHeight: 1.7, marginBottom: 18 }}>
                   {exam.speaking.prompt}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+                <div className="speaking-criteria-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
                   {['Fluency & Coherence', 'Lexical Resource', 'Grammatical Range', 'Task Response'].map(c => (
                     <div key={c} style={{ padding: '10px 12px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, textAlign: 'center' }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, lineHeight: 1.3 }}>{c}</div>
-                      <div style={{ fontSize: 11, color: C.textLt, marginTop: 4 }}>25%</div>
+                      <div style={{ fontSize: 13, color: C.textMid, fontWeight: 500, marginTop: 4 }}>25%</div>
                     </div>
                   ))}
                 </div>
@@ -872,10 +900,10 @@ export default function LevelTestPage() {
               {/* Prep */}
               {!prepDone && !isRecording && !recordingDone && (
                 <Panel style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>Preparation Time</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.textMid, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>Preparation Time</div>
                   <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 64, fontWeight: 900, color: prepTime <= 5 ? C.rose : color, marginBottom: 8, lineHeight: 1 }}>{prepTime}s</div>
-                  <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24 }}>Use this time to organise your thoughts and key points.</p>
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                  <p style={{ fontSize: 15, color: C.text, fontWeight: 500, marginBottom: 24 }}>Use this time to organise your thoughts and key points.</p>
+                  <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
                     <button onClick={skipPrep} style={{ padding: '11px 26px', background: color, color: '#fff', border: 'none', borderRadius: 50, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", boxShadow: `0 6px 18px ${color}40` }}>
                       Skip — Record Now
                     </button>
@@ -891,14 +919,14 @@ export default function LevelTestPage() {
               {/* Recording */}
               {(prepDone || isRecording || recordingDone) && (
                 <Panel>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 8 }}>
                     <SectionHeader icon={Mic} title="Your Response" color={color} />
                     {isRecording && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: '#FEF2F2', border: '1px solid rgba(240,100,100,.3)', borderRadius: 50 }}>
                         <div style={{ width: 8, height: 8, background: C.rose, borderRadius: '50%', animation: 'pulse 1s infinite' }} />
-                        <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: C.rose }}>
+                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontVariantNumeric: 'tabular-nums', fontSize: 14, fontWeight: 700, color: C.rose }}>
                           {String(Math.floor(recordingTime / 60)).padStart(2, '0')}:{String(recordingTime % 60).padStart(2, '0')}
-                          <span style={{ color: C.textLt, fontWeight: 400, fontSize: 12 }}>/{String(Math.floor(exam.speaking.time_seconds / 60)).padStart(2, '0')}:{String(exam.speaking.time_seconds % 60).padStart(2, '0')}</span>
+                          <span style={{ color: C.textMid, fontWeight: 500, fontSize: 14 }}>/{String(Math.floor(exam.speaking.time_seconds / 60)).padStart(2, '0')}:{String(exam.speaking.time_seconds % 60).padStart(2, '0')}</span>
                         </span>
                       </div>
                     )}
@@ -910,7 +938,7 @@ export default function LevelTestPage() {
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
                     {!isRecording && !recordingDone && (
                       <button onClick={startRecording} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 24px', background: C.rose, color: '#fff', border: 'none', borderRadius: 50, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", boxShadow: `0 6px 18px ${C.rose}40` }}>
                         <div style={{ width: 8, height: 8, background: '#fff', borderRadius: '50%' }} /> Start Recording
@@ -931,9 +959,9 @@ export default function LevelTestPage() {
 
                   {speakingTranscript && (
                     <div style={{ padding: '16px 18px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.06em' }}>Live Transcript</span>
-                        <span style={{ fontSize: 12, color: C.textLt }}>~{speakingTranscript.trim().split(/\s+/).length} words</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: C.textMid, textTransform: 'uppercase', letterSpacing: '.06em' }}>Live Transcript</span>
+                        <span style={{ fontSize: 13, color: C.textMid, fontWeight: 500 }}>~{speakingTranscript.trim().split(/\s+/).length} words</span>
                       </div>
                       <p style={{ fontSize: 14, color: C.text, lineHeight: 1.7, margin: 0 }}>{speakingTranscript}</p>
                     </div>
@@ -958,19 +986,19 @@ export default function LevelTestPage() {
           {currentSkill === 'reading' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <Panel>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
                   <SectionHeader icon={BookOpen} title="Reading Passage" color={color} />
-                  <span style={{ fontSize: 12, color: C.textLt }}>~{exam.reading.passage.split(/\s+/).length} words</span>
+                  <span style={{ fontSize: 13, color: C.textMid, fontWeight: 500 }}>~{exam.reading.passage.split(/\s+/).length} words</span>
                 </div>
-                <div style={{ padding: '18px 20px', background: C.bg, borderRadius: 14, border: `1px solid ${C.border}` }}>
-                  <p style={{ fontSize: 15, color: C.text, lineHeight: 1.95, margin: 0, fontFamily: "'DM Sans', sans-serif" }}>{exam.reading.passage}</p>
+                <div className="passage-box" style={{ padding: '18px 20px', background: C.bg, borderRadius: 14, border: `1px solid ${C.border}` }}>
+                  <p style={{ fontSize: 16, color: C.text, lineHeight: 1.95, margin: 0, fontFamily: "'DM Sans', sans-serif" }}>{exam.reading.passage}</p>
                 </div>
               </Panel>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1, height: 1, background: C.border }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                  Comprehension Questions · {exam.reading.questions.length} items · 25 pts
-                </span>
+               <span style={{ fontSize: 13, fontWeight: 700, color: C.textMid, textTransform: 'uppercase', letterSpacing: '.06em', textAlign: 'center' }}>
+                Comprehension Questions · {exam.reading.questions.length} items · 25 pts
+               </span>
                 <div style={{ flex: 1, height: 1, background: C.border }} />
               </div>
               {exam.reading.questions.map((q, i) => (
@@ -988,11 +1016,11 @@ export default function LevelTestPage() {
                 <div style={{ padding: '16px 20px', background: C.goldPale, border: `1px solid ${C.borderMd}`, borderRadius: 14, fontSize: 15, fontWeight: 600, color: '#5a4000', lineHeight: 1.75, marginBottom: 18 }}>
                   {exam.writing.prompt}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="writing-criteria-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {exam.writing.criteria.map((c, i) => (
                     <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12 }}>
                       <div style={{ width: 22, height: 22, borderRadius: '50%', background: `${color}15`, border: `1px solid ${color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color, flexShrink: 0 }}>{i + 1}</div>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: C.textMid }}>{c}</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{c}</span>
                     </div>
                   ))}
                 </div>
@@ -1000,13 +1028,14 @@ export default function LevelTestPage() {
 
               <div style={{ background: C.white, borderRadius: 24, border: `2px solid ${wordStatus === 'ok' ? C.green : C.border}`, overflow: 'hidden', boxShadow: '0 2px 16px rgba(15,28,53,.07)', transition: 'border-color .3s' }}>
                 <div style={{ padding: '12px 20px', background: C.bg, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: C.textMid, textTransform: 'uppercase', letterSpacing: '.06em' }}>Your Response</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: wordStatus === 'ok' ? C.green : C.textLt }}>{wordCount} words</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.textMid, textTransform: 'uppercase', letterSpacing: '.06em' }}>Your Response</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 15, fontWeight: 700, color: wordStatus === 'ok' ? C.green : C.textMid }}>{wordCount} words</span>
                 </div>
                 <textarea
                   value={writingText} onChange={e => setWritingText(e.target.value)}
                   placeholder="Begin writing your response here. Use paragraphs and clear structure..."
                   rows={13}
+                  aria-label="Writing response"
                   style={{ width: '100%', padding: '22px 24px', fontSize: 16, color: C.text, lineHeight: 1.85, background: 'transparent', border: 'none', resize: 'vertical', outline: 'none', fontFamily: "'DM Sans', sans-serif" }}
                 />
                 <div style={{ padding: '12px 20px', background: C.bg, borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1014,8 +1043,8 @@ export default function LevelTestPage() {
                     <div style={{ height: '100%', borderRadius: 3, width: `${Math.min((wordCount / writingMin) * 100, 100)}%`, background: wordStatus === 'ok' ? C.green : C.gold, transition: 'width .3s' }} />
                   </div>
                   {wordStatus === 'ok'
-                    ? <span style={{ fontSize: 13, fontWeight: 700, color: C.green, whiteSpace: 'nowrap' }}>✓ Minimum word count met</span>
-                    : <span style={{ fontSize: 13, color: C.gold, whiteSpace: 'nowrap' }}>{writingMin - wordCount} more words required</span>
+                   ? <span style={{ fontSize: 14, fontWeight: 700, color: C.green, whiteSpace: 'nowrap' }}>✓ Minimum word count met</span>
+                   : <span style={{ fontSize: 14, color: C.gold, fontWeight: 600, whiteSpace: 'nowrap' }}>{writingMin - wordCount} more words required</span>
                   }
                 </div>
               </div>
@@ -1027,24 +1056,24 @@ export default function LevelTestPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1, height: 1, background: C.border }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: C.textLt, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                  Language Use · {exam.grammar_vocab.questions.length} Questions · 25 pts · Grammar & Vocabulary
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.textMid, textTransform: 'uppercase', letterSpacing: '.06em', textAlign: 'center' }}>
+                Language Use · {exam.grammar_vocab.questions.length} Questions · 25 pts · Grammar & Vocabulary
                 </span>
                 <div style={{ flex: 1, height: 1, background: C.border }} />
               </div>
               {exam.grammar_vocab.questions.map((q, i) => (
                 <Panel key={q.id} style={{ padding: '20px 24px', border: `2px solid ${mcqAnswers[q.id] ? `${color}35` : C.border}`, transition: 'border-color .2s' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-                    <p style={{ fontSize: 15, fontWeight: 600, color: C.navy, flex: 1, lineHeight: 1.65, margin: 0 }}>
-                      <span style={{ fontWeight: 900, color: C.textLt, marginRight: 8, fontFamily: 'monospace' }}>{String(i + 1).padStart(2, '0')}.</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+                    <p style={{ fontSize: 16, fontWeight: 600, color: C.navy, flex: 1, lineHeight: 1.65, margin: 0 }}>
+                      <span style={{ fontWeight: 900, color: C.textLt, marginRight: 8, fontFamily: "'DM Sans', sans-serif" }}>{String(i + 1).padStart(2, '0')}.</span>
                       {q.question}
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
                       <CEFRBadge level={q.level ?? 'A2'} />
-                      <span style={{ fontSize: 11, color: C.textLt }}>{q.skill === 'grammar' ? 'Grammar' : 'Vocabulary'}</span>
+                      <span style={{ fontSize: 13, color: C.textMid, fontWeight: 500 }}>{q.skill === 'grammar' ? 'Grammar' : 'Vocabulary'}</span>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div className="mcq-grid">
                     {q.options.map(opt => {
                       const letter = opt.charAt(0); const sel = mcqAnswers[q.id] === letter
                       return (
@@ -1067,13 +1096,13 @@ export default function LevelTestPage() {
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 20, background: 'rgba(248,245,238,.96)', backdropFilter: 'blur(12px)', borderTop: `1px solid ${C.border}`, padding: '12px 20px', boxShadow: '0 -4px 24px rgba(15,28,53,.08)' }}>
           <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
             {skillIdx > 0 && (
-              <button onClick={prevSkill} style={{ padding: '11px 20px', background: C.bg, border: `2px solid ${C.border}`, color: C.textMid, borderRadius: 50, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif', flexShrink: 0" }}>
+              <button onClick={prevSkill} style={{ padding: '11px 20px', background: C.bg, border: `2px solid ${C.border}`, color: C.textMid, borderRadius: 50, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}>
                 ← Back
               </button>
             )}
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.bg, borderRadius: 50, padding: '10px 18px', border: `1px solid ${C.border}` }}>
-              <span style={{ fontSize: 12, color: C.textLt }}>Section {skillIdx + 1}/{SKILL_STEPS.length}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: C.bg, borderRadius: 50, padding: '10px 18px', border: `1px solid ${C.border}`, minWidth: 0 }}>
+              <span style={{ fontSize: 12, color: C.textLt, whiteSpace: 'nowrap' }}>Section {skillIdx + 1}/{SKILL_STEPS.length}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginLeft: 8 }}>
                 {currentSkill === 'writing' ? `${wordCount} / ${writingMin} words`
                   : currentSkill === 'speaking' ? (recordingDone ? '✓ Recorded' : 'Not recorded yet')
                   : `${answeredCount}/${totalQs} answered`}
@@ -1181,7 +1210,7 @@ export default function LevelTestPage() {
         </div>
 
         {/* ── 2-column layout (giống Writing feedback view) ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, alignItems: 'start' }}>
+        <div className="result-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, alignItems: 'start' }}>
 
           {/* ── LEFT COLUMN ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1197,14 +1226,14 @@ export default function LevelTestPage() {
             {/* Writing detail */}
             {skills.writing.feedback && (
               <Panel>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
                   <SectionHeader icon={PenLine} title="Writing — Chi tiết" color={SKILL_COLOR.writing} />
                   <CEFRBadge level={skills.writing.level} />
                 </div>
                 <div style={{ padding: '14px 18px', background: C.goldPale, border: `1px solid ${C.borderMd}`, borderRadius: 14, fontSize: 14, color: '#5a4000', lineHeight: 1.8, marginBottom: 18 }}>
                   {skills.writing.feedback}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 18 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 18 }}>
                   {[
                     { label: 'Task',       val: skills.writing.task },
                     { label: 'Coherence', val: skills.writing.coherence },
@@ -1244,14 +1273,14 @@ export default function LevelTestPage() {
             {/* Speaking detail */}
             {skills.speaking.feedback && (
               <Panel>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
                   <SectionHeader icon={Mic} title="Speaking — Chi tiết" color={SKILL_COLOR.speaking} />
                   <CEFRBadge level={skills.speaking.level} />
                 </div>
                 <div style={{ padding: '14px 18px', background: `${SKILL_COLOR.speaking}07`, border: `1px solid ${SKILL_COLOR.speaking}20`, borderRadius: 14, fontSize: 14, color: C.textMid, lineHeight: 1.8, marginBottom: 18 }}>
                   {skills.speaking.feedback}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
                   {[
                     { label: 'Fluency',    val: skills.speaking.fluency },
                     { label: 'Vocabulary', val: skills.speaking.vocabulary },
@@ -1303,7 +1332,7 @@ export default function LevelTestPage() {
                   const barColor = pct >= 0.8 ? C.green : pct >= 0.6 ? C.gold : pct >= 0.4 ? C.blue : C.rose
                   return (
                     <div key={key}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
                         <div style={{ width: 32, height: 32, borderRadius: 10, background: `${barColor}15`, border: `1px solid ${barColor}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <Icon size={15} color={barColor} strokeWidth={1.8} />
                         </div>
@@ -1317,7 +1346,7 @@ export default function LevelTestPage() {
                         <div style={{ height: '100%', borderRadius: 3, width: `${pct * 100}%`, background: barColor, transition: 'width .7s cubic-bezier(.16,1,.3,1)' }} />
                       </div>
                       {'correct' in raw && raw.correct != null && (
-                        <div style={{ fontSize: 11, color: C.textLt, marginTop: 3 }}>{raw.correct}/{raw.total} câu đúng</div>
+                        <div style={{ fontSize: 13, color: C.textMid, marginTop: 4, fontWeight: 500 }}>{raw.correct}/{raw.total} câu đúng</div>
                       )}
                     </div>
                   )
