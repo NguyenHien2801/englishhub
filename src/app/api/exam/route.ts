@@ -52,12 +52,12 @@ const PART_DESCRIPTIONS: Record<string, Record<string, Record<number, string>>> 
       4: 'Part 4 – Talks: bài độc thoại ngắn, mỗi bài 3 câu hỏi trắc nghiệm A/B/C/D',
     },
     NOI: {
-      1: 'Part 1 – Read Aloud: cung cấp đoạn văn ngắn (2–3 câu tiếng Anh) để thí sinh đọc to. Không có đáp án đúng/sai, chỉ cần bản văn bản.',
-      2: 'Part 2 – Describe a Picture: mô tả một tình huống bằng văn bản (không cần ảnh thật) để thí sinh nói về nó',
-      3: 'Part 3 – Respond to Questions: 3 câu hỏi về một chủ đề cụ thể, thí sinh trả lời miệng, không có đáp án trắc nghiệm',
-      4: 'Part 4 – Respond Using Information: cung cấp một bảng/lịch trình, kèm 3 câu hỏi để thí sinh trả lời dựa vào thông tin đó',
-      5: 'Part 5 – Express an Opinion: một câu hỏi open-ended yêu cầu thí sinh nêu ý kiến và lý do',
-      6: 'Part 6 – Respond to Email: một email ngắn, thí sinh trả lời bằng miệng theo yêu cầu',
+      1: 'Part 1 – Read Aloud: provide a short English passage (2–3 sentences) for the candidate to read aloud. No correct/wrong answer, just the text.',
+      2: 'Part 2 – Describe a Picture: describe a situation in text (no real image needed) for the candidate to speak about.',
+      3: 'Part 3 – Respond to Questions: 3 questions about a specific topic, candidate answers verbally, no multiple-choice answers.',
+      4: 'Part 4 – Respond Using Information: provide a schedule or table, with 3 questions for the candidate to answer based on it.',
+      5: 'Part 5 – Express an Opinion: one open-ended question asking the candidate to state an opinion and reasons.',
+      6: 'Part 6 – Respond to Email: a short email, candidate responds verbally according to the instructions.',
     },
   },
   VSTEP: {
@@ -67,9 +67,9 @@ const PART_DESCRIPTIONS: Record<string, Record<string, Record<number, string>>> 
       3: 'Part 3 – Long talks/lectures: bài nói dài, 15 câu hỏi trắc nghiệm A/B/C/D',
     },
     NOI: {
-      1: 'Part 1 – Monologue: chủ đề nói cá nhân, 1 câu hỏi open-ended về trải nghiệm/quan điểm',
-      2: 'Part 2 – Interview: 3–4 câu hỏi phỏng vấn theo chủ đề, thí sinh trả lời tự nhiên',
-      3: 'Part 3 – Presentation: một tình huống/vấn đề để thí sinh trình bày 2–3 phút',
+      1: 'Part 1 – Monologue: an open-ended personal topic question about the candidate\'s experience or opinion.',
+      2: 'Part 2 – Interview: 3–4 interview questions on a topic, candidate responds naturally.',
+      3: 'Part 3 – Presentation: a situation or problem for the candidate to present on for 2–3 minutes.',
     },
   },
   APTIS: {
@@ -80,11 +80,11 @@ const PART_DESCRIPTIONS: Record<string, Record<string, Record<number, string>>> 
       4: 'Part 4 – Long interview/lecture: bài dài, 7 câu hỏi trắc nghiệm A/B/C/D',
     },
     NOI: {
-      1: 'Part 1 – Personal interview: 4–5 câu hỏi về bản thân và cuộc sống hàng ngày',
-      2: 'Part 2 – Long turn monologue: mô tả và so sánh 2 ảnh/tình huống bằng văn bản',
-      3: 'Part 3 – Decision making: một tình huống cần đưa ra quyết định, thí sinh thảo luận',
-      4: 'Part 4 – Discussion: câu hỏi abstract/global, thí sinh nêu ý kiến mở rộng',
-      5: 'Part 5 – Long speech: một câu hỏi phức tạp để thí sinh nói dài 2+ phút',
+      1: 'Part 1 – Personal interview: 4–5 questions about the candidate and daily life.',
+      2: 'Part 2 – Long turn monologue: describe and compare 2 images/situations described in text.',
+      3: 'Part 3 – Decision making: a situation requiring a decision, candidate discusses options.',
+      4: 'Part 4 – Discussion: abstract or global question, candidate gives extended opinion.',
+      5: 'Part 5 – Long speech: a complex question for the candidate to speak on for 2+ minutes.',
     },
   },
 }
@@ -95,13 +95,26 @@ interface AiQuestion {
   loai_chung_chi: string
   ky_nang: string
   so_phan: number
-  noi_dung: string           // Đề bài / ngữ cảnh / bài nghe (dạng transcript)
-  cau_hoi: string            // Câu hỏi cụ thể
-  dap_an: Record<string, string> | null  // { A, B, C, D } hoặc null nếu open-ended
-  dap_an_dung: string | null            // 'A'|'B'|'C'|'D' hoặc null
-  goi_y_tra_loi: string | null          // Gợi ý mẫu cho câu open-ended
+  noi_dung: string
+  cau_hoi: string
+  dap_an: Record<string, string> | null
+  dap_an_dung: string | null
+  goi_y_tra_loi: string | null
   la_cau_ai_sinh: boolean
   do_kho: string
+}
+
+// ─── Helper: unescape literal \n sequences từ Gemini JSON ────────────────────
+function unescapeNewlines(str: string): string {
+  return (str || '').replace(/\\n/g, '\n').replace(/\\t/g, '\t')
+}
+
+// ─── Helper: xoá prefix metadata kiểu [VSTEP READING – ...] ─────────────────
+function cleanContent(str: string): string {
+  return unescapeNewlines(str)
+    .replace(/^\[.*?\]\s*/gm, '')   // xoá [VSTEP READING – Bài đọc 1 – tiếp theo] ở đầu dòng
+    .replace(/^\(.*?\)\s*/gm, '')   // xoá (Xem bài đọc...) ở đầu dòng
+    .trim()
 }
 
 // ─── Sinh câu hỏi bằng Gemini ─────────────────────────────────────────────────
@@ -113,49 +126,60 @@ async function generateQuestionsWithAI(
 ): Promise<AiQuestion[]> {
   const partDesc =
     PART_DESCRIPTIONS[loai]?.[kyNang]?.[soPhan] ??
-    `${loai} ${kyNang} Part ${soPhan}: ${soLuong} câu luyện thi`
+    `${loai} ${kyNang} Part ${soPhan}: ${soLuong} practice questions`
 
   const isOpenEnded = kyNang === 'NOI'
 
-  const prompt = `Bạn là chuyên gia ra đề thi tiếng Anh ${loai}.
-Hãy tạo ĐÚNG ${soLuong} câu hỏi cho: ${partDesc}.
+  const prompt = `You are an expert ${loai} English exam question writer.
+Create EXACTLY ${soLuong} questions for: ${partDesc}.
+
+CRITICAL FORMATTING RULES:
+- ALL question content ("noi_dung" and "cau_hoi") MUST be written entirely in ENGLISH.
+- Do NOT write any Vietnamese text in "noi_dung" or "cau_hoi" fields.
+- Do NOT add bracket prefixes like [VSTEP READING – Part 1], [TOEIC Part 3], etc. in any field.
+- Do NOT include labels like "Question 1:", "Part 1:", "Passage:" as prefixes inside field values.
+- Use real newline characters in JSON strings (not the two characters backslash-n).
+- Keep each field clean: just the content, no metadata wrappers.
 
 ${isOpenEnded
-  ? `Vì đây là kỹ năng Nói, KHÔNG có đáp án trắc nghiệm. Trả về JSON array với ${soLuong} object theo cấu trúc:
+  ? `Since this is a Speaking skill, there is NO multiple-choice answer. Return a JSON array of ${soLuong} objects:
 {
-  "noi_dung": "Ngữ cảnh/tình huống/đoạn văn (nếu có)",
-  "cau_hoi": "Câu hỏi hoặc yêu cầu cho thí sinh",
+  "noi_dung": "Context, situation, or scenario in ENGLISH (if any). Leave empty string if none.",
+  "cau_hoi": "The speaking task or question for the candidate, in ENGLISH.",
   "dap_an": null,
   "dap_an_dung": null,
-  "goi_y_tra_loi": "Câu trả lời mẫu ngắn gọn bằng tiếng Anh",
+  "goi_y_tra_loi": "A short sample spoken answer in English (2–4 sentences).",
   "do_kho": "B1" | "B2" | "C1"
 }`
-  : `Trả về JSON array với ${soLuong} object theo cấu trúc:
+  : `Return a JSON array of ${soLuong} objects:
 {
-  "noi_dung": "Transcript/bài nghe hoặc ngữ cảnh bằng tiếng Anh (thực tế đây là bài nghe, hãy viết transcript đầy đủ)",
-  "cau_hoi": "Câu hỏi bằng tiếng Anh",
+  "noi_dung": "The listening transcript or reading context, fully in ENGLISH. Write the complete text — do not truncate.",
+  "cau_hoi": "The question, in ENGLISH.",
   "dap_an": { "A": "...", "B": "...", "C": "...", "D": "..." },
   "dap_an_dung": "A" | "B" | "C" | "D",
   "goi_y_tra_loi": null,
   "do_kho": "B1" | "B2" | "C1"
 }`}
 
-Yêu cầu:
-- Nội dung tự nhiên, đúng format thi thật ${loai}
-- Đa dạng chủ đề: công việc, du lịch, mua sắm, giáo dục, sức khỏe
-- Độ khó phù hợp trình độ B1–B2
-- CHỈ trả về JSON array thuần túy, không markdown, không giải thích`
+Additional requirements:
+- Natural content matching the real ${loai} exam format.
+- Diverse topics: work, travel, shopping, education, health, technology, environment.
+- Difficulty appropriate for B1–B2 level.
+- Return ONLY a raw JSON array — no markdown code fences, no explanation, no preamble.`
 
   let raw = await callGemini(prompt)
 
   // Strip markdown fences nếu có
-  raw = raw.replace(/```json|```/g, '').trim()
+  raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
 
-  // Parse và bổ sung metadata
   const parsed: Omit<AiQuestion, 'id' | 'loai_chung_chi' | 'ky_nang' | 'so_phan' | 'la_cau_ai_sinh'>[] = JSON.parse(raw)
 
   return parsed.map((q, idx) => ({
     ...q,
+    // Làm sạch nội dung: unescape newlines + xoá prefix metadata
+    noi_dung:       cleanContent(q.noi_dung || ''),
+    cau_hoi:        cleanContent(q.cau_hoi  || ''),
+    goi_y_tra_loi:  q.goi_y_tra_loi ? unescapeNewlines(q.goi_y_tra_loi) : null,
     id:             `ai_${loai}_${kyNang}_p${soPhan}_${Date.now()}_${idx}`,
     loai_chung_chi: loai,
     ky_nang:        kyNang,
@@ -187,14 +211,28 @@ async function fetchPartQuestions(
   const soCauThieu = soCauCanLay - shuffled.length
   if (soCauThieu <= 0) return shuffled
 
-  // Thiếu → AI sinh bổ sung
   console.log(`[AI fallback] ${loai}/${kyNang}/Part${soPhan}: thiếu ${soCauThieu} câu, gọi Gemini...`)
   try {
     const aiQuestions = await generateQuestionsWithAI(loai, kyNang, soPhan, soCauThieu)
     return [...shuffled, ...aiQuestions]
   } catch (err) {
     console.error('[AI fallback] Lỗi sinh câu:', err)
-    return shuffled // trả về những gì có nếu AI lỗi
+    return shuffled
+  }
+}
+
+// ─── NOI: luôn dùng AI (không lấy từ DB) ─────────────────────────────────────
+async function fetchNoiQuestions(
+  loai: string,
+  kyNang: string,  // 'NOI'
+  soPhan: number,
+  soCau: number,
+): Promise<AiQuestion[]> {
+  try {
+    return await generateQuestionsWithAI(loai, kyNang, soPhan, soCau)
+  } catch (err) {
+    console.error(`[AI NOI] ${loai}/Part${soPhan} lỗi:`, err)
+    return []
   }
 }
 
@@ -213,6 +251,20 @@ export async function GET(request: Request) {
 
   // ── QUICK MODE ──────────────────────────────────────────────────────────────
   if (mode === 'quick') {
+    // NOI: luôn AI sinh
+    if (kyNang === 'NOI') {
+      const config = FULL_EXAM_CONFIG[loai]?.[kyNang] ?? []
+      const phan = config[Math.floor(Math.random() * config.length)]
+      if (!phan) return NextResponse.json({ questions: [], mode: 'quick', hasAiQuestions: true })
+      try {
+        const aiQs = await generateQuestionsWithAI(loai, kyNang, phan.soPhan, 5)
+        return NextResponse.json({ questions: aiQs, mode: 'quick', hasAiQuestions: true })
+      } catch (err) {
+        console.error('[AI quick NOI]', err)
+        return NextResponse.json({ questions: [], mode: 'quick', hasAiQuestions: true })
+      }
+    }
+
     const { data: questions } = await supabase
       .from('NganHangCauHoi')
       .select('*')
@@ -225,7 +277,6 @@ export async function GET(request: Request) {
     const result  = fromDB.slice(0, soCauDB) as AiQuestion[]
     const soCauThieu = 10 - soCauDB
 
-    // AI lấp đầy nếu DB có ít hơn 10 câu (đặc biệt cho NGHE/NOI mới setup
     if (soCauThieu > 0) {
       const config = FULL_EXAM_CONFIG[loai]?.[kyNang] ?? []
       const phanNgauNhien = config[Math.floor(Math.random() * config.length)]
@@ -248,10 +299,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Không có cấu hình cho kỳ thi này' }, { status: 400 })
   }
 
-  // Lấy từng part song song, AI tự bù nếu thiếu
   const partResults = await Promise.all(
     config.map(async ({ soPhan, soCau }) => {
-      const questions = await fetchPartQuestions(supabase, loai, kyNang, soPhan, soCau)
+      // NOI: luôn AI sinh, không truy DB
+      const questions = kyNang === 'NOI'
+        ? await fetchNoiQuestions(loai, kyNang, soPhan, soCau)
+        : await fetchPartQuestions(supabase, loai, kyNang, soPhan, soCau)
+
       return { soPhan, soCauChuan: soCau, soCauThucTe: questions.length, questions }
     })
   )
@@ -285,7 +339,6 @@ export async function POST(request: Request) {
   const { loai_chung_chi, ky_nang, answers, questions, thoiGianLamBai, mode } = body
 
   // ── Chấm điểm ───────────────────────────────────────────────────────────────
-  // Câu open-ended (NOI, VIET) không có dap_an_dung → không tính đúng/sai
   let diemSo = 0
   const cauTraLoi = answers.map((ans: { questionId: string; answer: string }) => {
     const q = questions.find((q: Record<string, unknown>) => q.id === ans.questionId)
