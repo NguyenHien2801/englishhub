@@ -61,7 +61,6 @@ const ADMIN_NAV: NavItem[] = [
     children: [
       { href: '/admin/questions', label: 'Ngân hàng câu hỏi' },
       { href: '/admin/exams', label: 'Đề thi & Bài kiểm tra' },
-      { href: '/admin/exams/history', label: 'Lịch sử thi' },
       { href: '/admin/level-test', label: 'Kiểm tra đầu vào' },
     ],
   },
